@@ -1,0 +1,13 @@
+[package]
+name = "groovylint-analysis"
+description = "Control-flow, data-flow, and type analysis foundation for groovylint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lints]
+workspace = true

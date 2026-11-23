@@ -1,0 +1,17 @@
+[package]
+name = "groovylint-rules"
+description = "Rule model, registry, and execution engine for groovylint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+groovylint-core = { path = "../groovylint-core" }
+groovylint-syntax = { path = "../groovylint-syntax" }
+
+[lints]
+workspace = true

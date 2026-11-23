@@ -1,0 +1,205 @@
+//! Rule execution engine.
+
+use std::collections::BTreeSet;
+
+use groovylint_core::{Diagnostic, Severity, SourceFile};
+use groovylint_syntax::parser::ParseOutput;
+
+use crate::registry::{RuleDescriptor, RuleInstanceImpl, RuleRegistry};
+use crate::rule::{AstRule, DiagnosticSink, FileContext, FileRule, RuleProperties, TokenRule};
+use crate::traverse::{self, AstVisitor};
+
+/// A rule selected for execution with its effective severity.
+#[derive(Clone, Copy)]
+struct ConfiguredRule {
+    descriptor: RuleDescriptor,
+    severity: Severity,
+}
+
+/// The rule engine.
+///
+/// The engine is immutable and safe to share across worker threads. A fresh
+/// instance of each rule is created for every file, so rules can keep local
+/// traversal state.
+pub struct Engine {
+    rules: Vec<ConfiguredRule>,
+    unsupported: Vec<String>,
+}
+
+impl Engine {
+    /// Builds an engine from `CodeNarc` class names. Unknown rules are recorded
+    /// in [`Engine::unsupported`] instead of failing the run.
+    #[must_use]
+    pub fn from_codenarc_classes(registry: &RuleRegistry, class_names: &[String]) -> Self {
+        let mut rules = Vec::new();
+        let mut unsupported = Vec::new();
+        let mut seen = BTreeSet::new();
+
+        for class_name in class_names {
+            if !seen.insert(class_name.clone()) {
+                continue;
+            }
+            if let Some(descriptor) = registry.find_codenarc_class(class_name) {
+                rules.push(ConfiguredRule {
+                    descriptor: *descriptor,
+                    severity: descriptor.meta.default_severity,
+                });
+            } else {
+                unsupported.push(class_name.clone());
+            }
+        }
+
+        Self { rules, unsupported }
+    }
+
+    /// Builds an engine containing every built-in rule.
+    #[must_use]
+    pub fn recommended(registry: &RuleRegistry) -> Self {
+        let rules = registry
+            .descriptors()
+            .iter()
+            .map(|descriptor| ConfiguredRule {
+                descriptor: *descriptor,
+                severity: descriptor.meta.default_severity,
+            })
+            .collect();
+        Self {
+            rules,
+            unsupported: Vec::new(),
+        }
+    }
+
+    /// Returns `CodeNarc` rules that are not implemented yet.
+    #[must_use]
+    pub fn unsupported(&self) -> &[String] {
+        &self.unsupported
+    }
+
+    /// Returns the number of enabled rules.
+    #[must_use]
+    pub fn rule_count(&self) -> usize {
+        self.rules.len()
+    }
+
+    /// Runs all enabled rules against one parsed file.
+    #[must_use]
+    pub fn lint(&self, source: &SourceFile, parsed: &ParseOutput) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+        let mut ast_rules = Vec::new();
+        let mut token_rules = Vec::new();
+        let mut file_rules = Vec::new();
+        let empty_properties = RuleProperties::new();
+
+        for configured in &self.rules {
+            let mut instance = (configured.descriptor.factory)();
+            if instance.configure(&empty_properties).is_err() {
+                continue;
+            }
+
+            let meta = configured.descriptor.meta;
+            match instance {
+                RuleInstanceImpl::Ast(rule) => {
+                    let mask = rule.interests();
+                    ast_rules.push(ActiveAstRule {
+                        rule,
+                        mask,
+                        severity: configured.severity,
+                        name: meta.name,
+                    });
+                }
+                RuleInstanceImpl::Token(rule) => token_rules.push(ActiveTokenRule {
+                    rule,
+                    severity: configured.severity,
+                    name: meta.name,
+                }),
+                RuleInstanceImpl::File(rule) => file_rules.push(ActiveFileRule {
+                    rule,
+                    severity: configured.severity,
+                    name: meta.name,
+                }),
+            }
+        }
+
+        let context = FileContext {
+            source,
+            script: &parsed.script,
+            tokens: &parsed.tokens,
+        };
+
+        for active in &mut token_rules {
+            let mut sink = DiagnosticSink::new(active.name, active.severity, &mut diagnostics);
+            active.rule.check(&context, &mut sink);
+        }
+
+        {
+            let mut dispatcher = Dispatcher {
+                rules: &mut ast_rules,
+                context: &context,
+                diagnostics: &mut diagnostics,
+            };
+            traverse::walk_script(&parsed.script, &mut dispatcher);
+        }
+
+        for active in &mut file_rules {
+            let mut sink = DiagnosticSink::new(active.name, active.severity, &mut diagnostics);
+            active.rule.check(&context, &mut sink);
+        }
+
+        diagnostics.sort_by(|left, right| {
+            left.span
+                .start
+                .cmp(&right.span.start)
+                .then_with(|| left.span.end.cmp(&right.span.end))
+                .then_with(|| left.rule.cmp(&right.rule))
+                .then_with(|| left.message.cmp(&right.message))
+        });
+        diagnostics
+    }
+}
+
+struct ActiveAstRule {
+    rule: Box<dyn AstRule>,
+    mask: crate::rule::NodeMask,
+    severity: Severity,
+    name: &'static str,
+}
+
+struct ActiveTokenRule {
+    rule: Box<dyn TokenRule>,
+    severity: Severity,
+    name: &'static str,
+}
+
+struct ActiveFileRule {
+    rule: Box<dyn FileRule>,
+    severity: Severity,
+    name: &'static str,
+}
+
+struct Dispatcher<'a, 'b> {
+    rules: &'b mut [ActiveAstRule],
+    context: &'b FileContext<'a>,
+    diagnostics: &'b mut Vec<Diagnostic>,
+}
+
+impl AstVisitor for Dispatcher<'_, '_> {
+    fn enter(&mut self, node: crate::rule::NodeRef<'_>) {
+        let kind = node.kind();
+        for active in self.rules.iter_mut() {
+            if active.mask.contains(kind) {
+                let mut sink = DiagnosticSink::new(active.name, active.severity, self.diagnostics);
+                active.rule.enter(node, self.context, &mut sink);
+            }
+        }
+    }
+
+    fn exit(&mut self, node: crate::rule::NodeRef<'_>) {
+        let kind = node.kind();
+        for active in self.rules.iter_mut() {
+            if active.mask.contains(kind) {
+                let mut sink = DiagnosticSink::new(active.name, active.severity, self.diagnostics);
+                active.rule.exit(node, self.context, &mut sink);
+            }
+        }
+    }
+}

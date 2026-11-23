@@ -1,0 +1,16 @@
+[package]
+name = "groovylint-syntax"
+description = "Lexer, syntax tree, and parser boundary for groovylint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+groovylint-core = { path = "../groovylint-core" }
+
+[lints]
+workspace = true

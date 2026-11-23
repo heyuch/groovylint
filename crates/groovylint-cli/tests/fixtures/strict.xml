@@ -1,0 +1,5 @@
+<ruleset xmlns="http://codenarc.org/ruleset/1.0">
+    <description>Focused ruleset for CLI integration tests.</description>
+    <rule class="org.codenarc.rule.basic.EmptyIfStatementRule"/>
+    <rule class="org.codenarc.rule.unnecessary.UnnecessarySemicolonRule"/>
+</ruleset>
