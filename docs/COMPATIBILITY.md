@@ -38,7 +38,11 @@ cargo run -p groovylint -- check \
 ```
 
 Result at the time of writing: **45/45 fixtures matched** on rule name and line
-(44 basic rules plus `UnnecessarySemicolon`).
+(44 basic rules plus `UnnecessarySemicolon`). On a 734-file parseable subset of
+Apache Groovy subprojects, both tools reported the same 100 findings
+`(file, rule, line)` with zero differences. On a 479-file subset of CodeNarc's
+own source, both reported zero findings. See
+[`benchmarks/RESULTS.md`](../benchmarks/RESULTS.md).
 
 The first fixture set is intentionally minimal. It proves that each rule is
 wired through the parser, rule engine, configuration, and reporter; it does not

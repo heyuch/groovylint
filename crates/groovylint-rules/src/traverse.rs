@@ -220,9 +220,14 @@ fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
                 walk_expr(arg, visitor);
             }
         }
-        ExprKind::New { args, .. } => {
+        ExprKind::New { args, body, .. } => {
             for arg in args {
                 walk_expr(arg, visitor);
+            }
+            if let Some(body) = body {
+                for item in body {
+                    walk_item(item, visitor);
+                }
             }
         }
         ExprKind::Binary { left, right, .. } => {
@@ -260,6 +265,7 @@ fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
         }
         ExprKind::Closure { body, .. } => walk_block(body, visitor),
         ExprKind::Cast { expr, .. } => walk_expr(expr, visitor),
+        ExprKind::NamedArg { value, .. } => walk_expr(value, visitor),
         ExprKind::Paren(inner) => walk_expr(inner, visitor),
         ExprKind::Literal(_) | ExprKind::Variable(_) | ExprKind::This | ExprKind::Super => {}
     }

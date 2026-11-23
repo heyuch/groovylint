@@ -67,6 +67,8 @@ pub enum ClassKind {
     Enum,
     /// `record`
     Record,
+    /// `@interface`
+    Annotation,
 }
 
 /// A class-like declaration.
@@ -82,6 +84,8 @@ pub struct ClassDecl {
     pub extends: Option<String>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
+    /// Rules suppressed by `@SuppressWarnings` on this declaration.
+    pub suppressed_rules: Vec<String>,
     /// Members.
     pub members: Vec<Item>,
     /// Source span.
@@ -99,6 +103,8 @@ pub struct MethodDecl {
     pub params: Vec<Param>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
+    /// Rules suppressed by `@SuppressWarnings` on this declaration.
+    pub suppressed_rules: Vec<String>,
     /// Body, if present.
     pub body: Option<Block>,
     /// Source span.
@@ -269,6 +275,8 @@ pub struct TryStmt {
 /// A catch clause.
 #[derive(Clone, Debug)]
 pub struct CatchClause {
+    /// Optional catch variable name.
+    pub param_name: Option<String>,
     /// Catch body.
     pub body: Block,
     /// Span including `catch (...)`.
@@ -383,6 +391,8 @@ pub enum ExprKind {
         type_name: String,
         /// Constructor arguments.
         args: Vec<Expr>,
+        /// Anonymous class body, if present.
+        body: Option<Vec<Item>>,
     },
     /// Binary expression.
     Binary {
@@ -445,6 +455,13 @@ pub enum ExprKind {
         /// Target type.
         type_name: String,
     },
+    /// Named argument (`name: value`) in a call or command expression.
+    NamedArg {
+        /// Argument name.
+        name: String,
+        /// Argument value.
+        value: Box<Expr>,
+    },
     /// Parenthesized expression.
     Paren(Box<Expr>),
 }
@@ -456,6 +473,8 @@ pub enum Literal {
     Number(String),
     /// String literal source text.
     String(String),
+    /// Slashy/regex literal source text.
+    Regex(String),
     /// Boolean literal.
     Boolean(bool),
     /// Null literal.
@@ -481,6 +500,10 @@ pub enum BinaryOp {
     Eq,
     /// `!=`
     NotEq,
+    /// `=~`
+    RegexFind,
+    /// `==~`
+    RegexMatch,
     /// `<`
     Lt,
     /// `<=`
@@ -509,6 +532,8 @@ pub enum BinaryOp {
     RangeExclusive,
     /// `instanceof`
     InstanceOf,
+    /// `in`
+    In,
 }
 
 /// Unary operators.

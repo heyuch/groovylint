@@ -170,6 +170,13 @@ impl AstRule for EmptyCatchBlockRule {
     ) {
         if let NodeRef::Stmt(Stmt::Try(try_stmt)) = node {
             for catch in &try_stmt.catches {
+                if catch
+                    .param_name
+                    .as_deref()
+                    .is_some_and(|name| matches!(name, "ignore" | "ignored"))
+                {
+                    continue;
+                }
                 if catch.body.statements.is_empty() {
                     sink.report_with_help(
                         catch.span,

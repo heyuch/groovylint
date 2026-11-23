@@ -162,19 +162,20 @@ cargo doc-all
 
 ## Next steps
 
-1. Add multi-case and negative fixtures for every rule, plus a reproducible
-   CodeNarc differential harness.
+1. Add multi-case and negative fixtures for every rule, plus engine-wide
+   CodeNarc suppression/properties support.
 2. Add `UnusedVariable` to exercise scope/symbol facts and deferred file rules.
-3. Add a benchmark crate (Criterion/`iai-callgrind`) and run the tool against
-   larger public Groovy repositories alongside CodeNarc.
-4. Expand parser coverage based on real Groovy workloads.
-5. Implement CodeNarc base-rule properties and suppression behavior.
-6. Then introduce CFG/data-flow and nullness analysis.
+3. Expand parser coverage from 80%/90% on the public corpora toward full common
+   Groovy syntax; re-run the CodeNarc differential and benchmark after each
+   parser batch.
+4. Implement CodeNarc base-rule properties and comment-based suppression.
+5. Then introduce CFG/data-flow and nullness analysis.
 
 ## Documentation
 
 - [Architecture and open questions](docs/ARCHITECTURE.md)
 - [CodeNarc compatibility notes](docs/COMPATIBILITY.md)
+- [Benchmark methodology](benchmarks/README.md) and [local results](benchmarks/RESULTS.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 

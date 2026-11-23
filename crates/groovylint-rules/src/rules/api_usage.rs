@@ -241,7 +241,10 @@ impl AstRule for BigDecimalInstantiationRule {
         let Some(expr) = call_expression(node) else {
             return;
         };
-        let ExprKind::New { type_name, args } = &expr.kind else {
+        let ExprKind::New {
+            type_name, args, ..
+        } = &expr.kind
+        else {
             return;
         };
         if type_name.rsplit('.').next() != Some("BigDecimal") {
@@ -326,7 +329,10 @@ fn file_constructor_arguments(node: NodeRef<'_>) -> Vec<(&Expr, String)> {
     let NodeRef::Expr(expr) = node else {
         return Vec::new();
     };
-    let ExprKind::New { type_name, args } = &expr.kind else {
+    let ExprKind::New {
+        type_name, args, ..
+    } = &expr.kind
+    else {
         return Vec::new();
     };
     if type_name.rsplit('.').next() != Some("File") {

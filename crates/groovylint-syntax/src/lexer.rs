@@ -34,6 +34,7 @@ struct Lexer<'a> {
     bytes: &'a [u8],
     pos: usize,
     tokens: Vec<Token>,
+    last_kind: Option<TokenKind>,
 }
 
 impl<'a> Lexer<'a> {
@@ -43,6 +44,7 @@ impl<'a> Lexer<'a> {
             bytes: source.as_bytes(),
             pos: 0,
             tokens: Vec::new(),
+            last_kind: None,
         }
     }
 
@@ -60,6 +62,7 @@ impl<'a> Lexer<'a> {
                 b'#' if self.pos == 0 && self.peek_byte(1) == Some(b'!') => {
                     self.skip_line_comment();
                 }
+                b'/' if self.is_slashy_start() => self.lex_slashy_string()?,
                 b'/' if self.peek_byte(1) == Some(b'/') => self.skip_line_comment(),
                 b'/' if self.peek_byte(1) == Some(b'*') => self.skip_block_comment()?,
                 b'\'' | b'"' => self.lex_string(byte)?,
@@ -80,6 +83,59 @@ impl<'a> Lexer<'a> {
 
     fn push(&mut self, kind: TokenKind, start: usize, end: usize) {
         self.tokens.push(Token::new(kind, Span::new(start, end)));
+        if !matches!(kind, TokenKind::Newline) {
+            self.last_kind = Some(kind);
+        }
+    }
+
+    fn is_slashy_start(&self) -> bool {
+        let next = self.peek_byte(1);
+        if matches!(next, Some(b'/' | b'*')) {
+            return false;
+        }
+        matches!(
+            self.last_kind,
+            None | Some(
+                TokenKind::Assign
+                    | TokenKind::LeftParen
+                    | TokenKind::LeftBracket
+                    | TokenKind::Comma
+                    | TokenKind::Colon
+                    | TokenKind::Return
+                    | TokenKind::Question
+                    | TokenKind::Elvis
+                    | TokenKind::AndAnd
+                    | TokenKind::OrOr
+                    | TokenKind::Eq
+                    | TokenKind::NotEq
+                    | TokenKind::RegexFind
+                    | TokenKind::RegexMatch
+                    | TokenKind::Tilde
+                    | TokenKind::Newline
+            )
+        )
+    }
+
+    fn lex_slashy_string(&mut self) -> Result<(), LexError> {
+        let start = self.pos;
+        self.pos += 1;
+        while self.pos < self.bytes.len() {
+            match self.bytes[self.pos] {
+                b'\\' => {
+                    self.pos += 2;
+                }
+                b'/' => {
+                    self.pos += 1;
+                    self.push(TokenKind::Regex, start, self.pos);
+                    return Ok(());
+                }
+                _ => self.pos += 1,
+            }
+        }
+        Err(LexError {
+            message: "unterminated slashy string".to_string(),
+            span: Span::new(start, self.source.len()),
+        })
     }
 
     fn skip_line_comment(&mut self) {
@@ -278,6 +334,16 @@ impl<'a> Lexer<'a> {
                 Some(TokenKind::Dot)
             }
             b'=' => {
+                if self.peek_byte(1) == Some(b'=') && self.peek_byte(2) == Some(b'~') {
+                    self.pos += 3;
+                    self.push(TokenKind::RegexMatch, start, self.pos);
+                    return Ok(());
+                }
+                if self.peek_byte(1) == Some(b'~') {
+                    self.pos += 2;
+                    self.push(TokenKind::RegexFind, start, self.pos);
+                    return Ok(());
+                }
                 if self.peek_byte(1) == Some(b'=') {
                     self.pos += 2;
                     self.push(TokenKind::Eq, start, self.pos);

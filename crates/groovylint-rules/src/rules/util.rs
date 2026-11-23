@@ -59,6 +59,7 @@ pub(crate) fn call_with_receiver<'a>(
 /// recognized constant such as `Boolean.TRUE`.
 pub(crate) fn is_constant(expr: &Expr) -> bool {
     match &unparen(expr).kind {
+        ExprKind::Literal(groovylint_syntax::ast::Literal::Regex(_)) => false,
         ExprKind::Literal(_) => true,
         ExprKind::List(items) => items.iter().all(is_constant),
         ExprKind::Map(entries) => entries

@@ -42,7 +42,9 @@ impl AstRule for EmptyClassRule {
         let has_body = class.members.iter().any(|member| {
             matches!(
                 member,
-                groovylint_syntax::ast::Item::Method(_) | groovylint_syntax::ast::Item::Field(_)
+                groovylint_syntax::ast::Item::Method(_)
+                    | groovylint_syntax::ast::Item::Field(_)
+                    | groovylint_syntax::ast::Item::Initializer(_)
             )
         });
         if !has_body {
@@ -89,14 +91,14 @@ impl AstRule for EmptyMethodRule {
                 is_abstract: class.is_abstract,
             }),
             NodeRef::Method(method) => {
-                let Some(class) = self.classes.last() else {
-                    return;
-                };
-                if class.kind != ClassKind::Class
-                    || class.is_abstract
-                    || method.name == class.name
-                    || has_annotation(&method.annotations, "Override")
+                if self.classes.last().is_some_and(|class| {
+                    class.kind != ClassKind::Class || class.is_abstract || method.name == class.name
+                }) || has_annotation(&method.annotations, "Override")
                     || has_annotation(&method.annotations, "Pointcut")
+                    || method
+                        .suppressed_rules
+                        .iter()
+                        .any(|rule| matches!(rule.as_str(), "EmptyMethod" | "all" | "CodeNarc"))
                 {
                     return;
                 }

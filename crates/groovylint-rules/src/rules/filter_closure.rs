@@ -57,11 +57,9 @@ impl AstRule for ParameterAssignmentInFilterClosureRule {
                     self.pending.push((*span, names));
                 }
             }
-            ExprKind::Closure { params, .. } => {
+            ExprKind::Closure { .. } => {
                 let position = self.pending.iter().position(|(span, _)| *span == expr.span);
-                let names = position
-                    .map(|index| self.pending.remove(index).1)
-                    .or_else(|| (!params.is_empty()).then(|| closure_param_names(params)));
+                let names = position.map(|index| self.pending.remove(index).1);
                 self.closure_stack.push(names);
             }
             ExprKind::Assign { target, .. } => {

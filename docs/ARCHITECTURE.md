@@ -3,7 +3,7 @@
 **Status:** design accepted in part; first vertical slice implemented
 (2026-11-24). The parser is a self-developed subset, the default CodeNarc
 `basic.xml` ruleset is wired in, and all 44 basic rules are implemented (plus one token rule) through the layered engine.
-CFG/data-flow/nullness and the benchmark harness are not implemented yet.
+CFG/data-flow/nullness is not implemented yet. The benchmark harness and first public-corpus CodeNarc comparison are in place (`benchmarks/`).
 
 This document combines the original design draft with a review of how existing
 linters and CodeNarc actually work. It records the performance model, the parser

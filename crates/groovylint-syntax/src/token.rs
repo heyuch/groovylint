@@ -11,6 +11,8 @@ pub enum TokenKind {
     Number,
     /// String literal, including `GString` source.
     String,
+    /// Slashy/regex string literal.
+    Regex,
 
     // Keywords.
     Package,
@@ -89,6 +91,8 @@ pub enum TokenKind {
     PercentAssign,
     Eq,
     NotEq,
+    RegexFind,
+    RegexMatch,
     Lt,
     Le,
     Gt,
@@ -125,6 +129,7 @@ impl TokenKind {
             Self::Ident => "identifier",
             Self::Number => "number",
             Self::String => "string",
+            Self::Regex => "regex",
             Self::Package => "`package`",
             Self::Import => "`import`",
             Self::As => "`as`",
@@ -197,6 +202,8 @@ impl TokenKind {
             Self::PercentAssign => "`%=`",
             Self::Eq => "`==`",
             Self::NotEq => "`!=`",
+            Self::RegexFind => "`=~`",
+            Self::RegexMatch => "`==~`",
             Self::Lt => "`<`",
             Self::Le => "`<=`",
             Self::Gt => "`>`",
