@@ -15,10 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Capability-based rule contracts (`TokenRule`, `AstRule`, `FileRule`) and a
   single shared AST traversal with node-interest dispatch.
 - CodeNarc XML ruleset loading and vendored CodeNarc 4.0.0 `basic.xml` default.
-- Basic rules: `EmptyIfStatement`, `EmptyElseBlock`, `EmptyWhileStatement`,
-  `EmptyForStatement`, `EmptyTryBlock`, `EmptyCatchBlock`,
-  `EmptyFinallyBlock`.
+- All 44 CodeNarc 4.0.0 `basic` rules, including the empty-block/declaration
+  rules, conditional/comparison rules, API-usage rules, finally rules, and
+  duplicate/cast/design rules.
 - Token rule: `UnnecessarySemicolon`.
+- One minimal Groovy fixture per rule and a table-driven end-to-end CLI test.
 - Parallel file processing with deterministic diagnostics.
 - Text and JSON output, source snippets, and lint exit codes.
 - Parser, rule, config, and CLI integration tests.

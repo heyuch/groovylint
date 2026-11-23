@@ -6,7 +6,7 @@
 //! [`NodeMask`]: crate::rule::NodeMask
 
 use groovylint_syntax::ast::{
-    Block, ClassDecl, Expr, ExprKind, FieldDecl, Item, MethodDecl, Script, Stmt,
+    Block, ClassDecl, Expr, ExprKind, FieldDecl, InitializerDecl, Item, MethodDecl, Script, Stmt,
 };
 
 use crate::rule::NodeRef;
@@ -35,6 +35,7 @@ fn walk_item(item: &Item, visitor: &mut impl AstVisitor) {
         Item::Class(class) => walk_class(class, visitor),
         Item::Method(method) => walk_method(method, visitor),
         Item::Field(field) => walk_field(field, visitor),
+        Item::Initializer(initializer) => walk_initializer(initializer, visitor),
         Item::Statement(stmt) => walk_stmt(stmt, visitor),
     }
 }
@@ -63,6 +64,13 @@ fn walk_field(field: &FieldDecl, visitor: &mut impl AstVisitor) {
     if let Some(init) = &field.init {
         walk_expr(init, visitor);
     }
+    visitor.exit(node);
+}
+
+fn walk_initializer(initializer: &InitializerDecl, visitor: &mut impl AstVisitor) {
+    let node = NodeRef::Initializer(initializer);
+    visitor.enter(node);
+    walk_block(&initializer.body, visitor);
     visitor.exit(node);
 }
 
@@ -139,7 +147,31 @@ fn walk_stmt(stmt: &Stmt, visitor: &mut impl AstVisitor) {
                 walk_block(&catch.body, visitor);
             }
             if let Some(finally) = &try_stmt.finally {
+                let finally_node = NodeRef::Finally(finally);
+                visitor.enter(finally_node);
                 walk_block(finally, visitor);
+                visitor.exit(finally_node);
+            }
+            visitor.exit(node);
+        }
+        Stmt::Synchronized(synchronized) => {
+            let node = NodeRef::Stmt(stmt);
+            visitor.enter(node);
+            walk_expr(&synchronized.expression, visitor);
+            walk_stmt(&synchronized.body, visitor);
+            visitor.exit(node);
+        }
+        Stmt::Switch(switch_stmt) => {
+            let node = NodeRef::Stmt(stmt);
+            visitor.enter(node);
+            walk_expr(&switch_stmt.expression, visitor);
+            for case in &switch_stmt.cases {
+                if let Some(label) = &case.label {
+                    walk_expr(label, visitor);
+                }
+                for child in &case.body {
+                    walk_stmt(child, visitor);
+                }
             }
             visitor.exit(node);
         }
@@ -227,6 +259,7 @@ fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
             walk_expr(index, visitor);
         }
         ExprKind::Closure { body, .. } => walk_block(body, visitor),
+        ExprKind::Cast { expr, .. } => walk_expr(expr, visitor),
         ExprKind::Paren(inner) => walk_expr(inner, visitor),
         ExprKind::Literal(_) | ExprKind::Variable(_) | ExprKind::This | ExprKind::Super => {}
     }

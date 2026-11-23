@@ -48,6 +48,8 @@ pub enum Item {
     Method(MethodDecl),
     /// Field declaration.
     Field(FieldDecl),
+    /// Static or instance initializer block.
+    Initializer(InitializerDecl),
     /// Statement at script scope.
     Statement(Stmt),
 }
@@ -74,6 +76,12 @@ pub struct ClassDecl {
     pub name: String,
     /// Declaration kind.
     pub kind: ClassKind,
+    /// Whether the class is abstract.
+    pub is_abstract: bool,
+    /// Simple or qualified superclass name, if explicitly declared.
+    pub extends: Option<String>,
+    /// Annotation names, normalized to simple names.
+    pub annotations: Vec<String>,
     /// Members.
     pub members: Vec<Item>,
     /// Source span.
@@ -85,8 +93,12 @@ pub struct ClassDecl {
 pub struct MethodDecl {
     /// Method name.
     pub name: String,
+    /// Return type, if explicitly declared.
+    pub return_type: Option<String>,
     /// Parameters.
     pub params: Vec<Param>,
+    /// Annotation names, normalized to simple names.
+    pub annotations: Vec<String>,
     /// Body, if present.
     pub body: Option<Block>,
     /// Source span.
@@ -98,6 +110,21 @@ pub struct MethodDecl {
 pub struct Param {
     /// Parameter name.
     pub name: String,
+    /// Parameter type, if explicitly declared.
+    pub type_name: Option<String>,
+    /// Annotation names, normalized to simple names.
+    pub annotations: Vec<String>,
+    /// Source span.
+    pub span: Span,
+}
+
+/// A static or instance initializer block.
+#[derive(Clone, Debug)]
+pub struct InitializerDecl {
+    /// Whether this is a `static { ... }` block.
+    pub is_static: bool,
+    /// Initializer body.
+    pub body: Block,
     /// Source span.
     pub span: Span,
 }
@@ -141,6 +168,10 @@ pub enum Stmt {
     ForEach(ForEachStmt),
     /// `try`/`catch`/`finally`.
     Try(TryStmt),
+    /// `synchronized` statement.
+    Synchronized(SynchronizedStmt),
+    /// `switch` statement.
+    Switch(SwitchStmt),
     /// `return`.
     Return(ReturnStmt),
     /// `throw`.
@@ -241,6 +272,39 @@ pub struct CatchClause {
     /// Catch body.
     pub body: Block,
     /// Span including `catch (...)`.
+    pub span: Span,
+}
+
+/// A `synchronized` statement.
+#[derive(Clone, Debug)]
+pub struct SynchronizedStmt {
+    /// Synchronized expression.
+    pub expression: Expr,
+    /// Guarded statement.
+    pub body: Box<Stmt>,
+    /// Whole-statement span.
+    pub span: Span,
+}
+
+/// A `switch` statement.
+#[derive(Clone, Debug)]
+pub struct SwitchStmt {
+    /// Switched expression.
+    pub expression: Expr,
+    /// Case clauses in source order.
+    pub cases: Vec<SwitchCase>,
+    /// Whole-statement span.
+    pub span: Span,
+}
+
+/// One `case` or `default` clause.
+#[derive(Clone, Debug)]
+pub struct SwitchCase {
+    /// Case label expression, or `None` for `default`.
+    pub label: Option<Expr>,
+    /// Statements in the clause.
+    pub body: Vec<Stmt>,
+    /// Span including the label and body.
     pub span: Span,
 }
 
@@ -374,6 +438,13 @@ pub enum ExprKind {
         /// Closure body.
         body: Block,
     },
+    /// Type coercion (`expr as Type`).
+    Cast {
+        /// Coerced expression.
+        expr: Box<Expr>,
+        /// Target type.
+        type_name: String,
+    },
     /// Parenthesized expression.
     Paren(Box<Expr>),
 }
@@ -491,6 +562,8 @@ impl Stmt {
             Self::For(for_stmt) => for_stmt.span,
             Self::ForEach(for_each) => for_each.span,
             Self::Try(try_stmt) => try_stmt.span,
+            Self::Synchronized(synchronized) => synchronized.span,
+            Self::Switch(switch) => switch.span,
             Self::Return(return_stmt) => return_stmt.span,
             Self::Throw(throw_stmt) => throw_stmt.span,
             Self::Break(span) | Self::Continue(span) | Self::Empty(span) => *span,

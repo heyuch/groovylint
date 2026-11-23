@@ -124,6 +124,16 @@ impl RuleRegistry {
             }),
         ];
 
+        let mut descriptors = descriptors;
+        descriptors.extend(crate::rules::conditionals::descriptors());
+        descriptors.extend(crate::rules::finally::descriptors());
+        descriptors.extend(crate::rules::api_usage::descriptors());
+        descriptors.extend(crate::rules::empty_declarations::descriptors());
+        descriptors.extend(crate::rules::unary::descriptors());
+        descriptors.extend(crate::rules::class_design::descriptors());
+        descriptors.extend(crate::rules::casts::descriptors());
+        descriptors.extend(crate::rules::filter_closure::descriptors());
+
         Self { descriptors }
     }
 
@@ -150,6 +160,6 @@ impl RuleRegistry {
     }
 }
 
-fn descriptor(meta: RuleMeta, factory: fn() -> RuleInstanceImpl) -> RuleDescriptor {
+pub(crate) fn descriptor(meta: RuleMeta, factory: fn() -> RuleInstanceImpl) -> RuleDescriptor {
     RuleDescriptor { meta, factory }
 }

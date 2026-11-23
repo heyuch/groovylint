@@ -8,8 +8,9 @@ use groovylint_core::Span;
 
 use crate::ast::{
     AssertStmt, AssignOp, BinaryOp, Block, CatchClause, ClassDecl, ClassKind, Expr, ExprKind,
-    FieldDecl, ForEachStmt, ForStmt, IfStmt, ImportDecl, Item, Literal, MethodDecl, PackageDecl,
-    Param, ReturnStmt, Script, Stmt, ThrowStmt, TryStmt, UnaryOp, VarDecl, WhileStmt,
+    FieldDecl, ForEachStmt, ForStmt, IfStmt, ImportDecl, InitializerDecl, Item, Literal,
+    MethodDecl, PackageDecl, Param, ReturnStmt, Script, Stmt, SwitchCase, SwitchStmt,
+    SynchronizedStmt, ThrowStmt, TryStmt, UnaryOp, VarDecl, WhileStmt,
 };
 use crate::lexer::{LexError, lex};
 use crate::token::{Token, TokenKind};
@@ -132,17 +133,31 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_item(&mut self, in_class: bool) -> Result<Item, ParseError> {
-        self.skip_prefix();
+        let prefix = if !in_class && self.at(TokenKind::Synchronized) {
+            PrefixInfo::default()
+        } else {
+            self.parse_prefix()?
+        };
         let start = self.current().span.start;
 
         if self.is_class_keyword() {
-            return self.parse_class().map(Item::Class);
+            return self.parse_class(start, prefix).map(Item::Class);
+        }
+
+        if in_class && self.at(TokenKind::LeftBrace) {
+            let body = self.parse_block()?;
+            let span = body.span;
+            return Ok(Item::Initializer(InitializerDecl {
+                is_static: prefix.is_static,
+                body,
+                span,
+            }));
         }
 
         if self.at(TokenKind::Def) {
             self.advance();
             if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::LeftParen {
-                return self.parse_method(start).map(Item::Method);
+                return self.parse_method(start, prefix, None).map(Item::Method);
             }
             let name = self.expect_ident_text()?;
             return self.parse_field_or_var(start, name, in_class);
@@ -150,20 +165,24 @@ impl<'a> Parser<'a> {
 
         if self.at(TokenKind::Void) {
             self.advance();
-            return self.parse_method(start).map(Item::Method);
+            return self
+                .parse_method(start, prefix, Some("void".to_string()))
+                .map(Item::Method);
         }
 
         if self.at(TokenKind::Ident) {
             if in_class && self.peek_kind(1) == TokenKind::LeftParen {
-                return self.parse_method(start).map(Item::Method);
+                return self.parse_method(start, prefix, None).map(Item::Method);
             }
 
             let saved = self.pos;
-            if let Ok(_) = self.parse_type_name()
+            if let Ok(type_name) = self.parse_type_name()
                 && self.at(TokenKind::Ident)
             {
                 if self.peek_kind(1) == TokenKind::LeftParen {
-                    return self.parse_method(start).map(Item::Method);
+                    return self
+                        .parse_method(start, prefix, Some(type_name))
+                        .map(Item::Method);
                 }
                 let name = self.expect_ident_text()?;
                 return self.parse_field_or_var(start, name, in_class);
@@ -174,8 +193,7 @@ impl<'a> Parser<'a> {
         self.parse_statement().map(Item::Statement)
     }
 
-    fn parse_class(&mut self) -> Result<ClassDecl, ParseError> {
-        let start = self.current().span.start;
+    fn parse_class(&mut self, start: usize, prefix: PrefixInfo) -> Result<ClassDecl, ParseError> {
         let kind = if self.eat(TokenKind::Class) {
             ClassKind::Class
         } else if self.eat(TokenKind::Interface) {
@@ -194,8 +212,13 @@ impl<'a> Parser<'a> {
             self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
         }
 
+        let mut extends = None;
         while !self.at(TokenKind::LeftBrace) && !self.at(TokenKind::Eof) {
-            self.advance();
+            if self.eat(TokenKind::Extends) {
+                extends = Some(self.parse_type_name()?);
+            } else {
+                self.advance();
+            }
         }
 
         let _ = self.expect(TokenKind::LeftBrace)?;
@@ -220,6 +243,9 @@ impl<'a> Parser<'a> {
         Ok(ClassDecl {
             name,
             kind,
+            is_abstract: prefix.is_abstract,
+            extends,
+            annotations: prefix.annotations,
             members,
             span: Span::new(start, self.previous_span().end),
         })
@@ -253,31 +279,41 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_method(&mut self, start: usize) -> Result<MethodDecl, ParseError> {
+    fn parse_method(
+        &mut self,
+        start: usize,
+        prefix: PrefixInfo,
+        return_type: Option<String>,
+    ) -> Result<MethodDecl, ParseError> {
         let name = self.expect_ident_text()?;
         self.expect(TokenKind::LeftParen)?;
         let mut params = Vec::new();
         self.skip_newlines();
 
         while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
-            self.skip_prefix();
+            let param_prefix = self.parse_prefix()?;
             if self.at(TokenKind::Ident)
                 && matches!(self.peek_kind(1), TokenKind::Comma | TokenKind::RightParen)
             {
                 let token = self.advance();
                 params.push(Param {
                     name: token.text(self.source).to_string(),
+                    type_name: None,
+                    annotations: param_prefix.annotations,
                     span: token.span,
                 });
             } else {
-                if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
+                let type_name = if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
                     self.advance();
-                } else if self.at(TokenKind::Ident) {
-                    let _ = self.parse_type_name()?;
-                }
+                    None
+                } else {
+                    Some(self.parse_type_name()?)
+                };
                 let token = self.expect_ident()?;
                 params.push(Param {
                     name: token.text(self.source).to_string(),
+                    type_name,
+                    annotations: param_prefix.annotations,
                     span: token.span,
                 });
             }
@@ -314,7 +350,9 @@ impl<'a> Parser<'a> {
 
         Ok(MethodDecl {
             name,
+            return_type,
             params,
+            annotations: prefix.annotations,
             body,
             span: Span::new(start, self.previous_span().end),
         })
@@ -370,23 +408,29 @@ impl<'a> Parser<'a> {
                 return Ok(Stmt::Continue(token.span));
             }
             TokenKind::Assert => return self.parse_assert(start),
+            TokenKind::Switch => return self.parse_switch(start),
             TokenKind::Synchronized => {
                 self.advance();
                 self.expect(TokenKind::LeftParen)?;
-                let _ = self.parse_expression()?;
+                let expression = self.parse_expression()?;
                 self.expect(TokenKind::RightParen)?;
                 self.skip_newlines();
-                return self.parse_statement();
+                let body = Box::new(self.parse_statement()?);
+                return Ok(Stmt::Synchronized(SynchronizedStmt {
+                    expression,
+                    body,
+                    span: Span::new(start, self.previous_span().end),
+                }));
             }
             _ => {}
         }
 
         if self.at(TokenKind::At) {
-            self.skip_prefix();
+            let _ = self.parse_prefix()?;
         }
 
         if self.looks_like_local_declaration() {
-            self.skip_prefix();
+            let _ = self.parse_prefix()?;
             let start = self.current().span.start;
             if !self.eat(TokenKind::Def) && !self.eat(TokenKind::Var) {
                 let _ = self.parse_type_name()?;
@@ -471,7 +515,7 @@ impl<'a> Parser<'a> {
         let init = if self.at(TokenKind::Semicolon) {
             None
         } else if self.looks_like_local_declaration() {
-            self.skip_prefix();
+            let _ = self.parse_prefix()?;
             let init_start = self.current().span.start;
             if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
                 self.advance();
@@ -521,7 +565,7 @@ impl<'a> Parser<'a> {
     }
 
     fn try_parse_foreach(&mut self, start: usize) -> Result<Stmt, ParseError> {
-        self.skip_prefix();
+        let _ = self.parse_prefix()?;
         if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
             self.advance();
         } else if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::Ident {
@@ -580,6 +624,54 @@ impl<'a> Parser<'a> {
             catches,
             finally,
             finally_span,
+            span: Span::new(start, self.previous_span().end),
+        }))
+    }
+
+    fn parse_switch(&mut self, start: usize) -> Result<Stmt, ParseError> {
+        self.expect(TokenKind::Switch)?;
+        self.expect(TokenKind::LeftParen)?;
+        let expression = self.parse_expression()?;
+        self.expect(TokenKind::RightParen)?;
+        self.skip_newlines();
+        self.expect(TokenKind::LeftBrace)?;
+        self.skip_separators();
+
+        let mut cases = Vec::new();
+        while !self.at(TokenKind::RightBrace) && !self.at(TokenKind::Eof) {
+            let case_start = self.current().span.start;
+            let label = if self.eat(TokenKind::Case) {
+                let label = self.parse_expression()?;
+                self.expect(TokenKind::Colon)?;
+                Some(label)
+            } else if self.eat(TokenKind::Default) {
+                self.expect(TokenKind::Colon)?;
+                None
+            } else {
+                return Err(self.error_here("expected `case` or `default`"));
+            };
+
+            self.skip_separators();
+            let mut body = Vec::new();
+            while !matches!(
+                self.current().kind,
+                TokenKind::Case | TokenKind::Default | TokenKind::RightBrace | TokenKind::Eof
+            ) {
+                body.push(self.parse_statement()?);
+                self.skip_separators();
+            }
+
+            cases.push(SwitchCase {
+                label,
+                body,
+                span: Span::new(case_start, self.previous_span().end),
+            });
+        }
+
+        self.expect(TokenKind::RightBrace)?;
+        Ok(Stmt::Switch(SwitchStmt {
+            expression,
+            cases,
             span: Span::new(start, self.previous_span().end),
         }))
     }
@@ -744,7 +836,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_comparison(&mut self) -> Result<Expr, ParseError> {
-        self.parse_binary(
+        let mut expr = self.parse_binary(
             Self::parse_shift,
             &[
                 (TokenKind::Lt, BinaryOp::Lt),
@@ -755,7 +847,19 @@ impl<'a> Parser<'a> {
                 (TokenKind::Range, BinaryOp::Range),
                 (TokenKind::RangeExclusive, BinaryOp::RangeExclusive),
             ],
-        )
+        )?;
+        while self.eat(TokenKind::As) {
+            let type_name = self.parse_type_name()?;
+            let span = Span::new(expr.span.start, self.previous_span().end);
+            expr = Expr {
+                kind: ExprKind::Cast {
+                    expr: Box::new(expr),
+                    type_name,
+                },
+                span,
+            };
+        }
+        Ok(expr)
     }
 
     fn parse_shift(&mut self) -> Result<Expr, ParseError> {
@@ -1165,6 +1269,8 @@ impl<'a> Parser<'a> {
             let token = self.advance();
             params.push(Param {
                 name: token.text(self.source).to_string(),
+                type_name: None,
+                annotations: Vec::new(),
                 span: token.span,
             });
             if self.eat(TokenKind::Comma) {
@@ -1291,21 +1397,27 @@ impl<'a> Parser<'a> {
         result
     }
 
-    fn skip_prefix(&mut self) {
+    fn parse_prefix(&mut self) -> Result<PrefixInfo, ParseError> {
+        let mut prefix = PrefixInfo::default();
         loop {
             if self.eat(TokenKind::At) {
-                let _ = self.parse_qualified_name();
+                let name = self.parse_qualified_name()?;
+                prefix.annotations.push(simple_name(&name));
                 if self.at(TokenKind::LeftParen) {
-                    let _ = self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen);
+                    self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen)?;
                 }
+            } else if self.at(TokenKind::Static) {
+                prefix.is_static = true;
+                self.advance();
+            } else if self.at(TokenKind::Abstract) {
+                prefix.is_abstract = true;
+                self.advance();
             } else if matches!(
                 self.current().kind,
                 TokenKind::Public
                     | TokenKind::Private
                     | TokenKind::Protected
-                    | TokenKind::Static
                     | TokenKind::Final
-                    | TokenKind::Abstract
                     | TokenKind::Synchronized
                     | TokenKind::Transient
                     | TokenKind::Volatile
@@ -1315,6 +1427,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+        Ok(prefix)
     }
 
     fn parse_type_name(&mut self) -> Result<String, ParseError> {
@@ -1456,6 +1569,17 @@ impl<'a> Parser<'a> {
             span: self.current().span,
         }
     }
+}
+
+#[derive(Default)]
+struct PrefixInfo {
+    annotations: Vec<String>,
+    is_static: bool,
+    is_abstract: bool,
+}
+
+fn simple_name(name: &str) -> String {
+    name.rsplit('.').next().unwrap_or(name).to_string()
 }
 
 #[cfg(test)]

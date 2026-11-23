@@ -1,0 +1,4 @@
+try {
+    println "x"
+} finally {
+}

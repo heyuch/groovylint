@@ -466,6 +466,9 @@ fn keyword_kind(text: &str) -> TokenKind {
         "volatile" => TokenKind::Volatile,
         "throws" => TokenKind::Throws,
         "instanceof" => TokenKind::Instanceof,
+        "extends" => TokenKind::Extends,
+        "implements" => TokenKind::Implements,
+        "permits" => TokenKind::Permits,
         _ => TokenKind::Ident,
     }
 }

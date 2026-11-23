@@ -54,7 +54,7 @@ fn check_reports_code_narc_basic_violations() {
     assert!(stdout.contains("EmptyFinallyBlock"));
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("not implemented yet"));
+    assert!(!stderr.contains("not implemented yet"));
 }
 
 #[test]

@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use groovylint_core::{Diagnostic, Severity, SourceFile, Span};
-use groovylint_syntax::ast::{ClassDecl, Expr, FieldDecl, MethodDecl, Script, Stmt};
+use groovylint_syntax::ast::{
+    ClassDecl, Expr, FieldDecl, InitializerDecl, MethodDecl, Script, Stmt,
+};
 use groovylint_syntax::token::Token;
 
 /// Rule configuration properties, currently represented as strings for
@@ -182,6 +184,14 @@ pub enum NodeKind {
     ForEach,
     /// `try`.
     Try,
+    /// `synchronized`.
+    Synchronized,
+    /// `finally` block.
+    Finally,
+    /// `switch`.
+    Switch,
+    /// Static or instance initializer.
+    Initializer,
     /// Variable declaration.
     VarDecl,
     /// Expression statement.
@@ -260,6 +270,10 @@ pub enum NodeRef<'a> {
     Field(&'a FieldDecl),
     /// Block.
     Block(&'a groovylint_syntax::ast::Block),
+    /// Finally block (a context marker around a block).
+    Finally(&'a groovylint_syntax::ast::Block),
+    /// Static or instance initializer.
+    Initializer(&'a InitializerDecl),
     /// Statement.
     Stmt(&'a Stmt),
     /// Expression.
@@ -276,6 +290,8 @@ impl NodeRef<'_> {
             Self::Method(_) => NodeKind::Method,
             Self::Field(_) => NodeKind::Field,
             Self::Block(_) => NodeKind::Block,
+            Self::Finally(_) => NodeKind::Finally,
+            Self::Initializer(_) => NodeKind::Initializer,
             Self::Stmt(stmt) => match stmt {
                 Stmt::Block(_) => NodeKind::Block,
                 Stmt::VarDecl(_) => NodeKind::VarDecl,
@@ -285,6 +301,8 @@ impl NodeRef<'_> {
                 Stmt::For(_) => NodeKind::For,
                 Stmt::ForEach(_) => NodeKind::ForEach,
                 Stmt::Try(_) => NodeKind::Try,
+                Stmt::Synchronized(_) => NodeKind::Synchronized,
+                Stmt::Switch(_) => NodeKind::Switch,
                 Stmt::Return(_) => NodeKind::Return,
                 Stmt::Throw(_) => NodeKind::Throw,
                 Stmt::Break(_) => NodeKind::Break,

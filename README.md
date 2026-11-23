@@ -5,11 +5,11 @@ toward deeper semantic checks such as nullness, type inference, and control-flow
 analysis.
 
 > [!IMPORTANT]
-> **Status: first vertical slice.** The project now has a working lexer/parser
-> subset, a layered rule engine, CodeNarc XML loading, parallel file processing,
-> and basic CodeNarc rules. It is not yet a full Groovy parser or a complete
-> CodeNarc replacement. Unsupported CodeNarc rules are reported and skipped, not
-> silently ignored.
+> **Status: CodeNarc basic coverage milestone.** The project has a working
+> lexer/parser subset, a layered rule engine, CodeNarc XML loading, parallel file
+> processing, and all 44 rules from CodeNarc's `rulesets/basic.xml`, plus the
+> token-level `UnnecessarySemicolon` rule. It is not yet a full Groovy parser and
+> does not yet implement CodeNarc base properties or suppressions.
 
 ## What works today
 
@@ -26,24 +26,38 @@ analysis.
   `rulesets/basic.xml` default.
 - Parallel file discovery and linting via Rayon, with deterministic output.
 - Text and JSON reporters, source snippets, and exit codes.
-- Seven CodeNarc `basic` rules plus `UnnecessarySemicolon`.
+- All 44 CodeNarc `basic` rules plus `UnnecessarySemicolon`.
 
 ### Supported rules
 
-| Rule | CodeNarc category | Layer |
-| --- | --- | --- |
-| `EmptyIfStatement` | `basic` | AST |
-| `EmptyElseBlock` | `basic` | AST |
-| `EmptyWhileStatement` | `basic` | AST |
-| `EmptyForStatement` | `basic` | AST |
-| `EmptyTryBlock` | `basic` | AST |
-| `EmptyCatchBlock` | `basic` | AST |
-| `EmptyFinallyBlock` | `basic` | AST |
-| `UnnecessarySemicolon` | `unnecessary` | token |
+All rules in CodeNarc 4.0.0's `rulesets/basic.xml` are implemented and
+registered under their CodeNarc class names:
 
-The default ruleset contains 44 CodeNarc `basic` rules. The CLI runs the seven
-supported rules from that list and prints a note with the number skipped. A
-custom CodeNarc XML ruleset can enable `UnnecessarySemicolon` or narrow the set.
+- empty blocks and declarations: `EmptyIfStatement`, `EmptyElseBlock`,
+  `EmptyWhileStatement`, `EmptyForStatement`, `EmptyTryBlock`, `EmptyCatchBlock`,
+  `EmptyFinallyBlock`, `EmptySwitchStatement`, `EmptySynchronizedStatement`,
+  `EmptyClass`, `EmptyMethod`, `EmptyStaticInitializer`,
+  `EmptyInstanceInitializer`;
+- conditionals and comparisons: `AssignmentInConditional`,
+  `BitwiseOperatorInConditional`, `BrokenNullCheck`, `BrokenOddnessCheck`,
+  `ConstantIfExpression`, `ConstantTernaryExpression`,
+  `ConstantAssertExpression`, `ComparisonOfTwoConstants`,
+  `ComparisonWithSelf`, `DoubleNegative`, `MultipleUnaryOperators`;
+- API usage: `BigDecimalInstantiation`, `BooleanGetBoolean`, `ClassForName`,
+  `ExplicitGarbageCollection`, `IntegerGetInteger`, `RemoveAllOnSelf`,
+  `HardCodedWindowsFileSeparator`, `HardCodedWindowsRootDirectory`,
+  `ForLoopShouldBeWhileLoop`;
+- declarations and control flow: `AssertWithinFinallyBlock`, `DeadCode`,
+  `DuplicateCaseStatement`, `DuplicateMapKey`, `DuplicateSetValue`,
+  `EqualsAndHashCode`, `EqualsOverloaded`, `ParameterAssignmentInFilterClosure`,
+  `RandomDoubleCoercedToZero`, `ReturnFromFinallyBlock`,
+  `ThrowExceptionFromFinallyBlock`.
+- token layer: `UnnecessarySemicolon` (from CodeNarc's `unnecessary` ruleset).
+
+Each implemented rule has a minimal Groovy fixture under
+`crates/groovylint-cli/tests/fixtures/rules/` and is exercised end-to-end through
+the CLI. The current fixtures are minimal positive cases; broader edge-case and
+negative coverage is an ongoing task.
 
 ## Quick start
 
@@ -104,11 +118,10 @@ properties, suppressions, or `<ruleset-ref>`.
 The parser intentionally targets common Groovy rather than full language
 coverage. Known gaps include:
 
-- `switch`, `do`/`while`, and labeled statements;
+- `do`/`while` and labeled statements;
 - enum constants (skipped rather than represented);
 - GString interpolation details and slashy/dollar-slashy strings;
 - multi-variable declarations and some command-chain forms;
-- annotations are consumed but not represented in the AST;
 - no parser error recovery yet: the first syntax error becomes a `ParseError`
   diagnostic for that file.
 
@@ -149,10 +162,11 @@ cargo doc-all
 
 ## Next steps
 
-1. Add a CodeNarc differential test harness for the implemented rules.
+1. Add multi-case and negative fixtures for every rule, plus a reproducible
+   CodeNarc differential harness.
 2. Add `UnusedVariable` to exercise scope/symbol facts and deferred file rules.
-3. Add a benchmark crate (Criterion/`iai-callgrind`) and a pinned CodeNarc
-   comparison on the same corpus.
+3. Add a benchmark crate (Criterion/`iai-callgrind`) and run the tool against
+   larger public Groovy repositories alongside CodeNarc.
 4. Expand parser coverage based on real Groovy workloads.
 5. Implement CodeNarc base-rule properties and suppression behavior.
 6. Then introduce CFG/data-flow and nullness analysis.

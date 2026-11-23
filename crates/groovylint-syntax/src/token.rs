@@ -58,6 +58,9 @@ pub enum TokenKind {
     Volatile,
     Throws,
     Instanceof,
+    Extends,
+    Implements,
+    Permits,
 
     // Punctuation.
     LeftParen,
@@ -167,6 +170,9 @@ impl TokenKind {
             Self::Volatile => "`volatile`",
             Self::Throws => "`throws`",
             Self::Instanceof => "`instanceof`",
+            Self::Extends => "`extends`",
+            Self::Implements => "`implements`",
+            Self::Permits => "`permits`",
             Self::LeftParen => "`(`",
             Self::RightParen => "`)`",
             Self::LeftBrace => "`{`",

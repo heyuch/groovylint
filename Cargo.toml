@@ -26,6 +26,7 @@ ignore = "0.4"
 rayon = "1.10"
 roxmltree = "0.20"
 serde_json = "1.0"
+tempfile = "3.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
