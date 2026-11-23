@@ -1,10 +1,6 @@
 //! Built-in rule registry.
 
-use crate::rule::{AstRule, Category, FileRule, RuleMeta, RuleProperties, TokenRule};
-use crate::rules::empty_blocks::{
-    EmptyCatchBlockRule, EmptyElseBlockRule, EmptyFinallyBlockRule, EmptyForStatementRule,
-    EmptyIfStatementRule, EmptyTryBlockRule, EmptyWhileStatementRule,
-};
+use crate::rule::{AstRule, FileRule, RuleMeta, RuleProperties, TokenRule};
 use crate::rules::unnecessary_semicolon::{
     META as UNNECESSARY_SEMICOLON_META, UnnecessarySemicolonRule,
 };
@@ -48,83 +44,10 @@ impl RuleRegistry {
     /// Creates the built-in registry.
     #[must_use]
     pub fn builtin() -> Self {
-        let descriptors = vec![
-            descriptor(
-                RuleMeta::new(
-                    "EmptyIfStatement",
-                    "org.codenarc.rule.basic.EmptyIfStatementRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty if statements.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyIfStatementRule)),
-            ),
-            descriptor(
-                RuleMeta::new(
-                    "EmptyElseBlock",
-                    "org.codenarc.rule.basic.EmptyElseBlockRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty else blocks.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyElseBlockRule)),
-            ),
-            descriptor(
-                RuleMeta::new(
-                    "EmptyWhileStatement",
-                    "org.codenarc.rule.basic.EmptyWhileStatementRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty while statements.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyWhileStatementRule)),
-            ),
-            descriptor(
-                RuleMeta::new(
-                    "EmptyForStatement",
-                    "org.codenarc.rule.basic.EmptyForStatementRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty for statements.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyForStatementRule)),
-            ),
-            descriptor(
-                RuleMeta::new(
-                    "EmptyTryBlock",
-                    "org.codenarc.rule.basic.EmptyTryBlockRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty try blocks.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyTryBlockRule)),
-            ),
-            descriptor(
-                RuleMeta::new(
-                    "EmptyCatchBlock",
-                    "org.codenarc.rule.basic.EmptyCatchBlockRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty catch blocks.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyCatchBlockRule)),
-            ),
-            descriptor(
-                RuleMeta::new(
-                    "EmptyFinallyBlock",
-                    "org.codenarc.rule.basic.EmptyFinallyBlockRule",
-                    Category::Basic,
-                    groovylint_core::Severity::Warning,
-                    "Checks for empty finally blocks.",
-                ),
-                || RuleInstanceImpl::Ast(Box::new(EmptyFinallyBlockRule)),
-            ),
-            descriptor(UNNECESSARY_SEMICOLON_META, || {
-                RuleInstanceImpl::Token(Box::new(UnnecessarySemicolonRule))
-            }),
-        ];
-
-        let mut descriptors = descriptors;
+        let mut descriptors = vec![descriptor(UNNECESSARY_SEMICOLON_META, || {
+            RuleInstanceImpl::Token(Box::new(UnnecessarySemicolonRule))
+        })];
+        descriptors.extend(crate::rules::empty_blocks::descriptors());
         descriptors.extend(crate::rules::conditionals::descriptors());
         descriptors.extend(crate::rules::finally::descriptors());
         descriptors.extend(crate::rules::api_usage::descriptors());

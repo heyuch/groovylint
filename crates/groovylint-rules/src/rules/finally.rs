@@ -7,12 +7,13 @@ use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
     AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
 };
+use crate::rules::util::{ClassStack, FinallyDepth};
 
 /// Detects `assert` inside a `finally` block.
 #[derive(Default)]
 pub struct AssertWithinFinallyBlockRule {
-    finally_depth: usize,
-    classes: Vec<String>,
+    depth: FinallyDepth,
+    classes: ClassStack,
 }
 
 impl Rule for AssertWithinFinallyBlockRule {}
@@ -30,19 +31,18 @@ impl AstRule for AssertWithinFinallyBlockRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(class) => self.classes.push(class.name.clone()),
-            NodeRef::Finally(_) => self.finally_depth += 1,
-            NodeRef::Stmt(Stmt::Assert(assert_stmt)) if self.finally_depth > 0 => {
-                let class_name = self.classes.last().map_or("null", String::as_str);
-                sink.report(
-                    assert_stmt.span,
-                    format!(
-                        "A finally block within class {class_name} contains an assert statement, potentially hiding the original exception, if there is one"
-                    ),
-                );
-            }
-            _ => {}
+        self.classes.enter(node);
+        self.depth.enter(node);
+        if let NodeRef::Stmt(Stmt::Assert(assert_stmt)) = node
+            && self.depth.is_inside()
+        {
+            sink.report(
+                assert_stmt.span,
+                format!(
+                    "A finally block within class {} contains an assert statement, potentially hiding the original exception, if there is one",
+                    self.classes.current()
+                ),
+            );
         }
     }
 
@@ -52,20 +52,15 @@ impl AstRule for AssertWithinFinallyBlockRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(_) => {
-                self.classes.pop();
-            }
-            NodeRef::Finally(_) => self.finally_depth = self.finally_depth.saturating_sub(1),
-            _ => {}
-        }
+        self.depth.exit(node);
+        self.classes.exit(node);
     }
 }
 
 /// Detects `return` inside a `finally` block.
 #[derive(Default)]
 pub struct ReturnFromFinallyBlockRule {
-    finally_depth: usize,
+    depth: FinallyDepth,
 }
 
 impl Rule for ReturnFromFinallyBlockRule {}
@@ -81,12 +76,11 @@ impl AstRule for ReturnFromFinallyBlockRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Finally(_) => self.finally_depth += 1,
-            NodeRef::Stmt(Stmt::Return(return_stmt)) if self.finally_depth > 0 => {
-                sink.report(return_stmt.span, "finally statements cannot return a value");
-            }
-            _ => {}
+        self.depth.enter(node);
+        if let NodeRef::Stmt(Stmt::Return(return_stmt)) = node
+            && self.depth.is_inside()
+        {
+            sink.report(return_stmt.span, "finally statements cannot return a value");
         }
     }
 
@@ -96,16 +90,14 @@ impl AstRule for ReturnFromFinallyBlockRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Finally(_)) {
-            self.finally_depth = self.finally_depth.saturating_sub(1);
-        }
+        self.depth.exit(node);
     }
 }
 
 /// Detects `throw` inside a `finally` block.
 #[derive(Default)]
 pub struct ThrowExceptionFromFinallyBlockRule {
-    finally_depth: usize,
+    depth: FinallyDepth,
 }
 
 impl Rule for ThrowExceptionFromFinallyBlockRule {}
@@ -121,15 +113,14 @@ impl AstRule for ThrowExceptionFromFinallyBlockRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Finally(_) => self.finally_depth += 1,
-            NodeRef::Stmt(Stmt::Throw(throw_stmt)) if self.finally_depth > 0 => {
-                sink.report(
-                    throw_stmt.span,
-                    "Throwing an exception from a finally block can hide an underlying error",
-                );
-            }
-            _ => {}
+        self.depth.enter(node);
+        if let NodeRef::Stmt(Stmt::Throw(throw_stmt)) = node
+            && self.depth.is_inside()
+        {
+            sink.report(
+                throw_stmt.span,
+                "Throwing an exception from a finally block can hide an underlying error",
+            );
         }
     }
 
@@ -139,9 +130,7 @@ impl AstRule for ThrowExceptionFromFinallyBlockRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Finally(_)) {
-            self.finally_depth = self.finally_depth.saturating_sub(1);
-        }
+        self.depth.exit(node);
     }
 }
 

@@ -2,6 +2,8 @@
 
 use groovylint_syntax::ast::{BinaryOp, Expr, ExprKind};
 
+use crate::rule::NodeRef;
+
 /// Returns the source text for an expression, trimmed.
 pub(crate) fn expr_text(expr: &Expr, source: &str) -> String {
     source
@@ -133,4 +135,52 @@ pub(crate) fn has_annotation(annotations: &[String], name: &str) -> bool {
     annotations
         .iter()
         .any(|annotation| annotation == name || annotation.ends_with(&format!(".{name}")))
+}
+
+/// Tracks the current class name during a single AST traversal.
+#[derive(Default)]
+pub(crate) struct ClassStack {
+    names: Vec<String>,
+}
+
+impl ClassStack {
+    pub(crate) fn enter(&mut self, node: NodeRef<'_>) {
+        if let NodeRef::Class(class) = node {
+            self.names.push(class.name.clone());
+        }
+    }
+
+    pub(crate) fn exit(&mut self, node: NodeRef<'_>) {
+        if matches!(node, NodeRef::Class(_)) {
+            self.names.pop();
+        }
+    }
+
+    pub(crate) fn current(&self) -> &str {
+        self.names.last().map_or("null", String::as_str)
+    }
+}
+
+/// Tracks whether traversal is inside a `finally` block.
+#[derive(Default)]
+pub(crate) struct FinallyDepth {
+    depth: usize,
+}
+
+impl FinallyDepth {
+    pub(crate) fn enter(&mut self, node: NodeRef<'_>) {
+        if matches!(node, NodeRef::Finally(_)) {
+            self.depth += 1;
+        }
+    }
+
+    pub(crate) fn exit(&mut self, node: NodeRef<'_>) {
+        if matches!(node, NodeRef::Finally(_)) {
+            self.depth = self.depth.saturating_sub(1);
+        }
+    }
+
+    pub(crate) fn is_inside(&self) -> bool {
+        self.depth > 0
+    }
 }

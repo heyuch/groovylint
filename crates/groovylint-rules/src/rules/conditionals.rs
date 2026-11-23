@@ -4,7 +4,9 @@ use groovylint_syntax::ast::{BinaryOp, Expr, ExprKind, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{AstRule, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule};
-use crate::rules::util::{expr_text, is_comparison, is_constant, unparen, variable_name};
+use crate::rules::util::{
+    ClassStack, expr_text, is_comparison, is_constant, unparen, variable_name,
+};
 
 fn condition_expressions(node: NodeRef<'_>) -> Vec<&Expr> {
     match node {
@@ -172,7 +174,7 @@ impl AstRule for ConstantTernaryExpressionRule {
 /// Checks for constant assert conditions.
 #[derive(Default)]
 pub struct ConstantAssertExpressionRule {
-    classes: Vec<String>,
+    classes: ClassStack,
 }
 
 impl Rule for ConstantAssertExpressionRule {}
@@ -188,19 +190,18 @@ impl AstRule for ConstantAssertExpressionRule {
         context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(class) => self.classes.push(class.name.clone()),
-            NodeRef::Stmt(Stmt::Assert(assert_stmt)) if is_constant(&assert_stmt.condition) => {
-                let class_name = self.classes.last().map_or("null", String::as_str);
-                sink.report(
-                    assert_stmt.span,
-                    format!(
-                        "The assert statement within class {class_name} has a constant boolean expression [{}]",
-                        expr_text(&assert_stmt.condition, context.source.text())
-                    ),
-                );
-            }
-            _ => {}
+        self.classes.enter(node);
+        if let NodeRef::Stmt(Stmt::Assert(assert_stmt)) = node
+            && is_constant(&assert_stmt.condition)
+        {
+            sink.report(
+                assert_stmt.span,
+                format!(
+                    "The assert statement within class {} has a constant boolean expression [{}]",
+                    self.classes.current(),
+                    expr_text(&assert_stmt.condition, context.source.text())
+                ),
+            );
         }
     }
 
@@ -210,9 +211,7 @@ impl AstRule for ConstantAssertExpressionRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Class(_)) {
-            self.classes.pop();
-        }
+        self.classes.exit(node);
     }
 }
 
@@ -255,7 +254,7 @@ fn accesses_variable(expr: &Expr, name: &str) -> bool {
 /// operator.
 #[derive(Default)]
 pub struct BrokenNullCheckRule {
-    classes: Vec<String>,
+    classes: ClassStack,
 }
 
 impl Rule for BrokenNullCheckRule {}
@@ -271,31 +270,29 @@ impl AstRule for BrokenNullCheckRule {
         context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(class) => self.classes.push(class.name.clone()),
-            NodeRef::Expr(expr) => {
-                let ExprKind::Binary { op, left, right } = &expr.kind else {
-                    return;
-                };
-                let variable = match op {
-                    BinaryOp::Or => is_comparison_with_null(left, BinaryOp::NotEq),
-                    BinaryOp::And => is_comparison_with_null(left, BinaryOp::Eq),
-                    _ => None,
-                };
-                if let Some(variable) = variable
-                    && accesses_variable(right, &variable)
-                {
-                    let class_name = self.classes.last().map_or("null", String::as_str);
-                    sink.report(
-                        expr.span,
-                        format!(
-                            "The expression {} within class {class_name} incorrectly checks for null, and can throw a NullPointerException.",
-                            expr_text(expr, context.source.text())
-                        ),
-                    );
-                }
-            }
-            _ => {}
+        self.classes.enter(node);
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Binary { op, left, right } = &expr.kind else {
+            return;
+        };
+        let variable = match op {
+            BinaryOp::Or => is_comparison_with_null(left, BinaryOp::NotEq),
+            BinaryOp::And => is_comparison_with_null(left, BinaryOp::Eq),
+            _ => None,
+        };
+        if let Some(variable) = variable
+            && accesses_variable(right, &variable)
+        {
+            sink.report(
+                expr.span,
+                format!(
+                    "The expression {} within class {} incorrectly checks for null, and can throw a NullPointerException.",
+                    expr_text(expr, context.source.text()),
+                    self.classes.current()
+                ),
+            );
         }
     }
 
@@ -305,9 +302,7 @@ impl AstRule for BrokenNullCheckRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Class(_)) {
-            self.classes.pop();
-        }
+        self.classes.exit(node);
     }
 }
 

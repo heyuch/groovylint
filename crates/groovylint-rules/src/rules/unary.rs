@@ -7,7 +7,7 @@ use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
     AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
 };
-use crate::rules::util::{expr_text, unparen};
+use crate::rules::util::{ClassStack, expr_text, unparen};
 
 fn is_unary(op: UnaryOp) -> bool {
     matches!(
@@ -71,7 +71,7 @@ impl AstRule for DoubleNegativeRule {
 /// Detects consecutive unary operators such as `!!`, `~~`, `-+`.
 #[derive(Default)]
 pub struct MultipleUnaryOperatorsRule {
-    classes: Vec<String>,
+    classes: ClassStack,
 }
 
 impl Rule for MultipleUnaryOperatorsRule {}
@@ -87,33 +87,31 @@ impl AstRule for MultipleUnaryOperatorsRule {
         context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(class) => self.classes.push(class.name.clone()),
-            NodeRef::Expr(expr) => {
-                let ExprKind::Unary { op, operand } = &expr.kind else {
-                    return;
-                };
-                if !is_unary(*op) {
-                    return;
-                }
-                let ExprKind::Unary { op: second_op, .. } = &unparen(operand).kind else {
-                    return;
-                };
-                if !is_unary(*second_op) {
-                    return;
-                }
-                let class_name = self.classes.last().map_or("null", String::as_str);
-                let operators = format!("{}{}", op_text(*op), op_text(*second_op));
-                sink.report(
-                    expr.span,
-                    format!(
-                        "The expression ({}) in class {class_name} contains confusing multiple consecutive unary operators ({operators})",
-                        expr_text(expr, context.source.text())
-                    ),
-                );
-            }
-            _ => {}
+        self.classes.enter(node);
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Unary { op, operand } = &expr.kind else {
+            return;
+        };
+        if !is_unary(*op) {
+            return;
         }
+        let ExprKind::Unary { op: second_op, .. } = &unparen(operand).kind else {
+            return;
+        };
+        if !is_unary(*second_op) {
+            return;
+        }
+        let operators = format!("{}{}", op_text(*op), op_text(*second_op));
+        sink.report(
+            expr.span,
+            format!(
+                "The expression ({}) in class {} contains confusing multiple consecutive unary operators ({operators})",
+                expr_text(expr, context.source.text()),
+                self.classes.current()
+            ),
+        );
     }
 
     fn exit(
@@ -122,9 +120,7 @@ impl AstRule for MultipleUnaryOperatorsRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Class(_)) {
-            self.classes.pop();
-        }
+        self.classes.exit(node);
     }
 }
 

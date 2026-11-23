@@ -2,7 +2,10 @@
 
 use groovylint_syntax::ast::Stmt;
 
-use crate::rule::{AstRule, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule};
+use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
+use crate::rule::{
+    AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
+};
 
 /// Detects an `if` whose then branch is empty.
 pub struct EmptyIfStatementRule;
@@ -218,4 +221,81 @@ impl AstRule for EmptyFinallyBlockRule {
             );
         }
     }
+}
+
+/// Descriptors for empty-block rules.
+#[must_use]
+pub fn descriptors() -> Vec<RuleDescriptor> {
+    vec![
+        descriptor(
+            RuleMeta::new(
+                "EmptyIfStatement",
+                "org.codenarc.rule.basic.EmptyIfStatementRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty if statements.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyIfStatementRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "EmptyElseBlock",
+                "org.codenarc.rule.basic.EmptyElseBlockRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty else blocks.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyElseBlockRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "EmptyWhileStatement",
+                "org.codenarc.rule.basic.EmptyWhileStatementRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty while statements.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyWhileStatementRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "EmptyForStatement",
+                "org.codenarc.rule.basic.EmptyForStatementRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty for statements.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyForStatementRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "EmptyTryBlock",
+                "org.codenarc.rule.basic.EmptyTryBlockRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty try blocks.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyTryBlockRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "EmptyCatchBlock",
+                "org.codenarc.rule.basic.EmptyCatchBlockRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty catch blocks.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyCatchBlockRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "EmptyFinallyBlock",
+                "org.codenarc.rule.basic.EmptyFinallyBlockRule",
+                Category::Basic,
+                groovylint_core::Severity::Warning,
+                "Checks for empty finally blocks.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(EmptyFinallyBlockRule)),
+        ),
+    ]
 }

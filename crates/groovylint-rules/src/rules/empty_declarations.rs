@@ -7,7 +7,7 @@ use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
     AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
 };
-use crate::rules::util::{expr_text, has_annotation, is_constant};
+use crate::rules::util::{ClassStack, expr_text, has_annotation, is_constant};
 
 /// Detects classes with no methods, fields, or properties.
 pub struct EmptyClassRule;
@@ -183,7 +183,7 @@ impl AstRule for EmptySynchronizedStatementRule {
 /// Detects an empty static initializer.
 #[derive(Default)]
 pub struct EmptyStaticInitializerRule {
-    classes: Vec<String>,
+    classes: ClassStack,
 }
 
 impl Rule for EmptyStaticInitializerRule {}
@@ -199,20 +199,18 @@ impl AstRule for EmptyStaticInitializerRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(class) => self.classes.push(class.name.clone()),
-            NodeRef::Initializer(initializer)
-                if initializer.is_static && initializer.body.statements.is_empty() =>
-            {
-                let class_name = self.classes.last().map_or("null", String::as_str);
-                sink.report(
-                    initializer.span,
-                    format!(
-                        "The class {class_name} has an empty static initializer. It is safe to delete it"
-                    ),
-                );
-            }
-            _ => {}
+        self.classes.enter(node);
+        if let NodeRef::Initializer(initializer) = node
+            && initializer.is_static
+            && initializer.body.statements.is_empty()
+        {
+            sink.report(
+                initializer.span,
+                format!(
+                    "The class {} has an empty static initializer. It is safe to delete it",
+                    self.classes.current()
+                ),
+            );
         }
     }
 
@@ -222,16 +220,14 @@ impl AstRule for EmptyStaticInitializerRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Class(_)) {
-            self.classes.pop();
-        }
+        self.classes.exit(node);
     }
 }
 
 /// Detects an empty instance initializer.
 #[derive(Default)]
 pub struct EmptyInstanceInitializerRule {
-    classes: Vec<String>,
+    classes: ClassStack,
 }
 
 impl Rule for EmptyInstanceInitializerRule {}
@@ -247,20 +243,18 @@ impl AstRule for EmptyInstanceInitializerRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        match node {
-            NodeRef::Class(class) => self.classes.push(class.name.clone()),
-            NodeRef::Initializer(initializer)
-                if !initializer.is_static && initializer.body.statements.is_empty() =>
-            {
-                let class_name = self.classes.last().map_or("null", String::as_str);
-                sink.report(
-                    initializer.span,
-                    format!(
-                        "The class {class_name} defines an empty instance initializer. It is safe to delete it"
-                    ),
-                );
-            }
-            _ => {}
+        self.classes.enter(node);
+        if let NodeRef::Initializer(initializer) = node
+            && !initializer.is_static
+            && initializer.body.statements.is_empty()
+        {
+            sink.report(
+                initializer.span,
+                format!(
+                    "The class {} defines an empty instance initializer. It is safe to delete it",
+                    self.classes.current()
+                ),
+            );
         }
     }
 
@@ -270,9 +264,7 @@ impl AstRule for EmptyInstanceInitializerRule {
         _context: &FileContext<'_>,
         _sink: &mut DiagnosticSink<'_>,
     ) {
-        if matches!(node, NodeRef::Class(_)) {
-            self.classes.pop();
-        }
+        self.classes.exit(node);
     }
 }
 
