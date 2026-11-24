@@ -59,8 +59,13 @@ more of CodeNarc's own positive/negative test cases per rule.
 - Rule properties, CodeNarc base-rule filters, `@SuppressWarnings`, and
   comment-based disable directives are not implemented yet.
 - The parser is a common-syntax subset, not full Groovy. Unsupported syntax
-  becomes a `ParseError` diagnostic for that file. On a 24,316-file real-world
-  Groovy corpus, 108 files (0.4%) still fail to parse.
+  becomes a `ParseError` diagnostic for that file. On a 118,470-file private
+  Groovy corpus (Spring/Grails services, Spock tests, Gradle build logic) every
+  file now parses; the corpus reported 4081 parse failures before the syntax
+  work. Remaining approximations are listed below.
+- Syntax that intentionally has no dedicated AST node: `try`-with-resources
+  drops the resource declarations, `??` and `??.` are modelled as `?:` and
+  `?.`, and `switch` expressions store each arm as an expression statement.
 - Severity mapping is currently `priority 2 -> warning`, `priority 3 -> info`;
   priority-1 mapping and report-format parity are future work.
 - Some rule messages are more generic than CodeNarc's. Rule name and line are

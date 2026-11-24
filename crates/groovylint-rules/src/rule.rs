@@ -303,7 +303,7 @@ impl NodeRef<'_> {
                 Stmt::VarDecl(_) => NodeKind::VarDecl,
                 Stmt::Expr(_) => NodeKind::ExprStmt,
                 Stmt::If(_) => NodeKind::If,
-                Stmt::While(_) => NodeKind::While,
+                Stmt::While(_) | Stmt::DoWhile(_) => NodeKind::While,
                 Stmt::For(_) => NodeKind::For,
                 Stmt::ForEach(_) => NodeKind::ForEach,
                 Stmt::Try(_) => NodeKind::Try,

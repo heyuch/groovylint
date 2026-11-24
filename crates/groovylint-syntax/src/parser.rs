@@ -7,8 +7,8 @@
 use groovylint_core::Span;
 
 use crate::ast::{
-    AssertStmt, AssignOp, BinaryOp, Block, CatchClause, ClassDecl, ClassKind, Expr, ExprKind,
-    FieldDecl, ForEachStmt, ForStmt, IfStmt, ImportDecl, InitializerDecl, Item, Literal,
+    AssertStmt, AssignOp, BinaryOp, Block, CatchClause, ClassDecl, ClassKind, DoWhileStmt, Expr,
+    ExprKind, FieldDecl, ForEachStmt, ForStmt, IfStmt, ImportDecl, InitializerDecl, Item, Literal,
     MethodDecl, PackageDecl, Param, ReturnStmt, Script, Stmt, SwitchCase, SwitchStmt,
     SynchronizedStmt, ThrowStmt, TryStmt, UnaryOp, VarDecl, WhileStmt,
 };
@@ -172,11 +172,32 @@ impl<'a> Parser<'a> {
 
         if self.at(TokenKind::Def) {
             self.advance();
-            if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::LeftParen {
+            if self.at(TokenKind::Lt) {
+                self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
+            }
+            if self.at_ident_like() && self.peek_kind(1) == TokenKind::LeftParen {
                 return self.parse_method(start, prefix, None).map(Item::Method);
             }
+            let saved = self.pos;
+            if let Ok(type_name) = self.parse_type_name()
+                && is_type_like(&type_name)
+                && self.at_ident_like()
+            {
+                if self.peek_kind(1) == TokenKind::LeftParen {
+                    return self
+                        .parse_method(start, prefix, Some(type_name))
+                        .map(Item::Method);
+                }
+                let name = self.expect_ident_text()?;
+                return self.parse_field_or_var(start, name, in_class);
+            }
+            self.pos = saved;
             let name = self.expect_ident_text()?;
             return self.parse_field_or_var(start, name, in_class);
+        }
+
+        if in_class && self.at(TokenKind::String) && self.peek_kind(1) == TokenKind::LeftParen {
+            return self.parse_method(start, prefix, None).map(Item::Method);
         }
 
         if self.at(TokenKind::Void) {
@@ -194,15 +215,17 @@ impl<'a> Parser<'a> {
             let saved = self.pos;
             if let Ok(type_name) = self.parse_type_name()
                 && is_type_like(&type_name)
-                && self.at(TokenKind::Ident)
             {
-                if self.peek_kind(1) == TokenKind::LeftParen {
-                    return self
-                        .parse_method(start, prefix, Some(type_name))
-                        .map(Item::Method);
+                self.skip_newlines_before_method_name();
+                if self.at_ident_like() {
+                    if self.peek_kind(1) == TokenKind::LeftParen {
+                        return self
+                            .parse_method(start, prefix, Some(type_name))
+                            .map(Item::Method);
+                    }
+                    let name = self.expect_ident_text()?;
+                    return self.parse_field_or_var(start, name, in_class);
                 }
-                let name = self.expect_ident_text()?;
-                return self.parse_field_or_var(start, name, in_class);
             }
             self.pos = saved;
         }
@@ -337,7 +360,7 @@ impl<'a> Parser<'a> {
         prefix: PrefixInfo,
         return_type: Option<String>,
     ) -> Result<MethodDecl, ParseError> {
-        let name = self.expect_ident_text()?;
+        let name = self.expect_name_text()?;
         self.expect(TokenKind::LeftParen)?;
         let mut params = Vec::new();
         self.skip_newlines();
@@ -373,6 +396,7 @@ impl<'a> Parser<'a> {
             if self.eat(TokenKind::Assign) {
                 let _ = self.parse_expression()?;
             }
+            self.skip_newlines();
             if !self.eat(TokenKind::Comma) {
                 break;
             }
@@ -449,6 +473,7 @@ impl<'a> Parser<'a> {
             TokenKind::LeftBrace => return self.parse_block().map(Stmt::Block),
             TokenKind::If => return self.parse_if(start),
             TokenKind::While => return self.parse_while(start),
+            TokenKind::Do => return self.parse_do_while(start),
             TokenKind::For => return self.parse_for(start),
             TokenKind::Try => return self.parse_try(start),
             TokenKind::Return => return self.parse_return(start),
@@ -503,13 +528,17 @@ impl<'a> Parser<'a> {
             } else {
                 None
             };
-            self.eat(TokenKind::Semicolon);
-            self.skip_newlines();
-            return Ok(Stmt::VarDecl(VarDecl {
+            let mut declarations = vec![Stmt::VarDecl(VarDecl {
                 name,
                 init,
                 span: Span::new(start, self.previous_span().end),
-            }));
+            })];
+            while self.eat(TokenKind::Comma) {
+                declarations.push(self.parse_for_declaration()?);
+            }
+            self.eat(TokenKind::Semicolon);
+            self.skip_newlines();
+            return Ok(combine_declarations(declarations));
         }
 
         let expr = self.parse_expression()?;
@@ -558,6 +587,22 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    fn parse_do_while(&mut self, start: usize) -> Result<Stmt, ParseError> {
+        self.expect(TokenKind::Do)?;
+        self.skip_newlines();
+        let body = Box::new(self.parse_statement()?);
+        self.skip_newlines();
+        self.expect(TokenKind::While)?;
+        let condition = self.parse_parenthesized_expression()?;
+        self.eat(TokenKind::Semicolon);
+        self.skip_newlines();
+        Ok(Stmt::DoWhile(DoWhileStmt {
+            body,
+            condition,
+            span: Span::new(start, self.previous_span().end),
+        }))
+    }
+
     fn parse_for(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::For)?;
         self.expect(TokenKind::LeftParen)?;
@@ -565,8 +610,7 @@ impl<'a> Parser<'a> {
         self.skip_newlines();
 
         let after_paren = self.pos;
-        let foreach = self.try_parse_foreach(start);
-        if let Ok(stmt) = foreach {
+        if let Some(stmt) = self.try_parse_foreach(start)? {
             return Ok(stmt);
         }
         self.pos = after_paren;
@@ -574,24 +618,11 @@ impl<'a> Parser<'a> {
         let init = if self.at(TokenKind::Semicolon) {
             None
         } else if self.looks_like_local_declaration() {
-            let _ = self.parse_prefix()?;
-            let init_start = self.current().span.start;
-            if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
-                self.advance();
-            } else {
-                let _ = self.parse_type_name()?;
+            let mut declarations = vec![self.parse_for_declaration()?];
+            while self.eat(TokenKind::Comma) {
+                declarations.push(self.parse_for_declaration()?);
             }
-            let name = self.expect_ident_text()?;
-            let value = if self.eat(TokenKind::Assign) {
-                Some(self.parse_expression()?)
-            } else {
-                None
-            };
-            Some(Box::new(Stmt::VarDecl(VarDecl {
-                name,
-                init: value,
-                span: Span::new(init_start, self.previous_span().end),
-            })))
+            Some(Box::new(combine_declarations(declarations)))
         } else {
             Some(Box::new(Stmt::Expr(self.parse_expression()?)))
         };
@@ -624,28 +655,74 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn try_parse_foreach(&mut self, start: usize) -> Result<Stmt, ParseError> {
+    /// Parses one declarator of a classic `for` header: `int i = 0`, or the
+    /// untyped `size = rows.size()` that follows a comma.
+    fn parse_for_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let start = self.current().span.start;
+        let _ = self.parse_prefix()?;
+        if self.eat(TokenKind::Def) || self.eat(TokenKind::Var) {
+        } else if self.looks_like_local_declaration() {
+            let _ = self.parse_type_name()?;
+        }
+
+        let name = self.expect_ident_text()?;
+        let init = if self.eat(TokenKind::Assign) {
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
+        Ok(Stmt::VarDecl(VarDecl {
+            name,
+            init,
+            span: Span::new(start, self.previous_span().end),
+        }))
+    }
+
+    /// Parses a `for (x in xs)` header and its body. Returns `None` without
+    /// consuming input when the header is not a for-each header, so that the
+    /// caller can fall back to a classic `for`.
+    fn try_parse_foreach(&mut self, start: usize) -> Result<Option<Stmt>, ParseError> {
+        let saved = self.pos;
+        let header = self.parse_foreach_header();
+
+        let Ok(Some((var_name, iterable))) = header else {
+            self.pos = saved;
+            return Ok(None);
+        };
+
+        self.skip_newlines();
+        let body = Box::new(self.parse_statement()?);
+        Ok(Some(Stmt::ForEach(ForEachStmt {
+            var_name,
+            iterable,
+            body,
+            span: Span::new(start, self.previous_span().end),
+        })))
+    }
+
+    /// Parses `Type name : expr)` or `name in expr)`, returning `None` when the
+    /// header is not a for-each header.
+    fn parse_foreach_header(&mut self) -> Result<Option<(String, Expr)>, ParseError> {
         let _ = self.parse_prefix()?;
         if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
             self.advance();
         } else if self.looks_like_local_declaration() {
             let _ = self.parse_type_name()?;
         }
-        let var_name = self.expect_ident_text()?;
-        if !self.eat(TokenKind::In) && !self.eat(TokenKind::Colon) {
-            return Err(self.error_here("expected `in`"));
+
+        if !self.at_ident_like() {
+            return Ok(None);
         }
+        let var_name = self.expect_ident_text()?;
+        self.skip_newlines();
+        if !self.eat(TokenKind::In) && !self.eat(TokenKind::Colon) {
+            return Ok(None);
+        }
+
         let iterable = self.parse_expression()?;
         self.expect(TokenKind::RightParen)?;
         self.nesting -= 1;
-        self.skip_newlines();
-        let body = Box::new(self.parse_statement()?);
-        Ok(Stmt::ForEach(ForEachStmt {
-            var_name,
-            iterable,
-            body,
-            span: Span::new(start, self.previous_span().end),
-        }))
+        Ok(Some((var_name, iterable)))
     }
 
     fn parse_try(&mut self, start: usize) -> Result<Stmt, ParseError> {
@@ -877,6 +954,7 @@ impl<'a> Parser<'a> {
                 span,
             });
         }
+        self.skip_continuation_newline(TokenKind::Elvis);
         if self.eat(TokenKind::Elvis) {
             self.skip_newlines();
             let else_expr = self.parse_ternary()?;
@@ -925,23 +1003,16 @@ impl<'a> Parser<'a> {
         )
     }
 
+    /// Parses `as` casts and the negated `!in` / `!instanceof` forms, which bind
+    /// looser than the comparisons below them.
     fn parse_comparison(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.parse_binary(
-            Self::parse_shift,
-            &[
-                (TokenKind::Lt, BinaryOp::Lt),
-                (TokenKind::Le, BinaryOp::Le),
-                (TokenKind::Gt, BinaryOp::Gt),
-                (TokenKind::Ge, BinaryOp::Ge),
-                (TokenKind::Instanceof, BinaryOp::InstanceOf),
-                (TokenKind::In, BinaryOp::In),
-                (TokenKind::Spaceship, BinaryOp::Spaceship),
-                (TokenKind::Range, BinaryOp::Range),
-                (TokenKind::RangeExclusive, BinaryOp::RangeExclusive),
-            ],
-        )?;
+        let mut expr = self.parse_instanceof()?;
         loop {
             self.skip_continuation_newline(TokenKind::As);
+            if self.at_negated_comparison() {
+                expr = self.parse_negated_comparison(expr)?;
+                continue;
+            }
             if !self.eat(TokenKind::As) {
                 break;
             }
@@ -958,14 +1029,110 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_shift(&mut self) -> Result<Expr, ParseError> {
-        self.parse_binary(
-            Self::parse_additive,
+    fn at_negated_comparison(&self) -> bool {
+        self.at(TokenKind::Not)
+            && matches!(self.peek_kind(1), TokenKind::In | TokenKind::Instanceof)
+    }
+
+    /// Parses `value !in values` and `value !instanceof Type`.
+    fn parse_negated_comparison(&mut self, expr: Expr) -> Result<Expr, ParseError> {
+        let not_start = self.advance().span.start;
+        let op = if self.eat(TokenKind::In) {
+            BinaryOp::In
+        } else {
+            self.expect(TokenKind::Instanceof)?;
+            BinaryOp::InstanceOf
+        };
+        let right = self.parse_comparison_operand()?;
+        let inner_span = expr.span.cover(right.span);
+        let comparison = Expr {
+            kind: ExprKind::Binary {
+                op,
+                left: Box::new(expr),
+                right: Box::new(right),
+            },
+            span: inner_span,
+        };
+        let span = Span::new(not_start, inner_span.end);
+        Ok(Expr {
+            kind: ExprKind::Unary {
+                op: UnaryOp::Not,
+                operand: Box::new(comparison),
+            },
+            span,
+        })
+    }
+
+    /// Parses relational, range and `in` comparisons.
+    fn parse_instanceof(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.parse_binary(
+            Self::parse_shift,
             &[
-                (TokenKind::ShiftLeft, BinaryOp::ShiftLeft),
-                (TokenKind::ShiftRight, BinaryOp::ShiftRight),
+                (TokenKind::Lt, BinaryOp::Lt),
+                (TokenKind::Le, BinaryOp::Le),
+                (TokenKind::Gt, BinaryOp::Gt),
+                (TokenKind::Ge, BinaryOp::Ge),
+                (TokenKind::In, BinaryOp::In),
+                (TokenKind::Spaceship, BinaryOp::Spaceship),
+                (TokenKind::Range, BinaryOp::Range),
+                (TokenKind::RangeExclusive, BinaryOp::RangeExclusive),
             ],
-        )
+        )?;
+        while self.eat(TokenKind::Instanceof) {
+            let right = self.parse_comparison_operand()?;
+            let span = expr.span.cover(right.span);
+            expr = Expr {
+                kind: ExprKind::Binary {
+                    op: BinaryOp::InstanceOf,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                },
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    /// Parses the right-hand side of `instanceof`, which may name a
+    /// parameterized type such as `List<String>`.
+    fn parse_comparison_operand(&mut self) -> Result<Expr, ParseError> {
+        if self.at_ident_like() && self.peek_kind(1) == TokenKind::Lt {
+            let type_name = self.parse_type_name()?;
+            let span = self.previous_span();
+            return Ok(Expr {
+                kind: ExprKind::Variable(type_name),
+                span,
+            });
+        }
+        self.parse_shift()
+    }
+
+    fn parse_shift(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.parse_additive()?;
+        loop {
+            let op = match self.current().kind {
+                TokenKind::ShiftLeft => BinaryOp::ShiftLeft,
+                TokenKind::ShiftRight => BinaryOp::ShiftRight,
+                _ => break,
+            };
+            self.advance();
+            // `>>` is lexed twice inside `>>>`, which is still one shift.
+            if op == BinaryOp::ShiftRight && self.at(TokenKind::Gt) {
+                self.advance();
+            }
+            self.skip_newlines();
+            let right = self.parse_additive()?;
+            let span = expr.span.cover(right.span);
+            expr = Expr {
+                kind: ExprKind::Binary {
+                    op,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                },
+                span,
+            };
+        }
+        Ok(expr)
     }
 
     fn parse_additive(&mut self) -> Result<Expr, ParseError> {
@@ -1065,23 +1232,16 @@ impl<'a> Parser<'a> {
         let mut expr = self.parse_primary()?;
 
         loop {
-            if self.at(TokenKind::Newline) && self.next_code_starts_chain() {
+            if self.at(TokenKind::Newline)
+                && (self.next_code_starts_chain() || self.next_code_starts_closure_argument(&expr))
+            {
                 self.skip_newlines();
             }
             match self.current().kind {
                 TokenKind::Star if self.peek_kind(1) == TokenKind::Dot => {
                     self.advance();
                     self.advance();
-                    let name = self.expect_name_text()?;
-                    let span = Span::new(expr.span.start, self.previous_span().end);
-                    expr = Expr {
-                        kind: ExprKind::Property {
-                            receiver: Box::new(expr),
-                            name,
-                            safe: false,
-                        },
-                        span,
-                    };
+                    expr = self.parse_member(expr, false)?;
                 }
                 TokenKind::LeftParen
                     if matches!(
@@ -1105,43 +1265,10 @@ impl<'a> Parser<'a> {
                 TokenKind::Dot | TokenKind::SafeDot => {
                     let safe = self.current().kind == TokenKind::SafeDot;
                     self.advance();
-                    if self.at(TokenKind::Lt) {
-                        self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
-                    }
-                    let name = if self.eat(TokenKind::Amp) {
-                        format!("&{}", self.expect_ident_text()?)
-                    } else if self.eat(TokenKind::At) {
-                        format!("@{}", self.expect_name_text()?)
-                    } else {
-                        self.expect_name_text()?
-                    };
-                    if self.at(TokenKind::LeftParen) {
-                        let args = self.parse_arguments()?;
-                        let end = self.previous_span().end;
-                        let start = expr.span.start;
-                        let receiver = Some(Box::new(expr));
-                        expr = Expr {
-                            kind: ExprKind::Call {
-                                receiver,
-                                name,
-                                args,
-                                safe,
-                            },
-                            span: Span::new(start, end),
-                        };
-                    } else {
-                        let span = Span::new(expr.span.start, self.previous_span().end);
-                        expr = Expr {
-                            kind: ExprKind::Property {
-                                receiver: Box::new(expr),
-                                name,
-                                safe,
-                            },
-                            span,
-                        };
-                    }
+                    expr = self.parse_member(expr, safe)?;
                 }
-                TokenKind::LeftBracket => {
+                TokenKind::LeftBracket | TokenKind::SafeIndex => {
+                    let safe = self.current().kind == TokenKind::SafeIndex;
                     self.advance();
                     self.nesting += 1;
                     let index = self.parse_expression()?;
@@ -1152,7 +1279,7 @@ impl<'a> Parser<'a> {
                         kind: ExprKind::Index {
                             target: Box::new(expr),
                             index: Box::new(index),
-                            safe: false,
+                            safe,
                         },
                         span,
                     };
@@ -1180,53 +1307,34 @@ impl<'a> Parser<'a> {
                     ) =>
                 {
                     let closure = self.parse_closure()?;
-                    let span = Span::new(expr.span.start, closure.span.end);
-                    match expr.kind {
+                    let (receiver, name, args, safe) = match expr.kind {
                         ExprKind::Call {
                             receiver,
                             name,
-                            mut args,
+                            args,
                             safe,
-                        } => {
-                            args.push(closure);
-                            expr = Expr {
-                                kind: ExprKind::Call {
-                                    receiver,
-                                    name,
-                                    args,
-                                    safe,
-                                },
-                                span,
-                            };
-                        }
-                        ExprKind::Variable(name) => {
-                            expr = Expr {
-                                kind: ExprKind::Call {
-                                    receiver: None,
-                                    name,
-                                    args: vec![closure],
-                                    safe: false,
-                                },
-                                span,
-                            };
-                        }
+                        } => (receiver, name, args, safe),
+                        ExprKind::Variable(name) => (None, name, Vec::new(), false),
                         ExprKind::Property {
                             receiver,
                             name,
                             safe,
-                        } => {
-                            expr = Expr {
-                                kind: ExprKind::Call {
-                                    receiver: Some(receiver),
-                                    name,
-                                    args: vec![closure],
-                                    safe,
-                                },
-                                span,
-                            };
-                        }
+                        } => (Some(receiver), name, Vec::new(), safe),
                         _ => break,
-                    }
+                    };
+                    let mut args = args;
+                    args.push(closure);
+                    self.parse_trailing_arguments(&mut args)?;
+                    let span = Span::new(expr.span.start, self.previous_span().end);
+                    expr = Expr {
+                        kind: ExprKind::Call {
+                            receiver,
+                            name,
+                            args,
+                            safe,
+                        },
+                        span,
+                    };
                 }
                 TokenKind::MethodRef => {
                     self.advance();
@@ -1251,6 +1359,85 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    /// Parses the member name, and the argument list if present, after `.`,
+    /// `?.` or `*.`. Groovy allows the name to start on the next line.
+    fn parse_member(&mut self, expr: Expr, safe: bool) -> Result<Expr, ParseError> {
+        self.skip_newlines();
+        if self.at(TokenKind::Lt) {
+            self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
+        }
+        let name = if self.eat(TokenKind::Amp) {
+            format!("&{}", self.expect_ident_text()?)
+        } else if self.eat(TokenKind::At) {
+            format!("@{}", self.expect_name_text()?)
+        } else {
+            self.expect_name_text()?
+        };
+
+        if !self.at(TokenKind::LeftParen) {
+            let span = Span::new(expr.span.start, self.previous_span().end);
+            let receiver = Box::new(expr);
+            return Ok(Expr {
+                kind: ExprKind::Property {
+                    receiver,
+                    name,
+                    safe,
+                },
+                span,
+            });
+        }
+
+        let args = self.parse_arguments()?;
+        let span = Span::new(expr.span.start, self.previous_span().end);
+        let receiver = Some(Box::new(expr));
+        Ok(Expr {
+            kind: ExprKind::Call {
+                receiver,
+                name,
+                args,
+                safe,
+            },
+            span,
+        })
+    }
+
+    /// Continues a command-style argument list after a trailing closure, as in
+    /// `verify { ... }, never()`. Inside parentheses or brackets a comma
+    /// belongs to the enclosing list, so it is left alone.
+    fn parse_trailing_arguments(&mut self, args: &mut Vec<Expr>) -> Result<(), ParseError> {
+        if self.nesting > 0 {
+            return Ok(());
+        }
+        while self.eat(TokenKind::Comma) {
+            self.skip_newlines();
+            args.push(self.parse_argument_expression()?);
+        }
+        Ok(())
+    }
+
+    /// Parses one argument or list item, allowing the spread operator `*`.
+    fn parse_argument_expression(&mut self) -> Result<Expr, ParseError> {
+        if !self.at(TokenKind::Star) {
+            return self.parse_expression();
+        }
+        let start = self.advance().span.start;
+        let operand = self.parse_expression()?;
+        let span = Span::new(start, operand.span.end);
+        Ok(Expr {
+            kind: ExprKind::Unary {
+                op: UnaryOp::Spread,
+                operand: Box::new(operand),
+            },
+            span,
+        })
+    }
+
+    /// Returns whether the current `<` directly follows the previous token, as
+    /// in `List<String>`, rather than starting a comparison.
+    fn type_arguments_are_adjacent(&self) -> bool {
+        self.current().span.start == self.previous_span().end
+    }
+
     /// Detects a type used as an expression (`Type<Arguments>.class`,
     /// `List<String> as Class`), where the type arguments are not comparisons.
     fn at_generic_class_literal(&self) -> bool {
@@ -1266,8 +1453,14 @@ impl<'a> Parser<'a> {
                         if next == TokenKind::As {
                             return true;
                         }
-                        return next == TokenKind::Dot
-                            && self.peek_kind(offset + 2) == TokenKind::Class;
+                        if next != TokenKind::Dot {
+                            return false;
+                        }
+                        let member = self.peek_kind(offset + 2);
+                        let is_class_literal = member == TokenKind::Class;
+                        let is_member_access = self.at_ident_like_after(offset + 2)
+                            && self.type_arguments_are_adjacent();
+                        return is_class_literal || is_member_access;
                     }
                 }
                 TokenKind::Eof | TokenKind::Newline | TokenKind::Semicolon => return false,
@@ -1318,7 +1511,7 @@ impl<'a> Parser<'a> {
                     span: token.span,
                 })
             }
-            TokenKind::Ident | TokenKind::Record => {
+            TokenKind::Ident | TokenKind::Record | TokenKind::Permits => {
                 self.advance();
                 let mut name = token.text(self.source).to_string();
                 if self.at(TokenKind::LeftBracket) && self.peek_kind(1) == TokenKind::RightBracket {
@@ -1353,6 +1546,13 @@ impl<'a> Parser<'a> {
                     span: token.span,
                 })
             }
+            TokenKind::Void => {
+                self.advance();
+                Ok(Expr {
+                    kind: ExprKind::Variable("void".to_string()),
+                    span: token.span,
+                })
+            }
             TokenKind::This => {
                 self.advance();
                 Ok(Expr {
@@ -1374,22 +1574,11 @@ impl<'a> Parser<'a> {
                     return Ok(lambda);
                 }
                 self.pos = saved;
-                self.advance();
-                if let Ok(type_name) = self.parse_type_name()
-                    && is_type_like(&type_name)
-                    && self.eat(TokenKind::RightParen)
-                    && self.starts_expression()
-                {
-                    let operand = self.parse_unary()?;
-                    let span = Span::new(start, operand.span.end);
-                    return Ok(Expr {
-                        kind: ExprKind::Cast {
-                            expr: Box::new(operand),
-                            type_name,
-                        },
-                        span,
-                    });
+
+                if let Some(cast) = self.try_parse_cast(start)? {
+                    return Ok(cast);
                 }
+
                 self.pos = saved;
                 self.expect(TokenKind::LeftParen)?;
                 self.nesting += 1;
@@ -1401,6 +1590,7 @@ impl<'a> Parser<'a> {
                     span: Span::new(start, self.previous_span().end),
                 })
             }
+            TokenKind::Switch => self.parse_switch_expression(start),
             TokenKind::LeftBracket => self.parse_list_or_map(start),
             TokenKind::LeftBrace => self.parse_closure(),
             _ => Err(self.error_here(format!(
@@ -1414,6 +1604,7 @@ impl<'a> Parser<'a> {
     /// parenthesized expression.
     fn try_parse_parameterized_lambda(&mut self) -> Result<Option<Expr>, ParseError> {
         let saved = self.pos;
+        let saved_nesting = self.nesting;
         let start = self.current().span.start;
         self.expect(TokenKind::LeftParen)?;
         self.nesting += 1;
@@ -1429,6 +1620,7 @@ impl<'a> Parser<'a> {
             };
             if !self.at_ident_like() {
                 self.pos = saved;
+                self.nesting = saved_nesting;
                 return Ok(None);
             }
             let token = self.advance();
@@ -1447,12 +1639,14 @@ impl<'a> Parser<'a> {
 
         if !self.eat(TokenKind::RightParen) {
             self.pos = saved;
+            self.nesting = saved_nesting;
             return Ok(None);
         }
         self.nesting -= 1;
         self.skip_newlines();
         if !self.eat(TokenKind::Arrow) {
             self.pos = saved;
+            self.nesting = saved_nesting;
             return Ok(None);
         }
         self.parse_lambda_body(start, params).map(Some)
@@ -1474,6 +1668,77 @@ impl<'a> Parser<'a> {
                     statements: vec![statement],
                     span: Span::new(start, end),
                 },
+            },
+            span: Span::new(start, end),
+        })
+    }
+
+    /// Parses a cast such as `(int) value`, whose operand may start on the next
+    /// line. Returns `None` when the parentheses hold an expression instead.
+    fn try_parse_cast(&mut self, start: usize) -> Result<Option<Expr>, ParseError> {
+        let saved = self.pos;
+        self.expect(TokenKind::LeftParen)?;
+        let Ok(type_name) = self.parse_type_name() else {
+            self.pos = saved;
+            return Ok(None);
+        };
+        if !is_type_like(&type_name) || !self.eat(TokenKind::RightParen) {
+            self.pos = saved;
+            return Ok(None);
+        }
+
+        self.skip_newlines();
+        if !self.starts_expression() {
+            self.pos = saved;
+            return Ok(None);
+        }
+
+        let operand = self.parse_unary()?;
+        let span = Span::new(start, operand.span.end);
+        Ok(Some(Expr {
+            kind: ExprKind::Cast {
+                expr: Box::new(operand),
+                type_name,
+            },
+            span,
+        }))
+    }
+
+    /// Parses a `switch` used as an expression: `switch (x) { case a -> b }`.
+    fn parse_switch_expression(&mut self, start: usize) -> Result<Expr, ParseError> {
+        self.expect(TokenKind::Switch)?;
+        let scrutinee = self.parse_parenthesized_expression()?;
+        self.skip_newlines();
+        self.expect(TokenKind::LeftBrace)?;
+        self.skip_separators();
+
+        let mut cases = Vec::new();
+        while !self.at(TokenKind::RightBrace) && !self.at(TokenKind::Eof) {
+            let case_start = self.current().span.start;
+            let label = if self.eat(TokenKind::Case) {
+                Some(self.parse_expression()?)
+            } else {
+                self.expect(TokenKind::Default)?;
+                None
+            };
+            if !self.eat(TokenKind::Arrow) {
+                self.expect(TokenKind::Colon)?;
+            }
+            self.skip_newlines();
+            let value = self.parse_expression()?;
+            cases.push(SwitchCase {
+                label,
+                span: Span::new(case_start, value.span.end),
+                body: vec![Stmt::Expr(value)],
+            });
+            self.skip_separators();
+        }
+
+        let end = self.expect(TokenKind::RightBrace)?.span.end;
+        Ok(Expr {
+            kind: ExprKind::Switch {
+                scrutinee: Box::new(scrutinee),
+                cases,
             },
             span: Span::new(start, end),
         })
@@ -1540,9 +1805,9 @@ impl<'a> Parser<'a> {
         self.skip_newlines();
 
         while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
-            if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::Colon {
+            if self.at_named_argument() {
                 let name_start = self.current().span.start;
-                let name = self.expect_ident_text()?;
+                let name = self.expect_name_text()?;
                 self.advance();
                 let value = self.parse_expression()?;
                 args.push(Expr {
@@ -1553,7 +1818,7 @@ impl<'a> Parser<'a> {
                     },
                 });
             } else {
-                args.push(self.parse_expression()?);
+                args.push(self.parse_argument_expression()?);
             }
             self.skip_newlines();
             if !self.eat(TokenKind::Comma) {
@@ -1595,9 +1860,16 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let first = self.parse_expression()?;
+        if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::Colon {
+            return self.parse_map_body(start);
+        }
+        if is_property_name_keyword(self.current().kind) && self.peek_kind(1) == TokenKind::Colon {
+            return self.parse_map_body(start);
+        }
+
+        let first = self.parse_argument_expression()?;
         if self.eat(TokenKind::Colon) {
-            let mut entries = vec![(first, self.parse_expression()?)];
+            let mut entries = vec![(first, self.parse_argument_expression()?)];
             while self.eat(TokenKind::Comma) {
                 self.skip_newlines();
                 if self.at(TokenKind::RightBracket) {
@@ -1605,7 +1877,7 @@ impl<'a> Parser<'a> {
                 }
                 let key = self.parse_expression()?;
                 self.expect(TokenKind::Colon)?;
-                let value = self.parse_expression()?;
+                let value = self.parse_argument_expression()?;
                 entries.push((key, value));
             }
             self.skip_newlines();
@@ -1622,7 +1894,7 @@ impl<'a> Parser<'a> {
             if self.at(TokenKind::RightBracket) {
                 break;
             }
-            items.push(self.parse_expression()?);
+            items.push(self.parse_argument_expression()?);
         }
         self.skip_newlines();
         self.expect(TokenKind::RightBracket)?;
@@ -1630,6 +1902,45 @@ impl<'a> Parser<'a> {
             kind: ExprKind::List(items),
             span: Span::new(start, self.previous_span().end),
         })
+    }
+
+    /// Parses map entries whose keys are names or keywords, e.g. `[class: 1]`.
+    fn parse_map_body(&mut self, start: usize) -> Result<Expr, ParseError> {
+        let mut entries = Vec::new();
+        loop {
+            let key = self.parse_map_key()?;
+            self.expect(TokenKind::Colon)?;
+            let value = self.parse_argument_expression()?;
+            entries.push((key, value));
+            self.skip_newlines();
+            if !self.eat(TokenKind::Comma) {
+                break;
+            }
+            self.skip_newlines();
+            if self.at(TokenKind::RightBracket) {
+                break;
+            }
+        }
+
+        self.skip_newlines();
+        self.expect(TokenKind::RightBracket)?;
+        Ok(Expr {
+            kind: ExprKind::Map(entries),
+            span: Span::new(start, self.previous_span().end),
+        })
+    }
+
+    fn parse_map_key(&mut self) -> Result<Expr, ParseError> {
+        if is_property_name_keyword(self.current().kind) && self.peek_kind(1) == TokenKind::Colon {
+            let token = self.advance();
+            let span = token.span;
+            let name = token.text(self.source).to_string();
+            return Ok(Expr {
+                kind: ExprKind::Variable(name),
+                span,
+            });
+        }
+        self.parse_expression()
     }
 
     fn parse_closure(&mut self) -> Result<Expr, ParseError> {
@@ -1667,6 +1978,9 @@ impl<'a> Parser<'a> {
                     annotations: prefix.annotations,
                     span: token.span,
                 });
+                if self.eat(TokenKind::Assign) {
+                    let _ = self.parse_expression()?;
+                }
                 if self.eat(TokenKind::Comma) {
                     self.skip_newlines();
                     continue;
@@ -1708,9 +2022,9 @@ impl<'a> Parser<'a> {
 
         let mut command_args = Vec::new();
         loop {
-            if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::Colon {
+            if self.at_named_argument() {
                 let name_start = self.current().span.start;
-                let name = self.expect_ident_text()?;
+                let name = self.expect_name_text()?;
                 self.advance();
                 let value = self.parse_expression()?;
                 command_args.push(Expr {
@@ -1778,6 +2092,7 @@ impl<'a> Parser<'a> {
         matches!(
             self.current().kind,
             TokenKind::Ident
+                | TokenKind::Record
                 | TokenKind::Number
                 | TokenKind::String
                 | TokenKind::True
@@ -1801,7 +2116,9 @@ impl<'a> Parser<'a> {
     fn starts_argument(&self) -> bool {
         matches!(
             self.current().kind,
-            TokenKind::Ident
+            TokenKind::Not
+                | TokenKind::Record
+                | TokenKind::Ident
                 | TokenKind::Number
                 | TokenKind::String
                 | TokenKind::True
@@ -1817,6 +2134,21 @@ impl<'a> Parser<'a> {
 
     /// Returns whether the tokens after the current line break resume a method
     /// chain (`.name`), which may follow any number of blank lines.
+    /// Returns whether the tokens after the current line break open a closure
+    /// argument for this expression, as in `items?.find` on one line and
+    /// `{ ... }` on the next.
+    fn next_code_starts_closure_argument(&self, expr: &Expr) -> bool {
+        let takes_closure = matches!(expr.kind, ExprKind::Call { .. } | ExprKind::Property { .. });
+        if !takes_closure {
+            return false;
+        }
+        let mut offset = 1;
+        while self.peek_kind(offset) == TokenKind::Newline {
+            offset += 1;
+        }
+        self.peek_kind(offset) == TokenKind::LeftBrace
+    }
+
     fn next_code_starts_chain(&self) -> bool {
         let mut offset = 1;
         while self.peek_kind(offset) == TokenKind::Newline {
@@ -1825,8 +2157,43 @@ impl<'a> Parser<'a> {
         matches!(self.peek_kind(offset), TokenKind::Dot | TokenKind::SafeDot)
     }
 
+    /// Detects a `name: value` argument, whose name may be an identifier or a
+    /// string literal.
+    fn at_named_argument(&self) -> bool {
+        let is_name = matches!(self.current().kind, TokenKind::Ident | TokenKind::String)
+            || is_property_name_keyword(self.current().kind);
+        is_name && self.peek_kind(1) == TokenKind::Colon
+    }
+
     fn at_ident_like(&self) -> bool {
-        matches!(self.current().kind, TokenKind::Ident | TokenKind::Record)
+        matches!(
+            self.current().kind,
+            TokenKind::Ident | TokenKind::Record | TokenKind::Permits
+        )
+    }
+
+    /// Groovy allows a return type and its method name on separate lines.
+    fn skip_newlines_before_method_name(&mut self) {
+        if !self.at(TokenKind::Newline) {
+            return;
+        }
+        let mut offset = 1;
+        while self.peek_kind(offset) == TokenKind::Newline {
+            offset += 1;
+        }
+        if !self.at_ident_like_after(offset) {
+            return;
+        }
+        if self.peek_kind(offset + 1) == TokenKind::LeftParen {
+            self.skip_newlines();
+        }
+    }
+
+    fn at_ident_like_after(&self, offset: usize) -> bool {
+        matches!(
+            self.peek_kind(offset),
+            TokenKind::Ident | TokenKind::Record | TokenKind::Permits
+        )
     }
 
     fn looks_like_local_declaration(&mut self) -> bool {
@@ -1927,10 +2294,11 @@ impl<'a> Parser<'a> {
 
     fn parse_qualified_name(&mut self) -> Result<String, ParseError> {
         let mut name = self.expect_ident_text()?;
-        while self.at(TokenKind::Dot) && self.peek_kind(1) == TokenKind::Ident {
+        while self.at(TokenKind::Dot) && self.at_ident_like_after(1) {
             self.advance();
+            let segment = self.expect_ident_text()?;
             name.push('.');
-            name.push_str(&self.expect_ident_text()?);
+            name.push_str(&segment);
         }
         Ok(name)
     }
@@ -2154,7 +2522,25 @@ fn continues_expression(kind: TokenKind) -> bool {
     )
 }
 
+/// Keeps a single `for` declarator as is, and groups several into a block.
+fn combine_declarations(mut declarations: Vec<Stmt>) -> Stmt {
+    if declarations.len() == 1
+        && let Some(declaration) = declarations.pop()
+    {
+        return declaration;
+    }
+    let span = match (declarations.first(), declarations.last()) {
+        (Some(first), Some(last)) => first.span().cover(last.span()),
+        _ => Span::empty(0),
+    };
+    Stmt::Block(Block {
+        statements: declarations,
+        span,
+    })
+}
+
 fn is_type_like(name: &str) -> bool {
+    let name = name.trim_end_matches("...");
     let name = name.trim_end_matches("[]");
     let last = name.rsplit('.').next().unwrap_or(name);
     last.chars()
@@ -2373,6 +2759,66 @@ class Example<T> {
         assert_eq!(body.statements.len(), 12);
         assert!(matches!(body.statements[0], Stmt::ForEach(_)));
         assert!(matches!(body.statements[2], Stmt::Try(_)));
+    }
+
+    #[test]
+    fn parses_further_groovy_syntax() {
+        let source = r#"
+class Further {
+    static <T> T[] varargsHolder(Object... args) {
+        def spread = [*args, 1]
+        call(*args)
+        boolean negated = args !in others
+        boolean identity = args === others
+        int shifted = value >>> 4
+        def voidClass = void.class
+        def keywordKey = [class: "value", default: 1]
+        def genericCall = Collections.<String>emptyList()
+        def genericMember = APIResp<String>.wrapResult { 1 }
+        def chained = items?.find
+                { item -> item.value }
+        return null
+    }
+
+    do {
+        tick()
+    } while (ready)
+
+    String routed = switch (kind) {
+        case Type.FULL -> "full"
+        default -> "other"
+    }
+
+    Value<?> lookup(Object ext) {
+        def cast = (Value)
+                ext
+        return (Value) ext?[0]
+    }
+}
+"#;
+        let script = script(source);
+        assert_eq!(script.items.len(), 1);
+        let Item::Class(class) = &script.items[0] else {
+            panic!("expected class");
+        };
+        assert_eq!(class.members.len(), 4);
+        assert!(matches!(
+            class.members[1],
+            Item::Statement(Stmt::DoWhile(_))
+        ));
+
+        let Item::Method(method) = &class.members[0] else {
+            panic!("expected method");
+        };
+        let body = method.body.as_ref().expect("method body");
+        assert_eq!(body.statements.len(), 11);
+        assert!(matches!(
+            &body.statements[8],
+            Stmt::VarDecl(decl) if matches!(
+                &decl.init.as_ref().expect("initializer").kind,
+                ExprKind::Call { name, .. } if name == "wrapResult"
+            )
+        ));
     }
 
     #[test]

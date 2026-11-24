@@ -22,7 +22,11 @@ fn op_text(op: UnaryOp) -> &'static str {
         UnaryOp::BitNot => "~",
         UnaryOp::Neg => "-",
         UnaryOp::Pos => "+",
-        UnaryOp::PreInc | UnaryOp::PreDec | UnaryOp::PostInc | UnaryOp::PostDec => "",
+        UnaryOp::PreInc
+        | UnaryOp::PreDec
+        | UnaryOp::PostInc
+        | UnaryOp::PostDec
+        | UnaryOp::Spread => "",
     }
 }
 

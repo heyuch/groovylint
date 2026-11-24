@@ -183,6 +183,9 @@ impl<'a> Lexer<'a> {
                         self.pos += 1;
                     }
                 }
+                b'$' if quote == b'"' && self.peek_byte(1) == Some(b'{') => {
+                    self.skip_interpolation();
+                }
                 b'\n' if !triple => break,
                 _ => self.pos += 1,
             }
@@ -192,6 +195,47 @@ impl<'a> Lexer<'a> {
             message: "unterminated string literal".to_string(),
             span: Span::new(start, self.pos.min(self.source.len())),
         })
+    }
+
+    /// Skips `${ ... }` inside an interpolating string. The interpolation may
+    /// contain string literals with the same quote as the enclosing string.
+    fn skip_interpolation(&mut self) {
+        self.pos += 2;
+        let mut depth = 1usize;
+        while self.pos < self.bytes.len() {
+            match self.bytes[self.pos] {
+                b'{' => {
+                    depth += 1;
+                    self.pos += 1;
+                }
+                b'}' => {
+                    depth -= 1;
+                    self.pos += 1;
+                    if depth == 0 {
+                        return;
+                    }
+                }
+                b'\\' => self.pos += 2,
+                quote @ (b'\'' | b'"') => self.skip_quoted(quote),
+                b'\n' => return,
+                _ => self.pos += 1,
+            }
+        }
+    }
+
+    fn skip_quoted(&mut self, quote: u8) {
+        self.pos += 1;
+        while self.pos < self.bytes.len() {
+            match self.bytes[self.pos] {
+                b'\\' => self.pos += 2,
+                byte if byte == quote => {
+                    self.pos += 1;
+                    return;
+                }
+                b'\n' => return,
+                _ => self.pos += 1,
+            }
+        }
     }
 
     fn lex_number(&mut self) {
@@ -311,6 +355,24 @@ impl<'a> Lexer<'a> {
                     self.push(TokenKind::SafeDot, start, self.pos);
                     return Ok(());
                 }
+                if self.peek_byte(1) == Some(b'[') {
+                    self.pos += 2;
+                    self.push(TokenKind::SafeIndex, start, self.pos);
+                    return Ok(());
+                }
+                // Groovy 5 adds `??` (null coalescing) and `??.` (null-safe
+                // member access). Both behave like their closest older
+                // operators for syntax-level analysis.
+                if self.peek_byte(1) == Some(b'?') && self.peek_byte(2) == Some(b'.') {
+                    self.pos += 3;
+                    self.push(TokenKind::SafeDot, start, self.pos);
+                    return Ok(());
+                }
+                if self.peek_byte(1) == Some(b'?') {
+                    self.pos += 2;
+                    self.push(TokenKind::Elvis, start, self.pos);
+                    return Ok(());
+                }
                 if self.peek_byte(1) == Some(b':') {
                     self.pos += 2;
                     self.push(TokenKind::Elvis, start, self.pos);
@@ -347,8 +409,15 @@ impl<'a> Lexer<'a> {
                     self.push(TokenKind::RegexFind, start, self.pos);
                     return Ok(());
                 }
+                // `===` is Groovy's identity comparison; both forms are
+                // equality checks for syntax rules.
                 if self.peek_byte(1) == Some(b'=') {
-                    self.pos += 2;
+                    let length = if self.peek_byte(2) == Some(b'=') {
+                        3
+                    } else {
+                        2
+                    };
+                    self.pos += length;
                     self.push(TokenKind::Eq, start, self.pos);
                     return Ok(());
                 }
@@ -356,7 +425,12 @@ impl<'a> Lexer<'a> {
             }
             b'!' => {
                 if self.peek_byte(1) == Some(b'=') {
-                    self.pos += 2;
+                    let length = if self.peek_byte(2) == Some(b'=') {
+                        3
+                    } else {
+                        2
+                    };
+                    self.pos += length;
                     self.push(TokenKind::NotEq, start, self.pos);
                     return Ok(());
                 }

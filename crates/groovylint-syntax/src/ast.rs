@@ -162,6 +162,8 @@ pub struct Block {
 pub enum Stmt {
     /// Braced block.
     Block(Block),
+    /// `do { } while (...)`.
+    DoWhile(DoWhileStmt),
     /// Local variable declaration.
     VarDecl(VarDecl),
     /// Expression statement.
@@ -216,6 +218,17 @@ pub struct IfStmt {
     pub else_branch: Option<Box<Stmt>>,
     /// Span of the `else` keyword and branch.
     pub else_span: Option<Span>,
+    /// Whole-statement span.
+    pub span: Span,
+}
+
+/// A `do { } while (...)` statement.
+#[derive(Clone, Debug)]
+pub struct DoWhileStmt {
+    /// Loop body.
+    pub body: Box<Stmt>,
+    /// Condition expression.
+    pub condition: Expr,
     /// Whole-statement span.
     pub span: Span,
 }
@@ -466,6 +479,13 @@ pub enum ExprKind {
     },
     /// Parenthesized expression.
     Paren(Box<Expr>),
+    /// `switch` used as an expression.
+    Switch {
+        /// Switched expression.
+        scrutinee: Box<Expr>,
+        /// Case clauses in source order.
+        cases: Vec<SwitchCase>,
+    },
 }
 
 /// Literal values.
@@ -559,6 +579,8 @@ pub enum UnaryOp {
     PostInc,
     /// Postfix `--`
     PostDec,
+    /// Spread `*` in argument and list positions.
+    Spread,
 }
 
 /// Assignment operators.
@@ -596,6 +618,7 @@ impl Stmt {
     pub fn span(&self) -> Span {
         match self {
             Self::Block(block) => block.span,
+            Self::DoWhile(do_while) => do_while.span,
             Self::VarDecl(decl) => decl.span,
             Self::Expr(expr) => expr.span,
             Self::If(if_stmt) => if_stmt.span,

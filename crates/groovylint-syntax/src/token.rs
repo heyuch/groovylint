@@ -82,6 +82,7 @@ pub enum TokenKind {
     Arrow,
     At,
     Question,
+    SafeIndex,
     Elvis,
 
     // Operators.
@@ -204,6 +205,7 @@ impl TokenKind {
             Self::Arrow => "`->`",
             Self::At => "`@`",
             Self::Question => "`?`",
+            Self::SafeIndex => "`?[`",
             Self::Elvis => "`?:`",
             Self::Assign => "`=`",
             Self::PlusAssign => "`+=`",

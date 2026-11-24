@@ -110,6 +110,13 @@ fn walk_stmt(stmt: &Stmt, visitor: &mut impl AstVisitor) {
             }
             visitor.exit(node);
         }
+        Stmt::DoWhile(do_while) => {
+            let node = NodeRef::Stmt(stmt);
+            visitor.enter(node);
+            walk_stmt(&do_while.body, visitor);
+            walk_expr(&do_while.condition, visitor);
+            visitor.exit(node);
+        }
         Stmt::While(while_stmt) => {
             let node = NodeRef::Stmt(stmt);
             visitor.enter(node);
@@ -266,6 +273,17 @@ fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
         ExprKind::Closure { body, .. } => walk_block(body, visitor),
         ExprKind::Cast { expr, .. } => walk_expr(expr, visitor),
         ExprKind::NamedArg { value, .. } => walk_expr(value, visitor),
+        ExprKind::Switch { scrutinee, cases } => {
+            walk_expr(scrutinee, visitor);
+            for case in cases {
+                if let Some(label) = &case.label {
+                    walk_expr(label, visitor);
+                }
+                for statement in &case.body {
+                    walk_stmt(statement, visitor);
+                }
+            }
+        }
         ExprKind::Paren(inner) => walk_expr(inner, visitor),
         ExprKind::Literal(_) | ExprKind::Variable(_) | ExprKind::This | ExprKind::Super => {}
     }
