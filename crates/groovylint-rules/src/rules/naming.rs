@@ -1050,6 +1050,7 @@ mod tests {
                     type_name: Some("String".to_string()),
                     annotations: Vec::new(),
                     annotation_details: Vec::new(),
+                    type_annotations: Vec::new(),
                     span: Span::empty(0),
                 },
                 Param {
@@ -1057,6 +1058,7 @@ mod tests {
                     type_name: None,
                     annotations: Vec::new(),
                     annotation_details: Vec::new(),
+                    type_annotations: Vec::new(),
                     span: Span::empty(0),
                 },
             ],

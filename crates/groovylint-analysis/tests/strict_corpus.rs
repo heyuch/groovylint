@@ -108,6 +108,9 @@ fn strict_flow_corpus_matches_expected_counts() {
         "assert_field_path.groovy",
         "repeated_lookup_guard.groovy",
         "closure_escaped_return.groovy",
+        "container_lookup_guarded.groovy",
+        "element_iteration_guarded.groovy",
+        "element_map_guarded.groovy",
     ];
     for name in clean {
         let path = root.join("negative").join(name);

@@ -63,6 +63,7 @@ struct Parser<'a> {
     pos: usize,
     /// Nesting depth of `(...)` and `[...]`, where newlines are insignificant.
     nesting: usize,
+    last_type_annotations: Vec<String>,
 }
 
 impl<'a> Parser<'a> {
@@ -72,6 +73,7 @@ impl<'a> Parser<'a> {
             tokens,
             pos: 0,
             nesting: 0,
+            last_type_annotations: Vec::new(),
         }
     }
 
@@ -435,6 +437,7 @@ impl<'a> Parser<'a> {
                     type_name: None,
                     annotations: param_prefix.annotations,
                     annotation_details: param_prefix.annotation_details,
+                    type_annotations: Vec::new(),
                     span: token.span,
                 });
             } else {
@@ -444,12 +447,14 @@ impl<'a> Parser<'a> {
                 } else {
                     Some(self.parse_type_name()?)
                 };
+                let type_annotations = self.last_type_annotations.clone();
                 let token = self.expect_ident()?;
                 params.push(Param {
                     name: token.text(self.source).to_string(),
                     type_name,
                     annotations: param_prefix.annotations,
                     annotation_details: param_prefix.annotation_details,
+                    type_annotations,
                     span: token.span,
                 });
             }
@@ -1665,6 +1670,7 @@ impl<'a> Parser<'a> {
                         type_name: None,
                         annotations: Vec::new(),
                         annotation_details: Vec::new(),
+                        type_annotations: Vec::new(),
                         span: token.span,
                     };
                     return self.parse_lambda_body(start, vec![param]);
@@ -1769,6 +1775,7 @@ impl<'a> Parser<'a> {
                 type_name,
                 annotations: prefix.annotations,
                 annotation_details: prefix.annotation_details,
+                type_annotations: self.last_type_annotations.clone(),
                 span: token.span,
             });
             self.skip_newlines();
@@ -2119,6 +2126,7 @@ impl<'a> Parser<'a> {
                     type_name,
                     annotations: prefix.annotations,
                     annotation_details: prefix.annotation_details,
+                    type_annotations: self.last_type_annotations.clone(),
                     span: token.span,
                 });
                 if self.eat(TokenKind::Assign) {
@@ -2433,10 +2441,29 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type_name(&mut self) -> Result<String, ParseError> {
+        self.last_type_annotations.clear();
         let mut name = self.expect_ident_text()?;
         loop {
             if self.at(TokenKind::Lt) {
+                let start = self.pos + 1;
                 self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
+                let end = self.pos.saturating_sub(1);
+                let mut index = start;
+                while index < end {
+                    if self.tokens[index].kind == TokenKind::At
+                        && index + 1 < end
+                        && self.tokens[index + 1].kind == TokenKind::Ident
+                    {
+                        let annotation = self.tokens[index + 1].text(self.source).to_string();
+                        if matches!(
+                            annotation.as_str(),
+                            "Nullable" | "NonNull" | "NotNull" | "MonotonicNonNull"
+                        ) {
+                            self.last_type_annotations.push(annotation);
+                        }
+                    }
+                    index += 1;
+                }
             } else if self.at(TokenKind::Dot) && self.peek_kind(1) == TokenKind::Ident {
                 self.advance();
                 let segment = self.expect_ident_text()?;

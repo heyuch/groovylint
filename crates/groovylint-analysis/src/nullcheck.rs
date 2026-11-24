@@ -79,6 +79,7 @@ struct State {
     field_expectations: std::collections::BTreeMap<String, Nullness>,
     monotonic_fields: BTreeSet<String>,
     monotonic_nonnull: BTreeSet<String>,
+    local_element_nullness: std::collections::BTreeMap<String, Nullness>,
     unreachable: bool,
 }
 
@@ -96,6 +97,7 @@ impl State {
             field_expectations: std::collections::BTreeMap::new(),
             monotonic_fields: BTreeSet::new(),
             monotonic_nonnull: BTreeSet::new(),
+            local_element_nullness: std::collections::BTreeMap::new(),
             unreachable: false,
         }
     }
@@ -110,6 +112,15 @@ impl State {
                     .local_types
                     .insert(param.name.clone(), type_name.clone());
             }
+            if param
+                .type_annotations
+                .iter()
+                .any(|annotation| annotation == "Nullable")
+            {
+                state
+                    .local_element_nullness
+                    .insert(param.name.clone(), Nullness::MaybeNull);
+            }
             if let Some(expected) = annotation_nullness(&param.annotations) {
                 state
                     .local_expectations
@@ -120,6 +131,24 @@ impl State {
                 .set(AccessPath::Local(param.name.clone()), value);
         }
         state
+    }
+
+    fn element_nullness(&self, iterable: &Expr) -> Nullness {
+        if let ExprKind::Variable(name) = &unparen(iterable).kind {
+            if self
+                .local_types
+                .get(name)
+                .is_some_and(|type_name| type_name.contains("Map"))
+            {
+                return Nullness::NonNull;
+            }
+            return self
+                .local_element_nullness
+                .get(name)
+                .copied()
+                .unwrap_or(Nullness::Unknown);
+        }
+        Nullness::Unknown
     }
 
     fn with_monotonic(mut self, fields: &BTreeSet<String>) -> Self {
@@ -167,6 +196,15 @@ impl State {
                     .local_types
                     .insert(param.name.clone(), type_name.clone());
             }
+            if param
+                .type_annotations
+                .iter()
+                .any(|annotation| annotation == "Nullable")
+            {
+                state
+                    .local_element_nullness
+                    .insert(param.name.clone(), Nullness::MaybeNull);
+            }
             state
                 .store
                 .set(AccessPath::Local(param.name.clone()), Nullness::MaybeNull);
@@ -209,6 +247,13 @@ impl State {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.clone())),
         );
+        let mut local_element_nullness = self.local_element_nullness.clone();
+        for (name, value) in &other.local_element_nullness {
+            local_element_nullness
+                .entry(name.clone())
+                .and_modify(|existing| *existing = existing.join(*value))
+                .or_insert(*value);
+        }
         let mut monotonic_fields = self.monotonic_fields.clone();
         monotonic_fields.extend(other.monotonic_fields.iter().cloned());
         let mut monotonic_nonnull = self.monotonic_nonnull.clone();
@@ -223,6 +268,7 @@ impl State {
             field_expectations: self.field_expectations.clone(),
             monotonic_fields,
             monotonic_nonnull,
+            local_element_nullness,
             unreachable: self.unreachable && other.unreachable,
         }
     }
@@ -654,10 +700,15 @@ impl Analyzer {
                 init,
                 annotations,
                 type_name,
+                iterable,
             } => {
-                let value = init
-                    .as_ref()
-                    .map_or(Nullness::Null, |init| self.eval(init, state));
+                let value = if let Some(init) = init {
+                    self.eval(init, state)
+                } else if let Some(iterable) = iterable {
+                    state.element_nullness(iterable)
+                } else {
+                    Nullness::Null
+                };
                 state.locals.insert(name.clone());
                 if let Some(type_name) = type_name {
                     state.local_types.insert(name.clone(), type_name.clone());
@@ -1130,11 +1181,19 @@ impl Analyzer {
                 assigned
             }
             ExprKind::Ternary {
+                is_elvis,
                 condition,
                 then_expr,
                 else_expr,
-                ..
             } => {
+                if *is_elvis {
+                    let condition_value = self.eval(condition, state);
+                    return if condition_value.is_nullish() {
+                        self.eval(else_expr, state)
+                    } else {
+                        self.eval(then_expr, state)
+                    };
+                }
                 let (then_state, else_state) = self.condition_states(condition, state);
                 let mut then_state = then_state;
                 let mut else_state = else_state;
@@ -1260,6 +1319,7 @@ impl Analyzer {
                     }
                 } else if name == "containsKey"
                     && let Some(receiver) = receiver
+                    && then_state.element_nullness(receiver) != Nullness::MaybeNull
                     && let Some(base) = path_of_in(receiver, &then_state)
                     && let Some(key) = key_id(arg)
                 {

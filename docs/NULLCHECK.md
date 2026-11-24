@@ -47,9 +47,10 @@ Build-in contract sources:
 - `contracts::from_annotations()` for source annotations;
 - `ContractRegistry::load_toml()` for project/library DSL files.
 
-Still pending: full generic/type-use annotations (annotations inside generic
-arguments and local variable types), complete closure capture, generic element
-nullness, and complex `@Contract` shapes. The design below remains the target.
+Still pending: generic annotations on fields/local variables and full
+`Map.Entry`/closure element modeling, complete closure capture, and complex
+`@Contract` shapes. For-each element nullness from `List<@Nullable T>` and
+`Map<...>` parameters is implemented. The design below remains the target.
 
 ### Contract DSL
 

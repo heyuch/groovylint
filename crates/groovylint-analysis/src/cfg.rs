@@ -20,6 +20,8 @@ pub enum Instruction {
         init: Option<Expr>,
         annotations: Vec<Annotation>,
         type_name: Option<String>,
+        /// For a for-each variable, the iterated expression.
+        iterable: Option<Expr>,
     },
     /// Evaluate an assertion condition and continue on the true path.
     Assert {
@@ -243,6 +245,7 @@ impl Builder {
                     init: decl.init.clone(),
                     annotations: decl.annotation_details.clone(),
                     type_name: decl.type_name.clone(),
+                    iterable: None,
                 });
             }
             Stmt::Expr(expr) => self.emit(Instruction::Eval(expr.clone())),
@@ -384,6 +387,7 @@ impl Builder {
                     init: None,
                     annotations: Vec::new(),
                     type_name: None,
+                    iterable: Some(for_each.iterable.clone()),
                 });
                 self.break_targets.push(after_block);
                 self.continue_targets.push(condition_block);

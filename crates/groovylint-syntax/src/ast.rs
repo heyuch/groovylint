@@ -165,6 +165,8 @@ pub struct Param {
     pub annotations: Vec<String>,
     /// Annotation names plus raw arguments.
     pub annotation_details: Vec<Annotation>,
+    /// Annotations on generic type arguments, if any.
+    pub type_annotations: Vec<String>,
     /// Source span.
     pub span: Span,
 }
