@@ -288,7 +288,11 @@ Exit criteria:
 - No false dependency edges from comments, strings, or unused imports unless a
   rule explicitly asks for imports.
 
-### M5 — CFG and nullness without annotations (0.7, 6–8 weeks)
+### M5 — CFG and nullness without annotations (0.7, design review)
+
+**Status: design under review.** Do not implement until the proposal is
+approved. See [`docs/NULLCHECK.md`](docs/NULLCHECK.md) for the architecture,
+corpus split, defaults, and phased plan.
 
 Implement the analysis core and a separate `Nullness` rule pack.
 
@@ -424,6 +428,10 @@ Design constraints:
   decision, not an assumed feature.
 
 ## 6. Nullness design summary
+
+Detailed proposal: [`docs/NULLCHECK.md`](docs/NULLCHECK.md). The default is a
+conservative, definite-null mode; inferred/strict and optional annotation modes
+are opt-in.
 
 Nullness lattice:
 
