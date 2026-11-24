@@ -805,7 +805,7 @@ impl<'a> Parser<'a> {
         let saved = self.pos;
         let header = self.parse_foreach_header();
 
-        let Ok(Some((var_name, iterable))) = header else {
+        let Ok(Some((var_name, var_type, iterable))) = header else {
             self.pos = saved;
             return Ok(None);
         };
@@ -814,6 +814,7 @@ impl<'a> Parser<'a> {
         let body = Box::new(self.parse_statement()?);
         Ok(Some(Stmt::ForEach(ForEachStmt {
             var_name,
+            var_type,
             iterable,
             body,
             span: Span::new(start, self.previous_span().end),
@@ -822,13 +823,18 @@ impl<'a> Parser<'a> {
 
     /// Parses `Type name : expr)` or `name in expr)`, returning `None` when the
     /// header is not a for-each header.
-    fn parse_foreach_header(&mut self) -> Result<Option<(String, Expr)>, ParseError> {
+    fn parse_foreach_header(
+        &mut self,
+    ) -> Result<Option<(String, Option<String>, Expr)>, ParseError> {
         let _ = self.parse_prefix()?;
-        if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
+        let var_type = if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
             self.advance();
+            None
         } else if self.looks_like_local_declaration() {
-            let _ = self.parse_type_name()?;
-        }
+            Some(self.parse_type_name()?)
+        } else {
+            None
+        };
 
         if !self.at_ident_like() {
             return Ok(None);
@@ -842,7 +848,7 @@ impl<'a> Parser<'a> {
         let iterable = self.parse_expression()?;
         self.expect(TokenKind::RightParen)?;
         self.nesting -= 1;
-        Ok(Some((var_name, iterable)))
+        Ok(Some((var_name, var_type, iterable)))
     }
 
     fn parse_try(&mut self, start: usize) -> Result<Stmt, ParseError> {

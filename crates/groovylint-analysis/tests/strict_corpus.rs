@@ -111,6 +111,7 @@ fn strict_flow_corpus_matches_expected_counts() {
         "container_lookup_guarded.groovy",
         "element_iteration_guarded.groovy",
         "element_map_guarded.groovy",
+        "max_after_non_empty_guard.groovy",
     ];
     for name in clean {
         let path = root.join("negative").join(name);

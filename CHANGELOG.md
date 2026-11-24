@@ -23,8 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@Nullable`/`@NonNull`/contract annotations, built-in JDK/collection models,
   and a TOML contract DSL. It also recognizes validation/package defaults,
   `@MonotonicNonNull`, strict field-initialisation checks, and primitive
-  unboxing. Corpus-backed strict-flow, annotation, contract, and negative guard
-  tests cover the current slice.
+  unboxing, generic `@Nullable` elements in for-each loops, and collection
+  guard/`Map.Entry` models. Corpus-backed strict-flow, annotation, contract, and
+  negative guard tests cover the current slice.
 
 
 - Initial Cargo workspace with `core`, `syntax`, `analysis`, `config`, `rules`,

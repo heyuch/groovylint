@@ -80,6 +80,9 @@ struct State {
     monotonic_fields: BTreeSet<String>,
     monotonic_nonnull: BTreeSet<String>,
     local_element_nullness: std::collections::BTreeMap<String, Nullness>,
+    nonempty: BTreeSet<AccessPath>,
+    map_nullable: BTreeSet<String>,
+    map_entry_nullable: BTreeSet<String>,
     unreachable: bool,
 }
 
@@ -98,6 +101,9 @@ impl State {
             monotonic_fields: BTreeSet::new(),
             monotonic_nonnull: BTreeSet::new(),
             local_element_nullness: std::collections::BTreeMap::new(),
+            nonempty: BTreeSet::new(),
+            map_nullable: BTreeSet::new(),
+            map_entry_nullable: BTreeSet::new(),
             unreachable: false,
         }
     }
@@ -120,6 +126,13 @@ impl State {
                 state
                     .local_element_nullness
                     .insert(param.name.clone(), Nullness::MaybeNull);
+                if param
+                    .type_name
+                    .as_deref()
+                    .is_some_and(|type_name| type_name.contains("Map"))
+                {
+                    state.map_nullable.insert(param.name.clone());
+                }
             }
             if let Some(expected) = annotation_nullness(&param.annotations) {
                 state
@@ -204,6 +217,13 @@ impl State {
                 state
                     .local_element_nullness
                     .insert(param.name.clone(), Nullness::MaybeNull);
+                if param
+                    .type_name
+                    .as_deref()
+                    .is_some_and(|type_name| type_name.contains("Map"))
+                {
+                    state.map_nullable.insert(param.name.clone());
+                }
             }
             state
                 .store
@@ -254,6 +274,12 @@ impl State {
                 .and_modify(|existing| *existing = existing.join(*value))
                 .or_insert(*value);
         }
+        let mut map_nullable = self.map_nullable.clone();
+        map_nullable.extend(other.map_nullable.iter().cloned());
+        let mut map_entry_nullable = self.map_entry_nullable.clone();
+        map_entry_nullable.extend(other.map_entry_nullable.iter().cloned());
+        let mut nonempty = self.nonempty.clone();
+        nonempty.retain(|path| other.nonempty.contains(path));
         let mut monotonic_fields = self.monotonic_fields.clone();
         monotonic_fields.extend(other.monotonic_fields.iter().cloned());
         let mut monotonic_nonnull = self.monotonic_nonnull.clone();
@@ -269,6 +295,9 @@ impl State {
             monotonic_fields,
             monotonic_nonnull,
             local_element_nullness,
+            nonempty,
+            map_nullable,
+            map_entry_nullable,
             unreachable: self.unreachable && other.unreachable,
         }
     }
@@ -712,6 +741,13 @@ impl Analyzer {
                 state.locals.insert(name.clone());
                 if let Some(type_name) = type_name {
                     state.local_types.insert(name.clone(), type_name.clone());
+                    if type_name.contains("Map.Entry")
+                        && let Some(iterable) = iterable
+                        && let ExprKind::Variable(base) = &unparen(iterable).kind
+                        && state.map_nullable.contains(base)
+                    {
+                        state.map_entry_nullable.insert(name.clone());
+                    }
                 }
                 if let Some(expected) = annotation_detail_nullness(annotations) {
                     state.local_expectations.insert(name.clone(), expected);
@@ -847,6 +883,12 @@ impl Analyzer {
                 name,
                 safe,
             } => {
+                if let ExprKind::Variable(base) = &unparen(receiver).kind
+                    && state.map_entry_nullable.contains(base)
+                    && matches!(name.as_str(), "value" | "key")
+                {
+                    return Nullness::MaybeNull;
+                }
                 let receiver_value = self.eval(receiver, state);
                 if receiver_value.is_nullish() && !safe {
                     self.record_required(receiver, state);
@@ -1038,7 +1080,16 @@ impl Analyzer {
                                 || type_name.contains("Set"))
                                 && matches!(name.as_str(), "get" | "find" | "max" | "min")
                             {
-                                Nullness::MaybeNull
+                                if matches!(name.as_str(), "max" | "min")
+                                    && receiver
+                                        .as_ref()
+                                        .and_then(|receiver| path_of_in(receiver, state))
+                                        .is_some_and(|path| state.nonempty.contains(&path))
+                                {
+                                    Nullness::NonNull
+                                } else {
+                                    Nullness::MaybeNull
+                                }
                             } else if type_name.contains("Optional") && name == "get" {
                                 Nullness::NonNull
                             } else {
@@ -1302,7 +1353,16 @@ impl Analyzer {
             args,
             ..
         } = &expr.kind
-            && matches!(name.as_str(), "containsKey" | "nonNull" | "isNull")
+            && matches!(
+                name.as_str(),
+                "containsKey"
+                    | "nonNull"
+                    | "isNull"
+                    | "isNotEmpty"
+                    | "isNotNullOrEmpty"
+                    | "isNullOrEmpty"
+                    | "isEmpty"
+            )
         {
             let mut evaluated = state.clone();
             self.eval(expr, &mut evaluated);
@@ -1316,6 +1376,16 @@ impl Analyzer {
                 } else if name == "isNull" {
                     if let Some(path) = path_of_in(arg, &else_state) {
                         else_state.store.set(path, Nullness::NonNull);
+                    }
+                } else if name == "isNotEmpty" || name == "isNotNullOrEmpty" {
+                    if let Some(path) = path_of_in(arg, &then_state) {
+                        then_state.store.set(path.clone(), Nullness::NonNull);
+                        then_state.nonempty.insert(path);
+                    }
+                } else if name == "isNullOrEmpty" || name == "isEmpty" {
+                    if let Some(path) = path_of_in(arg, &else_state) {
+                        else_state.store.set(path.clone(), Nullness::NonNull);
+                        else_state.nonempty.insert(path);
                     }
                 } else if name == "containsKey"
                     && let Some(receiver) = receiver

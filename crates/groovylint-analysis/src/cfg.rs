@@ -386,7 +386,7 @@ impl Builder {
                     name: for_each.var_name.clone(),
                     init: None,
                     annotations: Vec::new(),
-                    type_name: None,
+                    type_name: for_each.var_type.clone(),
                     iterable: Some(for_each.iterable.clone()),
                 });
                 self.break_targets.push(after_block);

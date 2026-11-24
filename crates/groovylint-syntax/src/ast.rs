@@ -338,6 +338,8 @@ pub struct ForStmt {
 pub struct ForEachStmt {
     /// Loop variable name.
     pub var_name: String,
+    /// Declared loop variable type, if any.
+    pub var_type: Option<String>,
     /// Iterated expression.
     pub iterable: Expr,
     /// Loop body.
