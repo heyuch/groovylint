@@ -35,6 +35,8 @@ pub struct ImportDecl {
     pub path: String,
     /// Optional alias.
     pub alias: Option<String>,
+    /// Whether this is a `static` import.
+    pub is_static: bool,
     /// Source span.
     pub span: Span,
 }
@@ -530,6 +532,8 @@ pub enum BinaryOp {
     Range,
     /// `..<`
     RangeExclusive,
+    /// `<=>`
+    Spaceship,
     /// `instanceof`
     InstanceOf,
     /// `in`
@@ -572,6 +576,18 @@ pub enum AssignOp {
     Div,
     /// `%=`
     Mod,
+    /// `&=`
+    BitAnd,
+    /// `|=`
+    BitOr,
+    /// `^=`
+    BitXor,
+    /// `<<=`
+    ShiftLeft,
+    /// `>>=`
+    ShiftRight,
+    /// `**=`
+    Power,
 }
 
 impl Stmt {

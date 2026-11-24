@@ -55,6 +55,8 @@ impl<'a> Lexer<'a> {
 
             match byte {
                 b' ' | b'\t' | b'\r' => self.pos += 1,
+                // Backslash at end of line continues the statement.
+                b'\\' if self.peek_byte(1) == Some(b'\n') => self.pos += 2,
                 b'\n' => {
                     self.pos += 1;
                     self.push(TokenKind::Newline, start, self.pos);
@@ -93,27 +95,9 @@ impl<'a> Lexer<'a> {
         if matches!(next, Some(b'/' | b'*')) {
             return false;
         }
-        matches!(
-            self.last_kind,
-            None | Some(
-                TokenKind::Assign
-                    | TokenKind::LeftParen
-                    | TokenKind::LeftBracket
-                    | TokenKind::Comma
-                    | TokenKind::Colon
-                    | TokenKind::Return
-                    | TokenKind::Question
-                    | TokenKind::Elvis
-                    | TokenKind::AndAnd
-                    | TokenKind::OrOr
-                    | TokenKind::Eq
-                    | TokenKind::NotEq
-                    | TokenKind::RegexFind
-                    | TokenKind::RegexMatch
-                    | TokenKind::Tilde
-                    | TokenKind::Newline
-            )
-        )
+        // A `/` is a division sign only directly after something that can end an
+        // expression; anywhere else it opens a slashy string.
+        !self.last_kind.is_some_and(can_end_expression)
     }
 
     fn lex_slashy_string(&mut self) -> Result<(), LexError> {
@@ -302,11 +286,25 @@ impl<'a> Lexer<'a> {
             b'[' => Some(TokenKind::LeftBracket),
             b']' => Some(TokenKind::RightBracket),
             b',' => Some(TokenKind::Comma),
-            b':' => Some(TokenKind::Colon),
+            b':' => {
+                if self.peek_byte(1) == Some(b':') {
+                    self.pos += 2;
+                    self.push(TokenKind::MethodRef, start, self.pos);
+                    return Ok(());
+                }
+                Some(TokenKind::Colon)
+            }
             b';' => Some(TokenKind::Semicolon),
             b'@' => Some(TokenKind::At),
             b'~' => Some(TokenKind::Tilde),
-            b'^' => Some(TokenKind::Caret),
+            b'^' => {
+                if self.peek_byte(1) == Some(b'=') {
+                    self.pos += 2;
+                    self.push(TokenKind::CaretAssign, start, self.pos);
+                    return Ok(());
+                }
+                Some(TokenKind::Caret)
+            }
             b'?' => {
                 if self.peek_byte(1) == Some(b'.') {
                     self.pos += 2;
@@ -321,6 +319,11 @@ impl<'a> Lexer<'a> {
                 Some(TokenKind::Question)
             }
             b'.' => {
+                if self.peek_byte(1) == Some(b'.') && self.peek_byte(2) == Some(b'.') {
+                    self.pos += 3;
+                    self.push(TokenKind::Ellipsis, start, self.pos);
+                    return Ok(());
+                }
                 if self.peek_byte(1) == Some(b'.') {
                     if self.peek_byte(2) == Some(b'<') {
                         self.pos += 3;
@@ -360,9 +363,19 @@ impl<'a> Lexer<'a> {
                 Some(TokenKind::Not)
             }
             b'<' => match self.peek_byte(1) {
+                Some(b'=') if self.peek_byte(2) == Some(b'>') => {
+                    self.pos += 3;
+                    self.push(TokenKind::Spaceship, start, self.pos);
+                    return Ok(());
+                }
                 Some(b'=') => {
                     self.pos += 2;
                     self.push(TokenKind::Le, start, self.pos);
+                    return Ok(());
+                }
+                Some(b'<') if self.peek_byte(2) == Some(b'=') => {
+                    self.pos += 3;
+                    self.push(TokenKind::ShiftLeftAssign, start, self.pos);
                     return Ok(());
                 }
                 Some(b'<') => {
@@ -376,6 +389,11 @@ impl<'a> Lexer<'a> {
                 Some(b'=') => {
                     self.pos += 2;
                     self.push(TokenKind::Ge, start, self.pos);
+                    return Ok(());
+                }
+                Some(b'>') if self.peek_byte(2) == Some(b'=') => {
+                    self.pos += 3;
+                    self.push(TokenKind::ShiftRightAssign, start, self.pos);
                     return Ok(());
                 }
                 Some(b'>') => {
@@ -417,6 +435,11 @@ impl<'a> Lexer<'a> {
                 _ => Some(TokenKind::Minus),
             },
             b'*' => match self.peek_byte(1) {
+                Some(b'*') if self.peek_byte(2) == Some(b'=') => {
+                    self.pos += 3;
+                    self.push(TokenKind::PowerAssign, start, self.pos);
+                    return Ok(());
+                }
                 Some(b'*') => {
                     self.pos += 2;
                     self.push(TokenKind::Power, start, self.pos);
@@ -446,6 +469,11 @@ impl<'a> Lexer<'a> {
                 Some(TokenKind::Percent)
             }
             b'&' => {
+                if self.peek_byte(1) == Some(b'=') {
+                    self.pos += 2;
+                    self.push(TokenKind::AmpAssign, start, self.pos);
+                    return Ok(());
+                }
                 if self.peek_byte(1) == Some(b'&') {
                     self.pos += 2;
                     self.push(TokenKind::AndAnd, start, self.pos);
@@ -454,6 +482,11 @@ impl<'a> Lexer<'a> {
                 Some(TokenKind::Amp)
             }
             b'|' => {
+                if self.peek_byte(1) == Some(b'=') {
+                    self.pos += 2;
+                    self.push(TokenKind::PipeAssign, start, self.pos);
+                    return Ok(());
+                }
                 if self.peek_byte(1) == Some(b'|') {
                     self.pos += 2;
                     self.push(TokenKind::OrOr, start, self.pos);
@@ -475,6 +508,26 @@ impl<'a> Lexer<'a> {
             })
         }
     }
+}
+
+fn can_end_expression(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Ident
+            | TokenKind::Number
+            | TokenKind::String
+            | TokenKind::Regex
+            | TokenKind::True
+            | TokenKind::False
+            | TokenKind::Null
+            | TokenKind::This
+            | TokenKind::Super
+            | TokenKind::RightParen
+            | TokenKind::RightBracket
+            | TokenKind::RightBrace
+            | TokenKind::Inc
+            | TokenKind::Dec
+    )
 }
 
 fn is_ident_start(byte: u8) -> bool {

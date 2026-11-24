@@ -61,6 +61,8 @@ struct Parser<'a> {
     source: &'a str,
     tokens: &'a [Token],
     pos: usize,
+    /// Nesting depth of `(...)` and `[...]`, where newlines are insignificant.
+    nesting: usize,
 }
 
 impl<'a> Parser<'a> {
@@ -69,6 +71,7 @@ impl<'a> Parser<'a> {
             source,
             tokens,
             pos: 0,
+            nesting: 0,
         }
     }
 
@@ -112,7 +115,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import(&mut self) -> Result<ImportDecl, ParseError> {
         let start = self.expect(TokenKind::Import)?.span.start;
-        self.eat(TokenKind::Static);
+        let is_static = self.eat(TokenKind::Static);
         let mut path = self.parse_qualified_name()?;
         if self.eat(TokenKind::Dot) {
             self.expect(TokenKind::Star)?;
@@ -128,6 +131,7 @@ impl<'a> Parser<'a> {
         Ok(ImportDecl {
             path,
             alias,
+            is_static,
             span: Span::new(start, self.previous_span().end),
         })
     }
@@ -273,6 +277,7 @@ impl<'a> Parser<'a> {
 
         if kind == ClassKind::Enum {
             self.skip_enum_constants();
+            self.skip_separators();
         }
 
         while !self.at(TokenKind::RightBrace) && !self.at(TokenKind::Eof) {
@@ -339,7 +344,7 @@ impl<'a> Parser<'a> {
 
         while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
             let param_prefix = self.parse_prefix()?;
-            if self.at(TokenKind::Ident)
+            if self.at_ident_like()
                 && matches!(self.peek_kind(1), TokenKind::Comma | TokenKind::RightParen)
             {
                 let token = self.advance();
@@ -374,6 +379,7 @@ impl<'a> Parser<'a> {
             self.skip_newlines();
         }
 
+        self.skip_newlines();
         self.expect(TokenKind::RightParen)?;
         self.skip_newlines();
 
@@ -459,9 +465,7 @@ impl<'a> Parser<'a> {
             TokenKind::Switch => return self.parse_switch(start),
             TokenKind::Synchronized => {
                 self.advance();
-                self.expect(TokenKind::LeftParen)?;
-                let expression = self.parse_expression()?;
-                self.expect(TokenKind::RightParen)?;
+                let expression = self.parse_parenthesized_expression()?;
                 self.skip_newlines();
                 let body = Box::new(self.parse_statement()?);
                 return Ok(Stmt::Synchronized(SynchronizedStmt {
@@ -518,9 +522,7 @@ impl<'a> Parser<'a> {
 
     fn parse_if(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::If)?;
-        self.expect(TokenKind::LeftParen)?;
-        let condition = self.parse_expression()?;
-        self.expect(TokenKind::RightParen)?;
+        let condition = self.parse_parenthesized_expression()?;
         self.skip_newlines();
         let then_branch = Box::new(self.parse_statement()?);
         self.skip_newlines();
@@ -546,9 +548,7 @@ impl<'a> Parser<'a> {
 
     fn parse_while(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::While)?;
-        self.expect(TokenKind::LeftParen)?;
-        let condition = self.parse_expression()?;
-        self.expect(TokenKind::RightParen)?;
+        let condition = self.parse_parenthesized_expression()?;
         self.skip_newlines();
         let body = Box::new(self.parse_statement()?);
         Ok(Stmt::While(WhileStmt {
@@ -561,6 +561,7 @@ impl<'a> Parser<'a> {
     fn parse_for(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::For)?;
         self.expect(TokenKind::LeftParen)?;
+        self.nesting += 1;
         self.skip_newlines();
 
         let after_paren = self.pos;
@@ -610,6 +611,7 @@ impl<'a> Parser<'a> {
             Some(self.parse_expression()?)
         };
         self.expect(TokenKind::RightParen)?;
+        self.nesting -= 1;
         self.skip_newlines();
         let body = Box::new(self.parse_statement()?);
 
@@ -626,7 +628,7 @@ impl<'a> Parser<'a> {
         let _ = self.parse_prefix()?;
         if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
             self.advance();
-        } else if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::Ident {
+        } else if self.looks_like_local_declaration() {
             let _ = self.parse_type_name()?;
         }
         let var_name = self.expect_ident_text()?;
@@ -635,6 +637,7 @@ impl<'a> Parser<'a> {
         }
         let iterable = self.parse_expression()?;
         self.expect(TokenKind::RightParen)?;
+        self.nesting -= 1;
         self.skip_newlines();
         let body = Box::new(self.parse_statement()?);
         Ok(Stmt::ForEach(ForEachStmt {
@@ -647,6 +650,12 @@ impl<'a> Parser<'a> {
 
     fn parse_try(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::Try)?;
+        // try-with-resources: the resource list carries no information any rule
+        // uses yet, so it is only skipped. shortcut: resource declarations are
+        // dropped from the AST, revisit when a rule needs them.
+        if self.at(TokenKind::LeftParen) {
+            self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen)?;
+        }
         let body = self.parse_block()?;
         let mut catches = Vec::new();
         self.skip_newlines();
@@ -693,9 +702,7 @@ impl<'a> Parser<'a> {
 
     fn parse_switch(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::Switch)?;
-        self.expect(TokenKind::LeftParen)?;
-        let expression = self.parse_expression()?;
-        self.expect(TokenKind::RightParen)?;
+        let expression = self.parse_parenthesized_expression()?;
         self.skip_newlines();
         self.expect(TokenKind::LeftBrace)?;
         self.skip_separators();
@@ -804,6 +811,16 @@ impl<'a> Parser<'a> {
         self.parse_assignment()
     }
 
+    /// Parses `( expression )`, marking the inside as newline-insensitive.
+    fn parse_parenthesized_expression(&mut self) -> Result<Expr, ParseError> {
+        self.expect(TokenKind::LeftParen)?;
+        self.nesting += 1;
+        let expr = self.parse_expression()?;
+        self.expect(TokenKind::RightParen)?;
+        self.nesting -= 1;
+        Ok(expr)
+    }
+
     fn parse_assignment(&mut self) -> Result<Expr, ParseError> {
         let left = self.parse_ternary()?;
         let op = match self.current().kind {
@@ -813,6 +830,12 @@ impl<'a> Parser<'a> {
             TokenKind::StarAssign => Some(AssignOp::Mul),
             TokenKind::SlashAssign => Some(AssignOp::Div),
             TokenKind::PercentAssign => Some(AssignOp::Mod),
+            TokenKind::AmpAssign => Some(AssignOp::BitAnd),
+            TokenKind::PipeAssign => Some(AssignOp::BitOr),
+            TokenKind::CaretAssign => Some(AssignOp::BitXor),
+            TokenKind::ShiftLeftAssign => Some(AssignOp::ShiftLeft),
+            TokenKind::ShiftRightAssign => Some(AssignOp::ShiftRight),
+            TokenKind::PowerAssign => Some(AssignOp::Power),
             _ => None,
         };
 
@@ -836,9 +859,11 @@ impl<'a> Parser<'a> {
 
     fn parse_ternary(&mut self) -> Result<Expr, ParseError> {
         let condition = self.parse_or()?;
+        self.skip_continuation_newline(TokenKind::Question);
         if self.eat(TokenKind::Question) {
             self.skip_newlines();
             let then_expr = self.parse_expression()?;
+            self.skip_continuation_newline(TokenKind::Colon);
             self.expect(TokenKind::Colon)?;
             self.skip_newlines();
             let else_expr = self.parse_ternary()?;
@@ -910,11 +935,16 @@ impl<'a> Parser<'a> {
                 (TokenKind::Ge, BinaryOp::Ge),
                 (TokenKind::Instanceof, BinaryOp::InstanceOf),
                 (TokenKind::In, BinaryOp::In),
+                (TokenKind::Spaceship, BinaryOp::Spaceship),
                 (TokenKind::Range, BinaryOp::Range),
                 (TokenKind::RangeExclusive, BinaryOp::RangeExclusive),
             ],
         )?;
-        while self.eat(TokenKind::As) {
+        loop {
+            self.skip_continuation_newline(TokenKind::As);
+            if !self.eat(TokenKind::As) {
+                break;
+            }
             let type_name = self.parse_type_name()?;
             let span = Span::new(expr.span.start, self.previous_span().end);
             expr = Expr {
@@ -983,7 +1013,11 @@ impl<'a> Parser<'a> {
         operators: &[(TokenKind, BinaryOp)],
     ) -> Result<Expr, ParseError> {
         let mut left = next(self)?;
-        while let Some((_, op)) = operators.iter().find(|(kind, _)| self.at(*kind)).copied() {
+        loop {
+            self.skip_newlines_before_operator(operators);
+            let Some((_, op)) = operators.iter().find(|(kind, _)| self.at(*kind)).copied() else {
+                break;
+            };
             self.advance();
             self.skip_newlines();
             let right = next(self)?;
@@ -1031,9 +1065,7 @@ impl<'a> Parser<'a> {
         let mut expr = self.parse_primary()?;
 
         loop {
-            if self.at(TokenKind::Newline)
-                && matches!(self.peek_kind(1), TokenKind::Dot | TokenKind::SafeDot)
-            {
+            if self.at(TokenKind::Newline) && self.next_code_starts_chain() {
                 self.skip_newlines();
             }
             match self.current().kind {
@@ -1051,7 +1083,12 @@ impl<'a> Parser<'a> {
                         span,
                     };
                 }
-                TokenKind::LeftParen if matches!(expr.kind, ExprKind::This | ExprKind::Super) => {
+                TokenKind::LeftParen
+                    if matches!(
+                        expr.kind,
+                        ExprKind::This | ExprKind::Super | ExprKind::Closure { .. }
+                    ) =>
+                {
                     let args = self.parse_arguments()?;
                     let end = self.previous_span().end;
                     let start = expr.span.start;
@@ -1068,6 +1105,9 @@ impl<'a> Parser<'a> {
                 TokenKind::Dot | TokenKind::SafeDot => {
                     let safe = self.current().kind == TokenKind::SafeDot;
                     self.advance();
+                    if self.at(TokenKind::Lt) {
+                        self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
+                    }
                     let name = if self.eat(TokenKind::Amp) {
                         format!("&{}", self.expect_ident_text()?)
                     } else if self.eat(TokenKind::At) {
@@ -1103,8 +1143,10 @@ impl<'a> Parser<'a> {
                 }
                 TokenKind::LeftBracket => {
                     self.advance();
+                    self.nesting += 1;
                     let index = self.parse_expression()?;
                     self.expect(TokenKind::RightBracket)?;
+                    self.nesting -= 1;
                     let span = Span::new(expr.span.start, self.previous_span().end);
                     expr = Expr {
                         kind: ExprKind::Index {
@@ -1186,11 +1228,54 @@ impl<'a> Parser<'a> {
                         _ => break,
                     }
                 }
+                TokenKind::MethodRef => {
+                    self.advance();
+                    let name = format!("::{}", self.expect_name_text()?);
+                    let span = Span::new(expr.span.start, self.previous_span().end);
+                    expr = Expr {
+                        kind: ExprKind::Property {
+                            receiver: Box::new(expr),
+                            name,
+                            safe: false,
+                        },
+                        span,
+                    };
+                }
+                TokenKind::Lt if self.at_generic_class_literal() => {
+                    self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
+                }
                 _ => break,
             }
         }
 
         Ok(expr)
+    }
+
+    /// Detects a type used as an expression (`Type<Arguments>.class`,
+    /// `List<String> as Class`), where the type arguments are not comparisons.
+    fn at_generic_class_literal(&self) -> bool {
+        let mut depth = 0usize;
+        let mut offset = 0;
+        while offset <= 32 {
+            match self.peek_kind(offset) {
+                TokenKind::Lt => depth += 1,
+                TokenKind::Gt => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        let next = self.peek_kind(offset + 1);
+                        if next == TokenKind::As {
+                            return true;
+                        }
+                        return next == TokenKind::Dot
+                            && self.peek_kind(offset + 2) == TokenKind::Class;
+                    }
+                }
+                TokenKind::Eof | TokenKind::Newline | TokenKind::Semicolon => return false,
+                _ => {}
+            }
+            offset += 1;
+        }
+        false
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParseError> {
@@ -1233,9 +1318,24 @@ impl<'a> Parser<'a> {
                     span: token.span,
                 })
             }
-            TokenKind::Ident => {
+            TokenKind::Ident | TokenKind::Record => {
                 self.advance();
-                let name = token.text(self.source).to_string();
+                let mut name = token.text(self.source).to_string();
+                if self.at(TokenKind::LeftBracket) && self.peek_kind(1) == TokenKind::RightBracket {
+                    self.advance();
+                    self.advance();
+                    name.push_str("[]");
+                }
+                if self.at(TokenKind::Arrow) {
+                    self.advance();
+                    let param = Param {
+                        name,
+                        type_name: None,
+                        annotations: Vec::new(),
+                        span: token.span,
+                    };
+                    return self.parse_lambda_body(start, vec![param]);
+                }
                 if self.at(TokenKind::LeftParen) {
                     let args = self.parse_arguments()?;
                     return Ok(Expr {
@@ -1270,6 +1370,10 @@ impl<'a> Parser<'a> {
             TokenKind::New => self.parse_new(start),
             TokenKind::LeftParen => {
                 let saved = self.pos;
+                if let Some(lambda) = self.try_parse_parameterized_lambda()? {
+                    return Ok(lambda);
+                }
+                self.pos = saved;
                 self.advance();
                 if let Ok(type_name) = self.parse_type_name()
                     && is_type_like(&type_name)
@@ -1288,8 +1392,10 @@ impl<'a> Parser<'a> {
                 }
                 self.pos = saved;
                 self.expect(TokenKind::LeftParen)?;
+                self.nesting += 1;
                 let inner = self.parse_expression()?;
                 self.expect(TokenKind::RightParen)?;
+                self.nesting -= 1;
                 Ok(Expr {
                     kind: ExprKind::Paren(Box::new(inner)),
                     span: Span::new(start, self.previous_span().end),
@@ -1302,6 +1408,75 @@ impl<'a> Parser<'a> {
                 token.kind.describe()
             ))),
         }
+    }
+
+    /// Parses `(a, B b) -> expr`, returning `None` when the input is a plain
+    /// parenthesized expression.
+    fn try_parse_parameterized_lambda(&mut self) -> Result<Option<Expr>, ParseError> {
+        let saved = self.pos;
+        let start = self.current().span.start;
+        self.expect(TokenKind::LeftParen)?;
+        self.nesting += 1;
+        self.skip_newlines();
+
+        let mut params = Vec::new();
+        while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
+            let prefix = self.parse_prefix()?;
+            let type_name = if self.looks_like_local_declaration() {
+                Some(self.parse_type_name()?)
+            } else {
+                None
+            };
+            if !self.at_ident_like() {
+                self.pos = saved;
+                return Ok(None);
+            }
+            let token = self.advance();
+            params.push(Param {
+                name: token.text(self.source).to_string(),
+                type_name,
+                annotations: prefix.annotations,
+                span: token.span,
+            });
+            self.skip_newlines();
+            if !self.eat(TokenKind::Comma) {
+                break;
+            }
+            self.skip_newlines();
+        }
+
+        if !self.eat(TokenKind::RightParen) {
+            self.pos = saved;
+            return Ok(None);
+        }
+        self.nesting -= 1;
+        self.skip_newlines();
+        if !self.eat(TokenKind::Arrow) {
+            self.pos = saved;
+            return Ok(None);
+        }
+        self.parse_lambda_body(start, params).map(Some)
+    }
+
+    /// Parses a Java-style lambda body: a single expression or a block.
+    fn parse_lambda_body(&mut self, start: usize, params: Vec<Param>) -> Result<Expr, ParseError> {
+        self.skip_newlines();
+        let statement = if self.at(TokenKind::LeftBrace) {
+            Stmt::Block(self.parse_block()?)
+        } else {
+            Stmt::Expr(self.parse_expression()?)
+        };
+        let end = statement.span().end;
+        Ok(Expr {
+            kind: ExprKind::Closure {
+                params,
+                body: Block {
+                    statements: vec![statement],
+                    span: Span::new(start, end),
+                },
+            },
+            span: Span::new(start, end),
+        })
     }
 
     fn parse_new(&mut self, start: usize) -> Result<Expr, ParseError> {
@@ -1331,6 +1506,17 @@ impl<'a> Parser<'a> {
                 span: Span::new(start, self.previous_span().end),
             });
         }
+        if self.at(TokenKind::LeftBrace) {
+            self.skip_balanced(TokenKind::LeftBrace, TokenKind::RightBrace)?;
+            return Ok(Expr {
+                kind: ExprKind::New {
+                    type_name,
+                    args: Vec::new(),
+                    body: None,
+                },
+                span: Span::new(start, self.previous_span().end),
+            });
+        }
         let args = self.parse_arguments()?;
         let body = if self.at(TokenKind::LeftBrace) {
             Some(self.parse_anonymous_body()?)
@@ -1349,6 +1535,7 @@ impl<'a> Parser<'a> {
 
     fn parse_arguments(&mut self) -> Result<Vec<Expr>, ParseError> {
         self.expect(TokenKind::LeftParen)?;
+        self.nesting += 1;
         let mut args = Vec::new();
         self.skip_newlines();
 
@@ -1377,11 +1564,19 @@ impl<'a> Parser<'a> {
 
         self.skip_newlines();
         self.expect(TokenKind::RightParen)?;
+        self.nesting -= 1;
         Ok(args)
     }
 
     fn parse_list_or_map(&mut self, start: usize) -> Result<Expr, ParseError> {
         self.expect(TokenKind::LeftBracket)?;
+        self.nesting += 1;
+        let result = self.parse_list_or_map_body(start);
+        self.nesting -= 1;
+        result
+    }
+
+    fn parse_list_or_map_body(&mut self, start: usize) -> Result<Expr, ParseError> {
         self.skip_newlines();
 
         if self.eat(TokenKind::Colon) {
@@ -1456,12 +1651,12 @@ impl<'a> Parser<'a> {
                 let type_name = if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
                     self.advance();
                     None
-                } else if self.at(TokenKind::Ident) && self.peek_kind(1) == TokenKind::Ident {
+                } else if self.looks_like_local_declaration() {
                     Some(self.parse_type_name()?)
                 } else {
                     None
                 };
-                if !self.at(TokenKind::Ident) {
+                if !self.at_ident_like() {
                     valid = false;
                     break;
                 }
@@ -1620,6 +1815,20 @@ impl<'a> Parser<'a> {
         )
     }
 
+    /// Returns whether the tokens after the current line break resume a method
+    /// chain (`.name`), which may follow any number of blank lines.
+    fn next_code_starts_chain(&self) -> bool {
+        let mut offset = 1;
+        while self.peek_kind(offset) == TokenKind::Newline {
+            offset += 1;
+        }
+        matches!(self.peek_kind(offset), TokenKind::Dot | TokenKind::SafeDot)
+    }
+
+    fn at_ident_like(&self) -> bool {
+        matches!(self.current().kind, TokenKind::Ident | TokenKind::Record)
+    }
+
     fn looks_like_local_declaration(&mut self) -> bool {
         if self.at(TokenKind::Def) || self.at(TokenKind::Var) {
             return true;
@@ -1632,7 +1841,7 @@ impl<'a> Parser<'a> {
         let saved = self.pos;
         let result = self
             .parse_type_name()
-            .is_ok_and(|name| is_type_like(&name) && self.at(TokenKind::Ident));
+            .is_ok_and(|name| is_type_like(&name) && self.at_ident_like());
         self.pos = saved;
         result
     }
@@ -1680,6 +1889,7 @@ impl<'a> Parser<'a> {
                     | TokenKind::Synchronized
                     | TokenKind::Transient
                     | TokenKind::Volatile
+                    | TokenKind::Default
             ) {
                 self.advance();
             } else {
@@ -1692,18 +1902,25 @@ impl<'a> Parser<'a> {
 
     fn parse_type_name(&mut self) -> Result<String, ParseError> {
         let mut name = self.expect_ident_text()?;
-        if self.at(TokenKind::Lt) {
-            self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
-        }
-        while self.at(TokenKind::Dot) && self.peek_kind(1) == TokenKind::Ident {
-            self.advance();
-            name.push('.');
-            name.push_str(&self.expect_ident_text()?);
+        loop {
+            if self.at(TokenKind::Lt) {
+                self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
+            } else if self.at(TokenKind::Dot) && self.peek_kind(1) == TokenKind::Ident {
+                self.advance();
+                let segment = self.expect_ident_text()?;
+                name.push('.');
+                name.push_str(&segment);
+            } else {
+                break;
+            }
         }
         while self.at(TokenKind::LeftBracket) && self.peek_kind(1) == TokenKind::RightBracket {
             self.advance();
             self.advance();
             name.push_str("[]");
+        }
+        if self.eat(TokenKind::Ellipsis) {
+            name.push_str("...");
         }
         Ok(name)
     }
@@ -1780,7 +1997,13 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_ident(&mut self) -> Result<Token, ParseError> {
-        self.expect(TokenKind::Ident)
+        if self.at_ident_like() {
+            return Ok(self.advance());
+        }
+        Err(self.error_here(format!(
+            "expected identifier, found {}",
+            self.current().kind.describe()
+        )))
     }
 
     fn expect_ident_text(&mut self) -> Result<String, ParseError> {
@@ -1847,6 +2070,46 @@ impl<'a> Parser<'a> {
         while self.eat(TokenKind::Newline) {}
     }
 
+    /// Skips a line break before one of `operators`. Inside parentheses and
+    /// brackets any line break is insignificant; at statement level only a line
+    /// that starts with an operator unable to begin a statement continues the
+    /// expression (`value\n    && other`).
+    fn skip_newlines_before_operator(&mut self, operators: &[(TokenKind, BinaryOp)]) {
+        if self.nesting > 0 {
+            self.skip_newlines();
+            return;
+        }
+        if !self.at(TokenKind::Newline) {
+            return;
+        }
+        let mut offset = 1;
+        while self.peek_kind(offset) == TokenKind::Newline {
+            offset += 1;
+        }
+        let next = self.peek_kind(offset);
+        if !continues_expression(next) {
+            return;
+        }
+        if operators.iter().any(|(kind, _)| *kind == next) {
+            self.skip_newlines();
+        }
+    }
+
+    /// Skips a line break that continues the current expression, which is only
+    /// unambiguous when the next token can never start a statement.
+    fn skip_continuation_newline(&mut self, follows: TokenKind) {
+        if !self.at(TokenKind::Newline) {
+            return;
+        }
+        let mut offset = 1;
+        while self.peek_kind(offset) == TokenKind::Newline {
+            offset += 1;
+        }
+        if self.peek_kind(offset) == follows {
+            self.skip_newlines();
+        }
+    }
+
     fn skip_separators(&mut self) {
         while matches!(
             self.current().kind,
@@ -1862,6 +2125,33 @@ impl<'a> Parser<'a> {
             span: self.current().span,
         }
     }
+}
+
+/// Returns whether a line starting with this token continues the previous
+/// expression instead of starting a new statement.
+fn continues_expression(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::AndAnd
+            | TokenKind::OrOr
+            | TokenKind::Eq
+            | TokenKind::NotEq
+            | TokenKind::RegexFind
+            | TokenKind::RegexMatch
+            | TokenKind::Le
+            | TokenKind::Ge
+            | TokenKind::Range
+            | TokenKind::RangeExclusive
+            | TokenKind::Instanceof
+            | TokenKind::In
+            | TokenKind::ShiftLeft
+            | TokenKind::ShiftRight
+            | TokenKind::Amp
+            | TokenKind::Pipe
+            | TokenKind::Caret
+            | TokenKind::Power
+            | TokenKind::Star
+    )
 }
 
 fn is_type_like(name: &str) -> bool {
@@ -2038,6 +2328,51 @@ class Example {
         };
         let init = decl.init.as_ref().expect("initializer");
         assert!(matches!(&init.kind, ExprKind::Closure { params, .. } if params.len() == 1));
+    }
+
+    #[test]
+    fn parses_common_groovy_syntax_variants() {
+        let source = r"
+enum Mode {
+    A,
+    B;
+}
+
+class Example<T> {
+    void varargs(String... names) {
+        for (Map.Entry<String, List<T>> entry : mappings.entrySet()) {
+        }
+        for (Class<? extends Object> type : types) {
+        }
+        try (InputStream stream = new FileInputStream(file)) {
+            stream.read()
+        }
+        def typed = items.collect { List<String> values -> values }
+        def lambda = items.map(() -> factory.create())
+        boolean ok = left != null
+                && right != null
+        Comparable sorted = left <=> right
+        def reference = Objects::isNull
+        def explicit = Collections.<String>emptyList()
+        def literal = ListContextValue<String>.class
+        def chained = builder.build()
+
+                .next()
+        def map = [key: 1]
+    }
+}
+";
+        let script = script(source);
+        let Item::Class(class) = &script.items[1] else {
+            panic!("expected class");
+        };
+        let Item::Method(method) = &class.members[0] else {
+            panic!("expected method");
+        };
+        let body = method.body.as_ref().expect("method body");
+        assert_eq!(body.statements.len(), 12);
+        assert!(matches!(body.statements[0], Stmt::ForEach(_)));
+        assert!(matches!(body.statements[2], Stmt::Try(_)));
     }
 
     #[test]
