@@ -429,9 +429,10 @@ Design constraints:
 
 ## 6. Nullness design summary
 
-Detailed proposal: [`docs/NULLCHECK.md`](docs/NULLCHECK.md). The default is a
-conservative, definite-null mode; inferred/strict and optional annotation modes
-are opt-in.
+Detailed proposal: [`docs/NULLCHECK.md`](docs/NULLCHECK.md). The target model is
+Kotlin-like: declared `T` is non-null, `@Nullable T` is `T?`, and flow analysis
+provides smart casts. Default-non-null is enabled per marked scope/config; a
+conservative migration mode remains available.
 
 Nullness lattice:
 

@@ -10,8 +10,10 @@ code.
 
 The central decision is:
 
-> Build a flow-sensitive, inference-first nullness analysis. Annotations and
-> contracts are optional evidence, not a prerequisite. The checker must be
+> Build a flow-sensitive nullness analysis with a Kotlin-like type model:
+> unannotated declared types are non-null, `@Nullable T` is the surface form of
+> `T?`, and flow analysis supplies smart casts. Annotations are optional in a
+> migration mode, but the target model is default-non-null. The checker must be
 > explicit about where inference stops and where dynamic Groovy/external code
 > makes soundness impossible.
 
@@ -137,6 +139,149 @@ assumptions explicit and configurable.
 9. **Performance is part of the design.**
    Analyze per method, cap access-path depth, cache summaries, and avoid
    whole-program fixpoints where possible.
+
+## 3.1 Kotlin-like `T` / `T?` model
+
+The target model can be described as:
+
+```text
+T       non-null
+T?      nullable
+T <: T?
+T? !<: T
+null <: T?        (and null !<: T)
+```
+
+In Groovy source, `T?` is written as `@Nullable T` (or the project's chosen
+nullable annotation). We are not adding a new type syntax to Groovy; we are
+giving an existing annotation a precise type-system meaning.
+
+### Where the type system acts
+
+The type system checks declarations and boundaries:
+
+- a value of type `T?` cannot be assigned to a location of type `T`;
+- `null` cannot be assigned to `T`;
+- a `T?` argument cannot be passed to a `T` parameter;
+- a `T?` value cannot be returned from a `T` method;
+- a `T` value is assignable to `T?`;
+- overriding methods must preserve or strengthen the contract (return `T` may
+  become `T?` only if the caller contract permits it; parameters follow the
+  usual contravariance rule);
+- non-null fields must be initialized on every constructor path;
+- unboxing a `T?` wrapper to a primitive is an error.
+
+### Where dataflow acts
+
+The type system alone is not enough. Kotlin-style smart casts are dataflow:
+
+```groovy
+@Nullable String x = maybe()
+x.length()            // type error: String? has no length()
+if (x != null) {
+    x.length()        // smart cast to String
+}
+x = 'ok'
+x.length()            // smart cast after assignment
+```
+
+The store maps access paths to **refined types** (`T` or `T?`), not merely
+booleans. A branch join computes the least upper bound of refined types:
+
+- `T` join `T` = `T`;
+- `T` join `T?` = `T?`;
+- `T?` join `T?` = `T?`;
+- `Null` join `T?` = `T?`;
+- `Unknown` join anything = `Unknown`.
+
+A smart cast is revoked when the underlying location may change:
+
+- assignment to the variable/path;
+- a call that may mutate the receiver's fields;
+- a closure escaping or being invoked by unknown code;
+- concurrency mode without monotonic fields.
+
+### Unannotated declarations and `def`
+
+Target policy for a `@NullMarked` scope or a project that enables
+`default = nonnull`:
+
+- `String` parameter, return, field, local type -> `String` (non-null);
+- `@Nullable String` -> `String?`;
+- `def x = 'a'` -> inferred `String`;
+- `def x = null` -> inferred `Nothing?`/`Object?` (nullable);
+- `def x = maybeNull()` -> inferred return type, possibly `T?`;
+- untyped method parameters (`def`) are `Unknown`/platform-like unless a call-site
+  or body analysis provides evidence.
+
+This creates an important distinction:
+
+- **Declared typed code** is Kotlin-like and checked strictly.
+- **Dynamic/untyped Groovy** remains partially unknown; it must not be silently
+  treated as non-null.
+
+### External and legacy code: platform types
+
+Unannotated Java/Groovy dependencies are not automatically non-null. Model them
+as a Kotlin-like **platform type** `T!`:
+
+- assignable to both `T` and `T?`, with a configurable warning;
+- dereference allowed, but flagged in a stricter mode;
+- actual nullability remains `Unknown` until a library model/contract is
+  supplied.
+
+`@NullUnmarked`/legacy scopes use the same platform-like treatment. This is the
+migration escape hatch; a global default-non-null rule applied to every
+dependency would produce a flood of false positives.
+
+### What this means for defaults
+
+There are now two distinct policies:
+
+1. **Type policy**: what a declaration means (`T` vs `T?`), and whether the
+   default is non-null.
+2. **Reporting policy**: whether a possible-null dereference is reported as an
+   error, a warning, or not at all.
+
+The recommended target is:
+
+- `kotlin`/`strict`: default non-null in marked scopes; type mismatches and
+  smart-cast failures are errors; possible-null dereferences are warnings/errors.
+- `inferred`: infer local/return nullness for migration; no project-wide
+  default-non-null assumption.
+- `conservative`: only definite null; used until a project is ready for the
+  Kotlin-like migration.
+
+### Kotlin parity gaps
+
+We can share the core semantics but should not claim full Kotlin parity:
+
+- Kotlin has `?` in the language syntax; Groovy uses annotations.
+- Kotlin inserts runtime parameter/return checks; a static analyzer does not.
+- Groovy dynamic dispatch, `method_missing`, metaclasses, and reflection remain
+  outside the type system.
+- Generics, arrays, and variance need separate rules; `List<String>` vs
+  `List<String?>` is not fully Kotlin-like at the first milestone.
+- Kotlin's platform types and Java interop are richer than a source-only
+  analyzer; we can approximate them with `Unknown`.
+
+### Corpus implications
+
+The corpus mixes two expectations:
+
+- annotation fixtures already match a `T`/`T?` model;
+- strict flow fixtures use `String x = null` and expect a dereference finding,
+  which under default-non-null would also be a type error at the declaration.
+
+Do not change the corpus. Run it under multiple profiles:
+
+- `inferred` profile: reproduce the corpus's flow expectations;
+- `kotlin` profile: add type-mismatch findings and adjust expected counts per
+  fixture;
+- `annotated` profile: validate contracts and package defaults.
+
+This keeps the corpus as a semantic oracle while allowing the stricter target
+model.
 
 ## 4. Analysis architecture
 
@@ -481,7 +626,8 @@ is to ship two modes:
 | Mode | Defaults | Reports |
 |---|---|---|
 | `conservative` | locals inferred; project/API boundaries `Unknown` | definite-null only |
-| `inferred`/strict | project methods inferred; unannotated project members may be assumed non-null by default (configurable) | possible-null and contract violations |
+| `inferred`/strict | project methods inferred; no global non-null assumption | possible-null and contract violations |
+| `kotlin` | declared `T` is non-null; `@Nullable T` is `T?`; smart casts from dataflow | type mismatches, smart-cast failures, initialization |
 | `annotated` | annotations/contracts are authoritative; unmarked code follows a configured default | declared-contract violations + flow |
 
 Conservative mode should be the default for CI. Strict mode is opt-in until its
@@ -655,9 +801,17 @@ No code. Review defaults, scope, diagnostics, and corpus split.
 7. **Concurrency:** default sequential semantics; add `--concurrent` that
    invalidates fields. Confirm.
 8. **Corpus gate:** accept count-based expectations and split annotation vs
-   inferred fixtures. Confirm.
+   inferred vs Kotlin-profile fixtures. Confirm.
 9. **Diagnostic ownership:** separate `nullcheck` command/task, not attached to
    `check` initially. Confirm.
+10. **Default-non-null scope:** whole project, `@NullMarked` packages/classes, or
+    a config-driven list? Recommendation: start with config/`@NullMarked`, then
+    widen after a migration baseline.
+11. **Untyped `def` policy:** infer from initializer/body, or treat as
+    platform/`Unknown`? Recommendation: infer locals/returns; untyped parameters
+    stay platform-like.
+12. **Platform-type warning:** should assigning `T!` to `T` warn by default?
+    Recommendation: warn in kotlin mode, silent in migration mode.
 
 ## 16. References
 
