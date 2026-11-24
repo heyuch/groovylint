@@ -265,10 +265,16 @@ impl AstRule for MissingBlankLineBeforeAnnotatedFieldRule {
         if line <= 1 {
             return;
         }
-        if self.class_lines.last() == Some(&(line - 1)) {
+        if self
+            .class_lines
+            .last()
+            .is_some_and(|class_line| *class_line + 1 == line)
+        {
             return;
         }
         let previous = trimmed(context, line - 1);
+        // `CodeNarc` deliberately skips a field that sits directly below the
+        // class declaration.
         if previous.is_empty()
             || previous.starts_with("//")
             || previous.starts_with("/*")

@@ -48,12 +48,16 @@ Latest results:
 
 | Ruleset | Files | CodeNarc findings | `groovylint` findings | identical on `(file, rule, line)` |
 |---|---|---|---|---|
-| `codenarc-bug.xml` (96 rules) | 838 | 913 | 951 | 909 (99.6%) |
-| `codenarc.xml` (323 rules) | 838 | 9499 | 10277 | 9028 (95.0%) |
+| `codenarc-bug.xml` (96 rules) | 838 (`claim-domain`+`component-utils`) | 913 | 951 | 909 (99.6%) |
+| `codenarc.xml` (323 rules) | 838 (`claim-domain`+`component-utils`) | 9499 | 10251 | 9034 (95.1%) |
+| `codenarc.xml` (323 rules) | 2330 (`gi-policy`) | 27_918 | 34_716 | 26_659 (95.5%) |
 
-Full `saas-service` corpus (24,345 files, 323 rules): `groovylint` reports
-266,058 findings in 11.5 s with no parse errors; CodeNarc needs minutes for the
-same work. The differences are listed below.
+Timing on the `gi-policy` slice (2330 files, 323 rules): CodeNarc 110.6 s,
+`groovylint` 1.48 s. On the whole `saas-service` corpus (24,345 files, 323
+rules) `groovylint` reports 266,632 findings in 10.7 s with no parse errors;
+CodeNarc did not finish the same corpus within an hour before it was stopped.
+
+The remaining differences are listed below.
 
 ## Differential validation
 
@@ -110,6 +114,12 @@ more of CodeNarc's own positive/negative test cases per rule.
     implement `java.util.Random`, so the direct allocation slips through.
   - `JdbcConnectionReference`: we report declarations of `java.sql.Connection`,
     CodeNarc additionally reports the import line.
+  - `MissingBlankLineBeforeAnnotatedField`: we report the declaration line of an
+    annotated field that directly follows another field; CodeNarc skips the
+    first annotated field of a class and reports slightly different positions.
+  - `TrailingComma`, `UnnecessaryDotClass` and `Space*Brace` still differ on a
+    few percent of findings in code bases that use many collection literals and
+    interpolated strings.
 - Rules that need resolved types, project-specific configuration or a data-flow
   analysis are registered but report nothing (documented with a `shortcut:`
   comment in the source): `Indentation` (continuation lines are not modelled),
