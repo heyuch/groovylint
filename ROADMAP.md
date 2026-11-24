@@ -21,7 +21,6 @@ not to build.
   - class-in-package and package-layering constraints;
   - cycle detection for modules/packages/slices.
 - A declarative architecture DSL, with a Gradle DSL facade.
-- A custom-rule plugin mechanism.
 - Flow-sensitive nullness analysis without requiring `@Nullable`.
 - Incremental analysis and persistent caching after the semantic features are
   stable.
@@ -37,7 +36,7 @@ not to build.
 - Exact ArchUnit bytecode-level semantics in the first architecture release.
 - Whole-program sound nullness for dynamic Groovy and external libraries.
 - In-process execution of arbitrary Groovy scripts as rules.
-- Native dynamic-library plugins (`.so`/`.dylib`) with an unstable Rust ABI.
+- Custom-rule plugin mechanisms (in-process, native ABI, or external process).
 - A formatter implementation in the near-term milestones. The syntax layer is
   made formatter-ready, but the formatter is a later milestone.
 - Language-server integration in this roadmap.
@@ -49,20 +48,18 @@ The current registry contains:
 
 | Item | Count |
 |---|---:|
-| Registered entries | 328 |
-| Unique registered rule classes | 327 |
-| CodeNarc 4.0.0 classes not registered | 79 |
+| Registered entries | 318 |
+| Unique registered rule classes | 318 |
+| CodeNarc 4.0.0 classes not registered | 88 |
 | Grails classes not registered (excluded) | 12 |
-| Jenkins classes registered but excluded from the target | 7 |
-| Spock classes excluded from the target | 3 |
+| Jenkins classes removed | 7 |
+| Spock classes removed | 3 |
 | Non-framework/non-Spock missing rules | 66 |
 | Non-framework/non-Spock registered stubs/partial | 8 |
 | In-scope target | 384 |
 
-There is one duplicate registry entry:
-`ThrowExceptionFromFinallyBlock` is registered from both `finally.rs` and
-`design.rs`. It is deduplicated when loaded by CodeNarc class name, but the
-registry should have one canonical descriptor.
+The unsupported Grails, Jenkins, and Spock rules are not registered. The
+`ThrowExceptionFromFinallyBlock` duplicate registration has been removed.
 
 The detailed missing-rule list is in [`docs/COVERAGE.md`](docs/COVERAGE.md).
 
@@ -122,7 +119,7 @@ The CLI must be able to run in two modes:
 
 - **file mode**: current behavior, all per-file rules, no project graph;
 - **project mode**: build the index and run project rules; enabled automatically
-  when architecture/nullness rules or project plugins are configured.
+  when architecture/nullness rules are configured.
 
 ## 4. Milestones
 
@@ -132,14 +129,14 @@ parser regressions.
 ### M0 — Coverage accounting and cleanup (0.2, 2–3 days)
 
 - Add `RuleStatus` to metadata and a `groovylint rules --coverage` command.
-- Mark the 7 Jenkins and 3 Spock classes as `Excluded`; do not report them as missing.
-- Keep the 12 Grails classes as `Excluded`.
-- Remove the duplicate `ThrowExceptionFromFinallyBlock` registration.
+- Keep the unsupported Grails, Jenkins, and Spock rules out of the registry; CI
+  must reject re-registering them.
+- Keep the duplicate `ThrowExceptionFromFinallyBlock` registration removed.
 - Add `Fixability` metadata (the edit engine itself lands in M3).
 - Add a generated coverage test so the expected 384-rule target cannot silently
   regress.
 - Add negative fixtures for every currently implemented rule.
-- Correct the stale 327/323 counts in existing documentation.
+- Correct the stale rule-count references in existing documentation.
 
 Exit criteria:
 
@@ -246,8 +243,7 @@ Exit criteria:
 
 ### M4 — Project graph and ArchUnit-like rules (0.6, 4–6 weeks)
 
-Deliver the dependency graph and architecture rules. This also supplies facts
-for project plugins.
+Deliver the dependency graph and architecture rules.
 
 Components:
 
@@ -332,47 +328,13 @@ Exit criteria:
 - The checker is opt-in until precision is demonstrated.
 - No crashes/timeouts on the benchmark corpora.
 
-### M6 — Custom-rule plugin mechanism (0.8, 3–4 weeks)
-
-Ship the architecture DSL first, then a process-based plugin protocol.
-
-Why a process protocol, not an in-process ABI:
-
-- no unstable Rust dynamic-library ABI;
-- plugins can be written in Rust, Java, Groovy, Python, or any language;
-- a plugin crash cannot crash the analyzer process;
-- easier to version and validate than a native ABI.
-
-Proposed manifest:
-
-```toml
-api_version = 1
-name = "acme-rules"
-command = ["acme-groovylint-plugin"]
-```
-
-The host invokes the plugin once per project with a versioned JSON request. The
-request contains the project root, files, configuration, and normalized
-`FileFacts`/dependency facts (not a raw full AST at first). The plugin responds
-with diagnostics in the same schema as built-in rules. The host validates paths
-and spans, applies severity/suppression, and sorts results.
-
-Design summary: section 6 below.
-
-Exit criteria:
-
-- A sample plugin in Rust or Python passes an end-to-end test.
-- Plugin failures are isolated and produce a clear diagnostic.
-- Plugin rules are opt-in; no automatic downloads or discovery.
-- API version mismatch is rejected cleanly.
-
-### M7 — Incremental analysis and caching (0.9, 3–5 weeks)
+### M6 — Incremental analysis and caching (0.9, 3–5 weeks)
 
 Add correctness-first incremental analysis and persistent caches after the rule,
 syntax, architecture, and nullness semantics are stable.
 
 - Per-rule file-result cache keyed by content, rule properties, parser version,
-  analyzer version, and plugin versions.
+  analyzer version.
 - File-facts cache for project rules.
 - Project-graph rebuild from cached facts; then graph-delta optimization.
 - CLI `--cache-dir`, `--no-cache`, `--cache-stats`, and `--changed-files`.
@@ -392,7 +354,7 @@ Exit criteria:
 - No measurable regression on cold full scans.
 - Cache stats are visible and actionable.
 
-### M8 — Formatter and hardening (post-1.0, ongoing)
+### M7 — Formatter and hardening (post-1.0, ongoing)
 
 - Build `groovylint-format` as a separate crate depending only on
   `groovylint-syntax`.
@@ -402,7 +364,6 @@ Exit criteria:
 - Add more CodeNarc positive/negative fixtures.
 - Tune architecture rule patterns and module source mapping.
 - Tune nullness precision and performance.
-- Add plugin examples and SDK documentation.
 - Revisit Windows/Intel macOS/Linux arm64 distribution.
 - Consider LSP/auto-fix UI integration only after the core contracts are stable.
 
@@ -461,29 +422,7 @@ Design constraints:
 - Start with source-level dependencies; bytecode-level exactness is a later
   decision, not an assumed feature.
 
-## 6. Plugin mechanism design
-
-Two layers:
-
-1. **Declarative custom rules** (M4/M6):
-   - architecture rules;
-   - simple forbidden/required pattern rules;
-   - no code execution;
-   - safest default for teams.
-2. **Process plugins** (M6):
-   - arbitrary logic in any language;
-   - explicit configuration and trust;
-   - versioned JSON protocol;
-   - ideal for team-specific conventions and framework checks.
-
-Do **not** start with:
-
-- dynamic Rust `.so`/`.dylib` loading;
-- in-process Groovy script evaluation;
-- implicit plugin discovery from dependencies;
-- a WASM ABI before the facts/protocol schema is stable.
-
-## 7. Nullness design summary
+## 6. Nullness design summary
 
 Nullness lattice:
 
@@ -515,7 +454,7 @@ Why annotations are optional but not sufficient to ignore:
 - therefore the first release reports **definite null** only, with possible-null
   and contract checks in strict mode.
 
-## 8. Testing and performance gates
+## 7. Testing and performance gates
 
 Every milestone adds:
 
@@ -543,7 +482,7 @@ Autofix-specific tests:
 Incremental/cache tests:
 
 - cache-key invalidation for source, rule properties, ruleset, analyzer, parser,
-  and plugin changes;
+  parser, and analyzer changes;
 - deleted/renamed files and project-graph updates;
 - corrupted entries and concurrent writers;
 - cached versus uncached result equality.
@@ -561,7 +500,7 @@ Nullness-specific tests:
 - real-project smoke runs;
 - no panics/timeouts.
 
-## 9. Non-goals and anti-goals
+## 8. Non-goals and anti-goals
 
 - Do not implement Grails, Jenkins, or Spock rules.
 - Do not make the semantic AST carry comments/trivia or formatting policy.
@@ -570,27 +509,25 @@ Nullness-specific tests:
 - Do not chase 100% bytecode-level ArchUnit parity in the first graph release.
 - Do not make nullness sound for dynamic Groovy or external libraries.
 - Do not execute arbitrary Groovy in the analyzer process.
+- Do not add custom-rule plugin mechanisms.
 - Do not expose unstable Rust ABIs.
-- Do not let plugin failures take down the main analysis.
 - Do not add LSP or formatter UI before the syntax and analysis APIs stabilize.
 - Do not optimize before the differential and benchmark suites exist.
 - Do not add remote/distributed caching before local cache correctness is proven.
 
-## 10. Open decisions
+## 9. Open decisions
 
 1. Architecture config: TOML canonical, with Gradle DSL facade (current lean).
 2. Should module mapping come from Gradle project metadata, path globs, or both?
 3. Should architecture dependency extraction include unresolved external edges by
    default, or only resolvable project/source edges?
-4. Plugin protocol: JSON process first (current lean); WASM later.
-5. Nullness default for unannotated parameters/fields: `Unknown` (current lean)
+4. Nullness default for unannotated parameters/fields: `Unknown` (current lean)
    versus assumed non-null.
-6. Whether to read JDK/classpath bytecode annotations in M5c or defer to 1.x.
-7. Whether to remove Jenkins stubs entirely or keep them as `Excluded` metadata.
-8. CST implementation: `rowan` versus a small custom tree; decide after a
+5. Whether to read JDK/classpath bytecode annotations in M5c or defer to 1.x.
+6. CST implementation: `rowan` versus a small custom tree; decide after a
    prototype and memory/performance benchmark.
-9. Autofix default: safe-only (current lean) versus opt-in unsafe-by-default.
-10. Cache storage: sharded files first (current lean) versus SQLite after a
+7. Autofix default: safe-only (current lean) versus opt-in unsafe-by-default.
+8. Cache storage: sharded files first (current lean) versus SQLite after a
     benchmark.
-11. Whether to cache serialized AST/CST, or only diagnostics/facts, after
+9. Whether to cache serialized AST/CST, or only diagnostics/facts, after
     profiling parse cost.

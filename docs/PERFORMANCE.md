@@ -25,7 +25,7 @@ Caching before semantics are stable would only make stale results faster.
 - A distributed/remote analysis cache in the first version.
 - Caching a serialized AST/CST before profiling shows parse cost dominates.
 - Using file modification time alone as a correctness key.
-- Hiding stale results when the ruleset, analyzer, or plugin changes.
+- Hiding stale results when the ruleset, analyzer, or Gradle plugin changes.
 - Making `groovylintFix` cacheable; fix tasks mutate sources.
 
 ## Current state
@@ -64,7 +64,6 @@ file_content_hash
 file_path or module-relative path (for relative resolution)
 module_mapping_hash
 classpath_hash (if type resolution or external summaries are used)
-plugin_id / plugin_version / plugin_api_version
 ```
 
 Rules:
@@ -75,7 +74,6 @@ Rules:
   formatting-only differences or absolute temp paths.
 - Include the analyzer build identity, not only the release version, so local
   development builds invalidate correctly.
-- Include plugin hashes when plugin rules are enabled.
 - Bump a cache-format version when serialized types change; old entries are
   discarded rather than migrated in place.
 - Never reuse a finding across a changed file path if the rule depends on path
@@ -166,8 +164,8 @@ watch mode can reuse the same incremental core.
 - Give lint tasks a real report output (`text`, `json`, or `xml`) and declare it
   as `@OutputFile`.
 - Mark report-producing lint tasks `@CacheableTask` when output is deterministic.
-- Keep source directories, config, plugin version, and analyzer version as
-  declared inputs.
+- Keep source directories, config, Gradle plugin version, and analyzer version
+  as declared inputs.
 - Use Gradle's `InputChanges` API to pass changed source files to the CLI while
   preserving a complete report. If merging partial reports is too complex, use
   the tool cache internally and leave Gradle's task up-to-date check in charge.
@@ -217,7 +215,7 @@ absolute wall-clock numbers that vary by runner.
 
 - Do not cache by mtime alone.
 - Do not cache findings without the full rule/config/analyzer key.
-- Do not cache across a plugin API or parser-schema change.
+- Do not cache across a Gradle plugin or parser-schema change.
 - Do not add remote/distributed caching before local correctness is proven.
 - Do not serialize the AST/CST before profiling shows parse cost is the
   bottleneck.

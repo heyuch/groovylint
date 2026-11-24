@@ -1,4 +1,4 @@
-//! `CodeNarc` `JUnit` and Spock rules.
+//! `CodeNarc` `JUnit` rules.
 //!
 //! Almost all of these only apply to test sources, which `CodeNarc` decides by
 //! class name and we decide by file name.
@@ -890,127 +890,6 @@ impl AstRule for JUnitUnnecessaryThrowsExceptionRule {
     }
 }
 
-/// Flags `@IgnoreRest` on Spock feature methods.
-pub struct SpockIgnoreRestUsedRule;
-
-impl Rule for SpockIgnoreRestUsedRule {}
-
-impl AstRule for SpockIgnoreRestUsedRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        if !context.source.text().contains("spock.lang") && !is_test_source(context) {
-            return;
-        }
-        let NodeRef::Method(method) = node else {
-            return;
-        };
-        if !has_annotation(&method.annotations, "IgnoreRest") {
-            return;
-        }
-        sink.report(
-            method.span,
-            format!("The method '{}' uses @IgnoreRest", method.name),
-        );
-    }
-}
-
-/// Flags boolean expressions nested inside `then:`/`expect:` blocks.
-pub struct SpockMissingAssertRule;
-
-impl Rule for SpockMissingAssertRule {}
-
-impl AstRule for SpockMissingAssertRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Method(method) = node else {
-            return;
-        };
-        if !context.source.text().contains("spock.lang") {
-            return;
-        }
-        let Some(body) = &method.body else {
-            return;
-        };
-
-        let mut label: Option<String> = None;
-        for statement in &body.statements {
-            if let Some(name) = block_label(statement, context.source.text()) {
-                label = Some(name);
-                continue;
-            }
-            let Some(name) = &label else {
-                continue;
-            };
-            if !matches!(name.as_str(), "then" | "expect") {
-                continue;
-            }
-            for nested in nested_comparisons(statement) {
-                sink.report(
-                    nested,
-                    format!(
-                        "'{name}:' might contain a boolean expression in a nested statement, which is not implicitly asserted"
-                    ),
-                );
-            }
-        }
-    }
-}
-
-/// Returns the label of a Spock block statement such as `then:`.
-fn block_label(statement: &Stmt, source: &str) -> Option<String> {
-    let text = source.get(statement.span().range())?.trim();
-    let name = text.strip_suffix(':')?;
-    if name.is_empty() || name.contains(char::is_whitespace) {
-        return None;
-    }
-    Some(name.to_string())
-}
-
-/// Finds comparison expressions nested inside control statements.
-fn nested_comparisons(statement: &Stmt) -> Vec<groovylint_core::Span> {
-    let mut finder = ComparisonFinder { spans: Vec::new() };
-    crate::traverse::walk_stmt(statement, &mut finder);
-    finder.spans
-}
-
-struct ComparisonFinder {
-    spans: Vec<groovylint_core::Span>,
-}
-
-impl crate::traverse::AstVisitor for ComparisonFinder {
-    fn enter(&mut self, node: NodeRef<'_>) {
-        let NodeRef::Expr(expr) = node else {
-            return;
-        };
-        let ExprKind::Binary { op, .. } = &expr.kind else {
-            return;
-        };
-        if crate::rules::util::is_comparison(*op)
-            && matches!(op, groovylint_syntax::ast::BinaryOp::Eq)
-        {
-            self.spans.push(expr.span);
-        }
-    }
-
-    fn exit(&mut self, _node: NodeRef<'_>) {}
-}
-
 /// Flags `catch` blocks that only call `fail()`.
 pub struct UnnecessaryFailRule;
 
@@ -1448,26 +1327,6 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 "Test methods do not need throws clauses.",
             ),
             || RuleInstanceImpl::Ast(Box::new(JUnitUnnecessaryThrowsExceptionRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "SpockIgnoreRestUsed",
-                "org.codenarc.rule.junit.SpockIgnoreRestUsedRule",
-                Category::Junit,
-                Severity::Warning,
-                "@IgnoreRest should not be committed.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(SpockIgnoreRestUsedRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "SpockMissingAssert",
-                "org.codenarc.rule.junit.SpockMissingAssertRule",
-                Category::Junit,
-                Severity::Info,
-                "Comparisons nested in then:/expect: blocks are not asserted.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(SpockMissingAssertRule)),
         ),
         descriptor(
             RuleMeta::new(

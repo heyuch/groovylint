@@ -55,8 +55,6 @@ pub enum Category {
     Exceptions,
     /// Concurrency rules.
     Concurrency,
-    /// Jenkins pipeline rules.
-    Jenkins,
     /// Size rules.
     Size,
 }
@@ -86,7 +84,6 @@ impl Category {
             Self::Design => "design",
             Self::Exceptions => "exceptions",
             Self::Concurrency => "concurrency",
-            Self::Jenkins => "jenkins",
             Self::Size => "size",
         }
     }

@@ -1358,59 +1358,6 @@ impl AstRule for SwallowThreadDeathRule {
     }
 }
 
-/// Returns whether a `finally` block of a statement throws.
-fn finally_throws(try_stmt: &groovylint_syntax::ast::TryStmt) -> bool {
-    try_stmt.finally.as_ref().is_some_and(|block| {
-        block.statements.iter().any(|statement| {
-            let mut finder = ThrowFinder { found: false };
-            crate::traverse::walk_stmt(statement, &mut finder);
-            finder.found
-        })
-    })
-}
-
-struct ThrowFinder {
-    found: bool,
-}
-
-impl crate::traverse::AstVisitor for ThrowFinder {
-    fn enter(&mut self, node: NodeRef<'_>) {
-        if let NodeRef::Stmt(Stmt::Throw(_)) = node {
-            self.found = true;
-        }
-    }
-
-    fn exit(&mut self, _node: NodeRef<'_>) {}
-}
-
-/// Flags `throw` statements inside `finally` blocks.
-pub struct ThrowExceptionFromFinallyBlockRule;
-
-impl Rule for ThrowExceptionFromFinallyBlockRule {}
-
-impl AstRule for ThrowExceptionFromFinallyBlockRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Try)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Stmt(Stmt::Try(try_stmt)) = node else {
-            return;
-        };
-        if finally_throws(try_stmt) {
-            sink.report(
-                try_stmt.span,
-                "Throwing an exception from a finally block is confusing and can hide the original exception",
-            );
-        }
-    }
-}
-
 /// Descriptors for the design rules.
 #[must_use]
 pub fn design_descriptors() -> Vec<RuleDescriptor> {
@@ -1701,16 +1648,6 @@ pub fn exception_descriptors() -> Vec<RuleDescriptor> {
                 "SwallowThreadDeath exception rule.",
             ),
             || RuleInstanceImpl::Ast(Box::new(SwallowThreadDeathRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "ThrowExceptionFromFinallyBlock",
-                "org.codenarc.rule.basic.ThrowExceptionFromFinallyBlockRule",
-                Category::Basic,
-                Severity::Warning,
-                "Throwing from a finally block can hide the original exception.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ThrowExceptionFromFinallyBlockRule)),
         ),
         descriptor(
             RuleMeta::new(

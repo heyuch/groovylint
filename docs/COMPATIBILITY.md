@@ -7,21 +7,21 @@ used for the comparisons depended on Groovy 5.0.3.
 
 ## Current coverage
 
-327 rules are registered. That covers:
+318 rules are registered. That covers the in-scope subset of:
 
 - every rule in CodeNarc 4.0.0's `rulesets/basic.xml`;
-- every rule of a production `codenarc-bug.xml` quality gate (96 rule classes);
-- every rule of a "all rules except the disabled ones" `codenarc.xml` gate (323
-  rule classes across `basic`, `braces`, `comments`, `concurrency`,
-  `convention`, `design`, `dry`, `enhanced`, `exceptions`, `formatting`,
-  `generic`, `imports`, `jdbc`, `jenkins`, `junit`, `logging`, `naming`,
-  `security`, `serialization`, `size` and `unused`).
+- a production `codenarc-bug.xml` quality gate (96 rule classes);
+- an "all rules except the disabled ones" `codenarc.xml` gate (323 rule classes).
+
+Grails, Jenkins, and Spock rules are unsupported and are not registered. The
+production and full gates are therefore evaluated on their in-scope subsets, not
+on a claim that all 323 classes are present.
 
 Rulesets are read with their `<property>` values, so configured rule variants
 work (`groovylint check --config codenarc.xml`). Lookarounds in configured
 patterns are supported through a backtracking regex engine.
 
-64 rules have a minimal Groovy fixture at
+87 rules have a minimal Groovy fixture at
 `crates/groovylint-cli/tests/fixtures/rules/<Rule>.groovy`; the rest are covered
 by the corpus comparison above. The end-to-end test
 runs the CLI with a temporary ruleset containing exactly that rule and asserts
@@ -45,6 +45,10 @@ python3 benchmarks/diff_codenarc_report.py \
     --config buildScript/codenarc/codenarc-bug.xml \
     --paths claim/claim-domain/src component-utils/src
 ```
+
+The benchmark tables below were collected before the unsupported framework rules
+were removed. They are retained as historical measurements, not as a claim that
+all 323 gate classes are currently available.
 
 Latest results:
 
@@ -126,11 +130,9 @@ more of CodeNarc's own positive/negative test cases per rule.
   analysis are registered but report nothing (documented with a `shortcut:`
   comment in the source): `Indentation` (continuation lines are not modelled),
   `BusyWait`, `DoubleCheckedLocking`, `InconsistentProperty*`,
-  `NoScriptBindings`, `ExceptionNotThrown`, `CpsCallFromNonCpsMethod`,
-  `ExpressionInCpsMethodNotSerializable`, `ForbiddenCallInCpsMethod`,
-  `ParameterOrReturnTypeNotSerializable` and the `Generic` rules that require
+  `NoScriptBindings`, `ExceptionNotThrown` and the `Generic` rules that require
   properties (`Illegal*`, `Required*`, `StatelessClass`,
-  `IllegalClassMember`).
+  `IllegalClassMember`). Jenkins and Spock rules are unsupported and removed.
 - The parser is a common-syntax subset, not full Groovy. Unsupported syntax
   becomes a `ParseError` diagnostic for that file. On a 118,470-file private
   Groovy corpus (Spring/Grails services, Spock tests, Gradle build logic) every

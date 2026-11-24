@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Removed the unsupported Jenkins and Spock rule implementations and their
+  registrations. Grails, Jenkins, and Spock rules are explicitly out of scope.
+- Custom-rule plugin mechanisms are out of scope; only built-in rules and the
+  declarative architecture DSL are planned.
+
 ### Added
 
 - Initial Cargo workspace with `core`, `syntax`, `analysis`, `config`, `rules`,

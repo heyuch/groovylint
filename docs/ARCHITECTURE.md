@@ -2,10 +2,11 @@
 
 **Status:** design accepted in part; first vertical slice implemented
 (2026-11-24). The parser is a self-developed subset, the default CodeNarc
-the default `basic.xml` ruleset is wired in, 327 rules are implemented through
-the layered engine (the full 96-rule production `codenarc-bug.xml` ruleset and
-the full 323-rule `codenarc.xml` gate among them), rule `<property>` values are
-applied, and `@SuppressWarnings` is honoured before reporting.
+the default `basic.xml` ruleset is wired in, 318 rules are implemented through
+the layered engine (the in-scope subsets of the 96-rule production
+`codenarc-bug.xml` ruleset and the 323-rule `codenarc.xml` gate; Grails,
+Jenkins, and Spock rules are unsupported), rule `<property>` values are applied,
+and `@SuppressWarnings` is honoured before reporting.
 CFG/data-flow/nullness is not implemented yet. The parser covers the syntax of a
 118,470-file private Groovy corpus end to end, including newline continuation
 rules, GString interpolation, closures/lambdas, spread and method references. The benchmark harness and first public-corpus CodeNarc comparison are in place (`benchmarks/`).
@@ -530,7 +531,7 @@ Still open:
    the CodeNarc version used by the Sonar Groovy plugin. Sonar may bundle a
    different CodeNarc version from the latest release.
 2. **Groovy baseline**: Groovy 3, 4, or 5 syntax first? Which file types matter
-   (Jenkinsfile, Gradle scripts, Spock tests, Grails)?
+   (Gradle scripts and plain Groovy tests)?
 3. **CodeNarc scope**: XML only first, or also Groovy DSL/JSON rulesets? Which
    base-rule options and suppression forms are mandatory for v0?
 4. **AST representation**: the current implementation uses a boxed typed AST

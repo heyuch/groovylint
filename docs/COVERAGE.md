@@ -6,17 +6,17 @@ Current registry:
 
 | Status | Count |
 |---|---:|
-| Unique registered rule classes | 327 |
-| Missing from CodeNarc 4.0.0 | 79 |
-| Grails rules (explicitly excluded) | 12 |
-| Jenkins rules (registered, excluded from target) | 7 |
-| Spock rules (excluded from target) | 3 |
+| Unique registered rule classes | 318 |
+| Missing from CodeNarc 4.0.0 | 88 |
+| Grails rules (unsupported) | 12 |
+| Jenkins rules (removed from code) | 7 |
+| Spock rules (removed from code) | 3 |
 | Non-framework/non-Spock missing | 66 |
 | Non-framework/non-Spock registered stubs/partial | 8 |
 | In-scope CodeNarc target | 384 |
 
-The registry currently has 328 entries but 327 unique classes:
-`ThrowExceptionFromFinallyBlock` is registered twice.
+The registry has 318 entries and 318 unique classes. Unsupported Grails, Jenkins,
+and Spock rules are not registered.
 
 ## Non-framework, non-Spock rules still missing (66)
 
@@ -123,9 +123,9 @@ These load and accept configuration, but do not currently provide full behavior:
 - `ExceptionNotThrown`
 - `IllegalClassMember`
 
-## Excluded framework rules
+## Unsupported framework rules (removed or never implemented)
 
-### Grails (12, not registered)
+### Grails (12, never implemented)
 
 - `GrailsDomainGormMethods`
 - `GrailsDomainHasEquals`
@@ -140,13 +140,13 @@ These load and accept configuration, but do not currently provide full behavior:
 - `GrailsServletContextReference`
 - `GrailsStatelessService`
 
-### Spock (3, excluded)
+### Spock (3, removed from code)
 
-- `SpockIgnoreRestUsed` (registered, excluded)
-- `SpockMissingAssert` (registered, excluded)
-- `SpockUseVerifyEach` (not registered, excluded)
+- `SpockIgnoreRestUsed` (removed)
+- `SpockMissingAssert` (removed)
+- `SpockUseVerifyEach` (never implemented)
 
-### Jenkins (7, registered but excluded)
+### Jenkins (7, removed from code)
 
 - `ParameterOrReturnTypeNotSerializable`
 - `ObjectOverrideOnlyNonCpsMethods`

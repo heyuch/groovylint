@@ -1,27 +1,16 @@
-//! Remaining `CodeNarc` rules: concurrency, Jenkins, JDBC, serialization and
-//! a few naming and unused-code rules.
+//! Remaining `CodeNarc` rules: concurrency, JDBC, serialization and a few
+//! naming and unused-code rules.
 
 use std::collections::BTreeSet;
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{ClassDecl, Expr, ExprKind, Item, Stmt};
+use groovylint_syntax::ast::{Expr, ExprKind, Item, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
     AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
 };
-use crate::rules::util::{
-    expr_text, is_serializable, is_test_file, simple_name, unparen, variable_name,
-};
-
-/// Returns whether the file looks like a Jenkins pipeline script.
-fn is_jenkins_source(context: &FileContext<'_>) -> bool {
-    let text = context.source.text();
-    text.contains("@NonCPS")
-        || text.contains("hudson.")
-        || text.contains("jenkins")
-        || text.contains("CpsScript")
-}
+use crate::rules::util::{is_serializable, simple_name, unparen, variable_name};
 
 fn statement_is(statement: &Stmt) -> Option<&Expr> {
     match statement {
@@ -736,104 +725,6 @@ fn passes_this(expr: &Expr) -> bool {
         .any(|arg| matches!(unparen(arg).kind, ExprKind::This))
 }
 
-/// Flags classes that are not serializable in Jenkins pipelines.
-pub struct ClassNotSerializableRule;
-
-impl Rule for ClassNotSerializableRule {}
-
-impl AstRule for ClassNotSerializableRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Class)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Class(class) = node else {
-            return;
-        };
-        if !is_jenkins_source(context) {
-            return;
-        }
-        if is_serializable(class) || class.kind == groovylint_syntax::ast::ClassKind::Interface {
-            return;
-        }
-        sink.report(
-            class.span,
-            format!(
-                "The class {} must implement Serializable in Jenkins pipelines",
-                class.name
-            ),
-        );
-    }
-}
-
-/// Flags closures inside `GString` interpolation.
-pub struct ClosureInGStringRule;
-
-impl Rule for ClosureInGStringRule {}
-
-impl AstRule for ClosureInGStringRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Expr)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        if !is_jenkins_source(context) {
-            return;
-        }
-        let NodeRef::Expr(expr) = node else {
-            return;
-        };
-        let ExprKind::Literal(groovylint_syntax::ast::Literal::String(text)) = &expr.kind else {
-            return;
-        };
-        if !text.contains("${") || !text.contains("->") {
-            return;
-        }
-        // shortcut: a closure is only detected by its arrow inside an
-        // interpolation; nested structure is not modelled for GStrings.
-        let _ = context;
-        sink.report(
-            expr.span,
-            "A closure inside a GString interpolation is not serializable",
-        );
-    }
-}
-
-/// Flags `@NonCPS`-annotated methods that call CPS-transformed steps.
-pub struct CpsCallFromNonCpsMethodRule;
-
-impl Rule for CpsCallFromNonCpsMethodRule {}
-
-impl AstRule for CpsCallFromNonCpsMethodRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Method(method) = node else {
-            return;
-        };
-        // shortcut: the CPS pipeline steps are project specific, so only the
-        // annotation pairing is checked.
-        let _ = (method, sink);
-    }
-}
-
 /// Flags fields of serializable classes whose types are not serializable.
 pub struct NonSerializableFieldInSerializableClassRule;
 
@@ -1505,80 +1396,10 @@ pub fn concurrency_descriptors() -> Vec<RuleDescriptor> {
     ]
 }
 
-/// Descriptors for the Jenkins, JDBC, serialization and remaining rules.
+/// Descriptors for the JDBC, serialization and remaining rules.
 #[must_use]
 pub fn misc_descriptors() -> Vec<RuleDescriptor> {
     vec![
-        descriptor(
-            RuleMeta::new(
-                "ClassNotSerializable",
-                "org.codenarc.rule.jenkins.ClassNotSerializableRule",
-                Category::Jenkins,
-                Severity::Info,
-                "ClassNotSerializable rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ClassNotSerializableRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "ClosureInGString",
-                "org.codenarc.rule.jenkins.ClosureInGStringRule",
-                Category::Jenkins,
-                Severity::Info,
-                "ClosureInGString rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ClosureInGStringRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "CpsCallFromNonCpsMethod",
-                "org.codenarc.rule.jenkins.CpsCallFromNonCpsMethodRule",
-                Category::Jenkins,
-                Severity::Info,
-                "CpsCallFromNonCpsMethod rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(CpsCallFromNonCpsMethodRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "ExpressionInCpsMethodNotSerializable",
-                "org.codenarc.rule.jenkins.ExpressionInCpsMethodNotSerializableRule",
-                Category::Jenkins,
-                Severity::Info,
-                "ExpressionInCpsMethodNotSerializable rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ExpressionInCpsMethodNotSerializableRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "ForbiddenCallInCpsMethod",
-                "org.codenarc.rule.jenkins.ForbiddenCallInCpsMethodRule",
-                Category::Jenkins,
-                Severity::Info,
-                "ForbiddenCallInCpsMethod rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ForbiddenCallInCpsMethodRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "ObjectOverrideOnlyNonCpsMethods",
-                "org.codenarc.rule.jenkins.ObjectOverrideOnlyNonCpsMethods",
-                Category::Jenkins,
-                Severity::Info,
-                "ObjectOverrideOnlyNonCpsMethods rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ObjectOverrideOnlyNonCpsMethodsRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "ParameterOrReturnTypeNotSerializable",
-                "org.codenarc.rule.jenkins.ParameterOrReturnTypeNotSerializableRule",
-                Category::Jenkins,
-                Severity::Info,
-                "ParameterOrReturnTypeNotSerializable rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(ParameterOrReturnTypeNotSerializableRule)),
-        ),
         descriptor(
             RuleMeta::new(
                 "NonSerializableFieldInSerializableClass",
@@ -1640,114 +1461,4 @@ pub fn misc_descriptors() -> Vec<RuleDescriptor> {
             || RuleInstanceImpl::Ast(Box::new(CrapMetricRule)),
         ),
     ]
-}
-
-/// Flags Jenkins CPS methods with non-serializable expressions.
-pub struct ExpressionInCpsMethodNotSerializableRule;
-
-impl Rule for ExpressionInCpsMethodNotSerializableRule {}
-
-impl AstRule for ExpressionInCpsMethodNotSerializableRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        _sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Method(_) = node else {
-            return;
-        };
-    }
-}
-
-/// Flags forbidden calls inside CPS methods.
-pub struct ForbiddenCallInCpsMethodRule;
-
-impl Rule for ForbiddenCallInCpsMethodRule {}
-
-impl AstRule for ForbiddenCallInCpsMethodRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        _sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Method(_) = node else {
-            return;
-        };
-    }
-}
-
-/// Flags `Object` overrides that are CPS transformed.
-pub struct ObjectOverrideOnlyNonCpsMethodsRule;
-
-impl Rule for ObjectOverrideOnlyNonCpsMethodsRule {}
-
-impl AstRule for ObjectOverrideOnlyNonCpsMethodsRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Method(method) = node else {
-            return;
-        };
-        if !is_jenkins_source(context) {
-            return;
-        }
-        if !matches!(method.name.as_str(), "toString" | "equals" | "hashCode") {
-            return;
-        }
-        if crate::rules::util::has_annotation(&method.annotations, "NonCPS") {
-            return;
-        }
-        sink.report(
-            method.span,
-            format!(
-                "The overridden method {} must be annotated with @NonCPS",
-                method.name
-            ),
-        );
-    }
-}
-
-/// Flags non-serializable parameter and return types.
-pub struct ParameterOrReturnTypeNotSerializableRule;
-
-impl Rule for ParameterOrReturnTypeNotSerializableRule {}
-
-impl AstRule for ParameterOrReturnTypeNotSerializableRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Method(_) = node else {
-            return;
-        };
-        let _ = sink;
-    }
-}
-
-#[allow(dead_code)]
-fn unused(_: &ClassDecl, _: &str) {
-    let _ = (expr_text, is_test_file);
 }
