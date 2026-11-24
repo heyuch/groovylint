@@ -6,7 +6,12 @@ used for the comparisons depended on Groovy 5.0.3.
 ## Current coverage
 
 All 44 rules in CodeNarc 4.0.0's `rulesets/basic.xml` are implemented, plus the
-token-level `UnnecessarySemicolon` rule from CodeNarc's `unnecessary` ruleset.
+token-level `UnnecessarySemicolon` rule from CodeNarc's `unnecessary` ruleset
+and six file-level rules:
+
+- `imports.xml`: `NoWildcardImports`, `UnnecessaryGroovyImport`,
+  `ImportFromSamePackage`, `ImportFromSunPackages`, `UnusedImport`.
+- `formatting.xml`: `TrailingWhitespace`.
 
 Each implemented rule has a minimal Groovy fixture at
 `crates/groovylint-cli/tests/fixtures/rules/<Rule>.groovy`. The end-to-end test
@@ -54,7 +59,8 @@ more of CodeNarc's own positive/negative test cases per rule.
 - Rule properties, CodeNarc base-rule filters, `@SuppressWarnings`, and
   comment-based disable directives are not implemented yet.
 - The parser is a common-syntax subset, not full Groovy. Unsupported syntax
-  becomes a `ParseError` diagnostic for that file.
+  becomes a `ParseError` diagnostic for that file. On a 24,316-file real-world
+  Groovy corpus, 108 files (0.4%) still fail to parse.
 - Severity mapping is currently `priority 2 -> warning`, `priority 3 -> info`;
   priority-1 mapping and report-format parity are future work.
 - Some rule messages are more generic than CodeNarc's. Rule name and line are

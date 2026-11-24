@@ -55,6 +55,12 @@ const CASES: &[RuleCase] = &[
     case("EmptyTryBlock", 1),
     case("EmptyCatchBlock", 3),
     case("EmptyFinallyBlock", 3),
+    case("NoWildcardImports", 1),
+    case("UnnecessaryGroovyImport", 1),
+    case("ImportFromSamePackage", 3),
+    case("ImportFromSunPackages", 1),
+    case("UnusedImport", 1),
+    case("TrailingWhitespace", 1),
 ];
 
 const fn case(rule: &'static str, line: u64) -> RuleCase {
@@ -62,10 +68,15 @@ const fn case(rule: &'static str, line: u64) -> RuleCase {
 }
 
 fn codenarc_class(case: &RuleCase) -> String {
-    let category = if case.rule == "UnnecessarySemicolon" {
-        "unnecessary"
-    } else {
-        "basic"
+    let category = match case.rule {
+        "UnnecessarySemicolon" => "unnecessary",
+        "NoWildcardImports"
+        | "UnnecessaryGroovyImport"
+        | "ImportFromSamePackage"
+        | "ImportFromSunPackages"
+        | "UnusedImport" => "imports",
+        "TrailingWhitespace" => "formatting",
+        _ => "basic",
     };
     format!("org.codenarc.rule.{category}.{}Rule", case.rule)
 }

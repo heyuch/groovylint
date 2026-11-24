@@ -56,6 +56,8 @@ impl RuleRegistry {
         descriptors.extend(crate::rules::class_design::descriptors());
         descriptors.extend(crate::rules::casts::descriptors());
         descriptors.extend(crate::rules::filter_closure::descriptors());
+        descriptors.extend(crate::rules::imports::descriptors());
+        descriptors.extend(crate::rules::formatting::descriptors());
 
         Self { descriptors }
     }

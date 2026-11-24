@@ -19,6 +19,10 @@ pub enum Category {
     Basic,
     /// Unnecessary-code rules.
     Unnecessary,
+    /// Import rules.
+    Imports,
+    /// Formatting rules.
+    Formatting,
 }
 
 impl Category {
@@ -28,6 +32,8 @@ impl Category {
         match self {
             Self::Basic => "basic",
             Self::Unnecessary => "unnecessary",
+            Self::Imports => "imports",
+            Self::Formatting => "formatting",
         }
     }
 }
