@@ -18,7 +18,7 @@ use crate::cfg::{
     BasicBlock, BlockId, Cfg, Instruction, Terminator, build_closure, build_method, build_script,
 };
 use crate::contracts::{self, ContractPath, ContractRegistry};
-use crate::nullability::{AccessPath, Finding, Mode, Nullness, Store};
+use crate::nullability::{AccessPath, Defaults, Finding, Mode, Nullness, Store};
 
 /// Analyzes all executable units in a script.
 #[must_use]
@@ -35,7 +35,18 @@ pub fn analyze_with_contracts(
     mode: Mode,
     contracts: ContractRegistry,
 ) -> Vec<Finding> {
-    let mut analyzer = Analyzer::new(mode, contracts);
+    analyze_with_defaults(script, mode, contracts, Defaults::default())
+}
+
+/// Analyzes with contracts and package/compiler defaults.
+#[must_use]
+pub fn analyze_with_defaults(
+    script: &Script,
+    mode: Mode,
+    contracts: ContractRegistry,
+    defaults: Defaults,
+) -> Vec<Finding> {
+    let mut analyzer = Analyzer::new(mode, contracts, defaults);
     analyzer.analyze_script(script);
     analyzer.finish()
 }
@@ -51,6 +62,10 @@ struct Analyzer {
     collect_required: bool,
     param_names: Vec<String>,
     required_params: BTreeSet<usize>,
+    getters: std::collections::BTreeMap<String, Nullness>,
+    primitive_params: std::collections::BTreeMap<(String, usize), Vec<bool>>,
+    return_primitive: bool,
+    defaults: Defaults,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -61,6 +76,9 @@ struct State {
     locals: BTreeSet<String>,
     local_expectations: std::collections::BTreeMap<String, Nullness>,
     local_types: std::collections::BTreeMap<String, String>,
+    field_expectations: std::collections::BTreeMap<String, Nullness>,
+    monotonic_fields: BTreeSet<String>,
+    monotonic_nonnull: BTreeSet<String>,
     unreachable: bool,
 }
 
@@ -75,6 +93,9 @@ impl State {
             locals: BTreeSet::new(),
             local_expectations: std::collections::BTreeMap::new(),
             local_types: std::collections::BTreeMap::new(),
+            field_expectations: std::collections::BTreeMap::new(),
+            monotonic_fields: BTreeSet::new(),
+            monotonic_nonnull: BTreeSet::new(),
             unreachable: false,
         }
     }
@@ -99,6 +120,42 @@ impl State {
                 .set(AccessPath::Local(param.name.clone()), value);
         }
         state
+    }
+
+    fn with_monotonic(mut self, fields: &BTreeSet<String>) -> Self {
+        self.monotonic_fields.clone_from(fields);
+        self
+    }
+
+    fn restore_monotonic(&mut self) {
+        for name in &self.monotonic_nonnull {
+            self.store.set(
+                AccessPath::field(AccessPath::This, name.clone()),
+                Nullness::NonNull,
+            );
+        }
+    }
+
+    fn with_params_marked(params: &[Param]) -> Self {
+        let mut state = Self::with_params(params);
+        for param in params {
+            if annotation_nullness(&param.annotations).is_none() {
+                state
+                    .store
+                    .set(AccessPath::Local(param.name.clone()), Nullness::NonNull);
+                state
+                    .local_expectations
+                    .insert(param.name.clone(), Nullness::NonNull);
+            }
+        }
+        state
+    }
+
+    fn with_field_expectations(mut self, expectations: &[(String, Nullness)]) -> Self {
+        for (name, value) in expectations {
+            self.field_expectations.insert(name.clone(), *value);
+        }
+        self
     }
 
     fn with_params_nullable(params: &[Param]) -> Self {
@@ -152,6 +209,10 @@ impl State {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.clone())),
         );
+        let mut monotonic_fields = self.monotonic_fields.clone();
+        monotonic_fields.extend(other.monotonic_fields.iter().cloned());
+        let mut monotonic_nonnull = self.monotonic_nonnull.clone();
+        monotonic_nonnull.retain(|name| other.monotonic_nonnull.contains(name));
         Self {
             store: self.store.join(&other.store),
             closures,
@@ -159,13 +220,16 @@ impl State {
             locals,
             local_expectations,
             local_types,
+            field_expectations: self.field_expectations.clone(),
+            monotonic_fields,
+            monotonic_nonnull,
             unreachable: self.unreachable && other.unreachable,
         }
     }
 }
 
 impl Analyzer {
-    fn new(mode: Mode, contracts: ContractRegistry) -> Self {
+    fn new(mode: Mode, contracts: ContractRegistry, defaults: Defaults) -> Self {
         Self {
             mode,
             findings: Vec::new(),
@@ -177,6 +241,10 @@ impl Analyzer {
             collect_required: false,
             param_names: Vec::new(),
             required_params: BTreeSet::new(),
+            getters: std::collections::BTreeMap::new(),
+            primitive_params: std::collections::BTreeMap::new(),
+            return_primitive: false,
+            defaults,
         }
     }
 
@@ -217,6 +285,14 @@ impl Analyzer {
                             .and_modify(|existing| *existing = existing.join(value))
                             .or_insert(value);
                     }
+                    self.primitive_params.insert(
+                        (method.name.clone(), method.params.len()),
+                        method
+                            .params
+                            .iter()
+                            .map(|param| param.type_name.as_deref().is_some_and(is_primitive_type))
+                            .collect(),
+                    );
                     let required = self.summarize_parameters(method);
                     if !required.is_empty() {
                         self.param_requirements
@@ -283,7 +359,7 @@ impl Analyzer {
         let Some(cfg) = build_method(method) else {
             return Vec::new();
         };
-        let mut child = Analyzer::new(self.mode, self.contracts.clone());
+        let mut child = Analyzer::new(self.mode, self.contracts.clone(), self.defaults);
         child.collect_required = true;
         child.param_names = method
             .params
@@ -341,7 +417,9 @@ impl Analyzer {
     fn analyze_item(&mut self, item: &Item) {
         match item {
             Item::Class(class) => self.analyze_class(class),
-            Item::Method(method) => self.analyze_method(method, &[]),
+            Item::Method(method) => {
+                self.analyze_method(method, &[], &[], false, false, &BTreeSet::new());
+            }
             Item::Initializer(initializer) => {
                 let cfg = build_closure(&initializer.body);
                 self.run_cfg(&cfg, State::new());
@@ -362,10 +440,68 @@ impl Analyzer {
     }
 
     fn analyze_class(&mut self, class: &ClassDecl) {
+        let class_marked = class.annotations.iter().any(|annotation| {
+            annotation == "NullMarked"
+                || annotation.ends_with(".NullMarked")
+                || annotation == "NonNullApi"
+                || annotation.ends_with(".NonNullApi")
+        });
+        let unmarked = class.annotations.iter().any(|annotation| {
+            annotation == "NullUnmarked" || annotation.ends_with(".NullUnmarked")
+        });
+        let params_marked = !unmarked && (class_marked || self.defaults.params_nonnull);
+        let returns_marked = !unmarked && (class_marked || self.defaults.returns_nonnull);
         let fields = self.field_values(class);
+        if self.mode == Mode::Strict {
+            self.check_field_initialization(class, class_marked || self.defaults.fields_nonnull);
+        }
+        let expectations: Vec<(String, Nullness)> = class
+            .members
+            .iter()
+            .filter_map(|member| match member {
+                Item::Field(field) => {
+                    annotation_nullness(&field.annotations).map(|value| (field.name.clone(), value))
+                }
+                _ => None,
+            })
+            .collect();
+        let monotonic: BTreeSet<String> = class
+            .members
+            .iter()
+            .filter_map(|member| match member {
+                Item::Field(field)
+                    if field.annotations.iter().any(|annotation| {
+                        annotation == "MonotonicNonNull"
+                            || annotation.ends_with(".MonotonicNonNull")
+                    }) =>
+                {
+                    Some(field.name.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        let previous_getters = self.getters.clone();
+        for member in &class.members {
+            if let Item::Method(method) = member
+                && let Some(property) = property_name(&method.name)
+            {
+                let value = annotation_nullness(&method.annotations)
+                    .or_else(|| self.summarize_method(method));
+                if let Some(value) = value {
+                    self.getters.insert(property, value);
+                }
+            }
+        }
         for member in &class.members {
             match member {
-                Item::Method(method) => self.analyze_method(method, &fields),
+                Item::Method(method) => self.analyze_method(
+                    method,
+                    &fields,
+                    &expectations,
+                    params_marked,
+                    returns_marked,
+                    &monotonic,
+                ),
                 Item::Initializer(initializer) => {
                     let cfg = build_closure(&initializer.body);
                     self.run_cfg(&cfg, State::new().with_fields(&fields));
@@ -373,6 +509,49 @@ impl Analyzer {
                 Item::Class(nested) => self.analyze_class(nested),
                 Item::Field(_) => {}
                 Item::Statement(_) | Item::Group(_) => self.analyze_item(member),
+            }
+        }
+        self.getters = previous_getters;
+    }
+
+    fn check_field_initialization(&mut self, class: &ClassDecl, fields_default: bool) {
+        let constructors: Vec<&MethodDecl> = class
+            .members
+            .iter()
+            .filter_map(|member| match member {
+                Item::Method(method) if method.name == class.name => Some(method),
+                _ => None,
+            })
+            .collect();
+        for member in &class.members {
+            let Item::Field(field) = member else {
+                continue;
+            };
+            if field.init.is_some() {
+                continue;
+            }
+            let expected = annotation_nullness(&field.annotations);
+            let required =
+                expected == Some(Nullness::NonNull) || (fields_default && expected.is_none());
+            if !required {
+                continue;
+            }
+            let missing = if constructors.is_empty() {
+                true
+            } else {
+                constructors
+                    .iter()
+                    .any(|constructor| !method_assigns_field(constructor, &field.name))
+            };
+            if missing {
+                self.report(
+                    field.span,
+                    "FieldNotInitialized",
+                    &format!(
+                        "Non-null field `{}` is not initialized by every constructor",
+                        field.name
+                    ),
+                );
             }
         }
     }
@@ -398,17 +577,42 @@ impl Analyzer {
         values
     }
 
-    fn analyze_method(&mut self, method: &MethodDecl, fields: &[(String, Nullness)]) {
+    fn analyze_method(
+        &mut self,
+        method: &MethodDecl,
+        fields: &[(String, Nullness)],
+        expectations: &[(String, Nullness)],
+        params_marked: bool,
+        returns_marked: bool,
+        monotonic: &BTreeSet<String>,
+    ) {
         let Some(cfg) = build_method(method) else {
             return;
         };
         let previous = self.return_expectation;
-        self.return_expectation = annotation_nullness(&method.annotations).or_else(|| {
-            self.contracts
-                .find(&method.name, method.params.len())
-                .and_then(|contract| contract.returns)
-        });
-        self.run_cfg(&cfg, State::with_params(&method.params).with_fields(fields));
+        self.return_primitive = method.return_type.as_deref().is_some_and(is_primitive_type);
+        self.return_expectation = annotation_nullness(&method.annotations)
+            .or_else(|| {
+                self.contracts
+                    .find(&method.name, method.params.len())
+                    .and_then(|contract| contract.returns)
+            })
+            .or(if returns_marked {
+                Some(Nullness::NonNull)
+            } else {
+                None
+            });
+        self.run_cfg(
+            &cfg,
+            if params_marked {
+                State::with_params_marked(&method.params)
+            } else {
+                State::with_params(&method.params)
+            }
+            .with_fields(fields)
+            .with_field_expectations(expectations)
+            .with_monotonic(monotonic),
+        );
         self.return_expectation = previous;
     }
 
@@ -460,6 +664,18 @@ impl Analyzer {
                 }
                 if let Some(expected) = annotation_detail_nullness(annotations) {
                     state.local_expectations.insert(name.clone(), expected);
+                }
+                if type_name.as_deref().is_some_and(is_primitive_type) && value.is_nullish() {
+                    self.report(
+                        init.as_ref()
+                            .map_or_else(|| Span::empty(0), |expr| expr.span),
+                        if value.is_null() {
+                            "UnboxingNull"
+                        } else {
+                            "PossibleUnboxingNull"
+                        },
+                        "A nullable value is unboxed into a primitive local",
+                    );
                 }
                 let path = AccessPath::Local(name.clone());
                 if annotation_detail_nullness(annotations) == Some(Nullness::NonNull)
@@ -521,7 +737,19 @@ impl Analyzer {
                 if let Some(value) = value {
                     let mut state = state.clone();
                     let returned = self.eval(value, &mut state);
-                    if let Some(expected) = self.return_expectation
+                    if self.return_primitive && returned.is_nullish() {
+                        self.report(
+                            value.span,
+                            if returned.is_null() {
+                                "UnboxingNull"
+                            } else {
+                                "PossibleUnboxingNull"
+                            },
+                            "A nullable value is returned from a primitive method",
+                        );
+                    }
+                    if !self.return_primitive
+                        && let Some(expected) = self.return_expectation
                         && expected == Nullness::NonNull
                         && returned.is_nullish()
                     {
@@ -559,7 +787,7 @@ impl Analyzer {
                 if name == "this" {
                     Nullness::NonNull
                 } else {
-                    state.store.get(&AccessPath::Local(name.clone()))
+                    path_of_in(expr, state).map_or(Nullness::Unknown, |path| state.store.get(&path))
                 }
             }
             ExprKind::This | ExprKind::Super => Nullness::NonNull,
@@ -588,8 +816,13 @@ impl Analyzer {
                 if *safe {
                     Nullness::MaybeNull
                 } else {
-                    let _ = name;
-                    path_of_in(expr, state).map_or(Nullness::Unknown, |path| state.store.get(&path))
+                    let value = path_of_in(expr, state)
+                        .map_or(Nullness::Unknown, |path| state.store.get(&path));
+                    if value == Nullness::Unknown {
+                        self.getters.get(name).copied().unwrap_or(Nullness::Unknown)
+                    } else {
+                        value
+                    }
                 }
             }
             ExprKind::Call {
@@ -618,21 +851,64 @@ impl Analyzer {
                         },
                     );
                 }
-                if let Some(receiver) = receiver {
-                    if let Some(path) = path_of_in(receiver, state) {
-                        state.store.invalidate_fields(&path);
+                if !is_pure_method(name) {
+                    if let Some(receiver) = receiver {
+                        if let Some(path) = path_of_in(receiver, state) {
+                            state.store.invalidate_fields(&path);
+                        }
+                    } else {
+                        state.store.invalidate_fields(&AccessPath::This);
                     }
-                } else {
-                    state.store.invalidate_fields(&AccessPath::This);
+                    state.restore_monotonic();
                 }
                 let mut arg_values = Vec::new();
                 for arg in args {
                     let value = self.eval(arg, state);
+                    if !matches!(name.as_str(), "call" | "invoke")
+                        && let Some(path) = path_of_in(arg, state)
+                    {
+                        state.closures.remove(&path);
+                    }
                     arg_values.push((arg, value));
+                }
+                if receiver.is_none()
+                    && let Some(primitives) = self
+                        .primitive_params
+                        .get(&(name.clone(), args.len()))
+                        .cloned()
+                {
+                    for (index, primitive) in primitives.iter().enumerate() {
+                        if *primitive
+                            && let Some((arg, value)) = arg_values.get(index)
+                            && value.is_nullish()
+                        {
+                            self.report(
+                                arg.span,
+                                if value.is_null() {
+                                    "UnboxingNull"
+                                } else {
+                                    "PossibleUnboxingNull"
+                                },
+                                &format!(
+                                    "Argument #{} of {name} is a primitive and cannot be null",
+                                    index + 1
+                                ),
+                            );
+                        }
+                    }
                 }
                 let contract = self.contracts.find(name, args.len()).cloned();
                 if let Some(contract) = contract {
                     for index in &contract.required_params {
+                        let primitive = self
+                            .primitive_params
+                            .get(&(name.clone(), args.len()))
+                            .and_then(|params| params.get(*index))
+                            .copied()
+                            .unwrap_or(false);
+                        if primitive {
+                            continue;
+                        }
                         if let Some((arg, value)) = arg_values.get(*index)
                             && value.is_nullish()
                         {
@@ -668,8 +944,11 @@ impl Analyzer {
                         state.unreachable = true;
                     }
                     let lookup = path_of_in(expr, state);
+                    let known_lookup = lookup
+                        .as_ref()
+                        .is_some_and(|path| state.store.values().contains_key(path));
                     let result = if let Some(path) = &lookup
-                        && state.store.values().contains_key(path)
+                        && known_lookup
                     {
                         state.store.get(path)
                     } else if let Some(value) = contract.returns {
@@ -695,6 +974,9 @@ impl Analyzer {
                     } else {
                         Nullness::Unknown
                     };
+                    if known_lookup {
+                        return result;
+                    }
                     receiver
                         .as_ref()
                         .and_then(|receiver| local_type(receiver, state))
@@ -805,10 +1087,30 @@ impl Analyzer {
             ExprKind::Assign { target, value, .. } => {
                 let assigned = self.eval(value, state);
                 if let Some(path) = path_of_in(target, state) {
-                    if let AccessPath::Local(name) = &path
-                        && state.local_expectations.get(name) == Some(&Nullness::NonNull)
-                        && assigned.is_nullish()
+                    if let AccessPath::Field(_, name) = &path
+                        && state.monotonic_fields.contains(name)
                     {
+                        if assigned.is_nullish() && state.monotonic_nonnull.contains(name) {
+                            self.report(
+                                value.span,
+                                if assigned.is_null() {
+                                    "NullAssignment"
+                                } else {
+                                    "PossibleNullAssignment"
+                                },
+                                "A @MonotonicNonNull field is assigned a nullable value after being initialized",
+                            );
+                        }
+                        if assigned == Nullness::NonNull {
+                            state.monotonic_nonnull.insert(name.clone());
+                        }
+                    }
+                    let expected = match &path {
+                        AccessPath::Local(name) => state.local_expectations.get(name),
+                        AccessPath::Field(_, name) => state.field_expectations.get(name),
+                        _ => None,
+                    };
+                    if expected == Some(&Nullness::NonNull) && assigned.is_nullish() {
                         self.report(
                             value.span,
                             if assigned.is_null() {
@@ -816,7 +1118,7 @@ impl Analyzer {
                             } else {
                                 "PossibleNullAssignment"
                             },
-                            "A nullable value is assigned to a non-null local",
+                            "A nullable value is assigned to a non-null location",
                         );
                     }
                     state.store.set(path.clone(), assigned);
@@ -959,7 +1261,7 @@ impl Analyzer {
                 } else if name == "containsKey"
                     && let Some(receiver) = receiver
                     && let Some(base) = path_of_in(receiver, &then_state)
-                    && let Some(key) = literal_key(arg)
+                    && let Some(key) = key_id(arg)
                 {
                     then_state
                         .store
@@ -1156,6 +1458,138 @@ impl Analyzer {
     }
 }
 
+fn method_assigns_field(method: &MethodDecl, field: &str) -> bool {
+    method.body.as_ref().is_some_and(|block| {
+        block
+            .statements
+            .iter()
+            .any(|stmt| stmt_assigns_field(stmt, field))
+    })
+}
+
+fn block_assigns_field(block: &groovylint_syntax::ast::Block, field: &str) -> bool {
+    block
+        .statements
+        .iter()
+        .any(|stmt| stmt_assigns_field(stmt, field))
+}
+
+fn stmt_assigns_field(stmt: &Stmt, field: &str) -> bool {
+    match stmt {
+        Stmt::Block(block) => block_assigns_field(block, field),
+        Stmt::Expr(expr) => expr_assigns_field(expr, field),
+        Stmt::VarDecl(decl) => decl
+            .init
+            .as_ref()
+            .is_some_and(|expr| expr_assigns_field(expr, field)),
+        Stmt::If(branch) => {
+            stmt_assigns_field(&branch.then_branch, field)
+                || branch
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|stmt| stmt_assigns_field(stmt, field))
+        }
+        Stmt::While(statement) => stmt_assigns_field(&statement.body, field),
+        Stmt::DoWhile(statement) => stmt_assigns_field(&statement.body, field),
+        Stmt::For(statement) => stmt_assigns_field(&statement.body, field),
+        Stmt::ForEach(statement) => stmt_assigns_field(&statement.body, field),
+        Stmt::Try(statement) => {
+            block_assigns_field(&statement.body, field)
+                || statement
+                    .catches
+                    .iter()
+                    .any(|clause| block_assigns_field(&clause.body, field))
+                || statement
+                    .finally
+                    .as_ref()
+                    .is_some_and(|block| block_assigns_field(block, field))
+        }
+        Stmt::Synchronized(statement) => stmt_assigns_field(&statement.body, field),
+        Stmt::Switch(statement) => statement
+            .cases
+            .iter()
+            .any(|case| case.body.iter().any(|stmt| stmt_assigns_field(stmt, field))),
+        Stmt::Return(statement) => statement
+            .value
+            .as_ref()
+            .is_some_and(|expr| expr_assigns_field(expr, field)),
+        _ => false,
+    }
+}
+
+fn expr_assigns_field(expr: &Expr, field: &str) -> bool {
+    match &expr.kind {
+        ExprKind::Assign { target, .. } => {
+            matches!(&target.kind, ExprKind::Variable(name) if name == field)
+                || matches!(
+                    &target.kind,
+                    ExprKind::Property {
+                        receiver,
+                        name,
+                        ..
+                    } if name == field && matches!(receiver.kind, ExprKind::This)
+                )
+        }
+        ExprKind::Binary { left, right, .. } => {
+            expr_assigns_field(left, field) || expr_assigns_field(right, field)
+        }
+        ExprKind::Unary { operand, .. } => expr_assigns_field(operand, field),
+        ExprKind::Ternary {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            expr_assigns_field(condition, field)
+                || expr_assigns_field(then_expr, field)
+                || expr_assigns_field(else_expr, field)
+        }
+        _ => false,
+    }
+}
+
+fn property_name(method: &str) -> Option<String> {
+    let rest = method
+        .strip_prefix("get")
+        .or_else(|| method.strip_prefix("is"))?;
+    let mut chars = rest.chars();
+    let first = chars.next()?.to_lowercase().to_string();
+    Some(format!("{first}{}", chars.as_str()))
+}
+
+fn is_pure_method(name: &str) -> bool {
+    matches!(
+        name,
+        "get"
+            | "getOrDefault"
+            | "containsKey"
+            | "contains"
+            | "size"
+            | "length"
+            | "isEmpty"
+            | "isBlank"
+            | "trim"
+            | "toString"
+            | "equals"
+            | "hashCode"
+            | "values"
+            | "keySet"
+            | "entrySet"
+            | "first"
+            | "head"
+            | "max"
+            | "min"
+            | "find"
+    )
+}
+
+fn is_primitive_type(type_name: &str) -> bool {
+    matches!(
+        type_name,
+        "boolean" | "byte" | "short" | "int" | "long" | "float" | "double" | "char"
+    )
+}
+
 fn annotation_detail_nullness(
     annotations: &[groovylint_syntax::ast::Annotation],
 ) -> Option<Nullness> {
@@ -1167,15 +1601,22 @@ fn annotation_detail_nullness(
 }
 
 fn annotation_nullness(annotations: &[String]) -> Option<Nullness> {
-    if annotations
-        .iter()
-        .any(|annotation| annotation == "Nullable" || annotation.ends_with(".Nullable"))
-    {
+    if annotations.iter().any(|annotation| {
+        annotation == "Nullable"
+            || annotation.ends_with(".Nullable")
+            || annotation == "MonotonicNonNull"
+            || annotation.ends_with(".MonotonicNonNull")
+    }) {
         Some(Nullness::MaybeNull)
-    } else if annotations
-        .iter()
-        .any(|annotation| annotation == "NonNull" || annotation.ends_with(".NonNull"))
-    {
+    } else if annotations.iter().any(|annotation| {
+        matches!(
+            annotation.as_str(),
+            "NonNull" | "NotNull" | "NotBlank" | "NotEmpty"
+        ) || annotation.ends_with(".NonNull")
+            || annotation.ends_with(".NotNull")
+            || annotation.ends_with(".NotBlank")
+            || annotation.ends_with(".NotEmpty")
+    }) {
         Some(Nullness::NonNull)
     } else {
         None
@@ -1245,11 +1686,12 @@ fn local_type<'a>(expr: &Expr, state: &'a State) -> Option<&'a str> {
     state.local_types.get(name).map(String::as_str)
 }
 
-fn literal_key(expr: &Expr) -> Option<String> {
+fn key_id(expr: &Expr) -> Option<String> {
     match &unparen(expr).kind {
         ExprKind::Literal(Literal::String(value) | Literal::Number(value)) => {
             Some(value.trim_matches('"').trim_matches('\'').to_string())
         }
+        ExprKind::Variable(name) => Some(format!("${name}")),
         _ => None,
     }
 }
@@ -1272,7 +1714,7 @@ fn path_of_in(expr: &Expr, state: &State) -> Option<AccessPath> {
             args,
             ..
         } if name == "get" && args.len() == 1 => {
-            let key = literal_key(&args[0])?;
+            let key = key_id(&args[0])?;
             path_of_in(receiver, state).map(|base| AccessPath::Lookup(Box::new(base), key))
         }
         ExprKind::Index {
@@ -1280,7 +1722,7 @@ fn path_of_in(expr: &Expr, state: &State) -> Option<AccessPath> {
             index,
             safe: false,
         } => {
-            let key = literal_key(index)?;
+            let key = key_id(index)?;
             path_of_in(target, state).map(|base| AccessPath::Lookup(Box::new(base), key))
         }
         ExprKind::Property {

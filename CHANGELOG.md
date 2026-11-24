@@ -21,8 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nullness analysis (`groovylint nullcheck`) with a CFG/dataflow core,
   local/field access paths, guard refinement, conservative/inferred modes,
   `@Nullable`/`@NonNull`/contract annotations, built-in JDK/collection models,
-  and a TOML contract DSL. Corpus-backed strict-flow, annotation, and negative
-  guard tests cover the current slice.
+  and a TOML contract DSL. It also recognizes validation/package defaults,
+  `@MonotonicNonNull`, strict field-initialisation checks, and primitive
+  unboxing. Corpus-backed strict-flow, annotation, contract, and negative guard
+  tests cover the current slice.
 
 
 - Initial Cargo workspace with `core`, `syntax`, `analysis`, `config`, `rules`,

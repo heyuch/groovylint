@@ -127,6 +127,7 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
     let mode = match args.mode {
         cli::NullnessModeArg::Conservative => groovylint_analysis::nullability::Mode::Conservative,
         cli::NullnessModeArg::Inferred => groovylint_analysis::nullability::Mode::Inferred,
+        cli::NullnessModeArg::Strict => groovylint_analysis::nullability::Mode::Strict,
     };
     let reports = pool.install(|| {
         files
@@ -150,6 +151,26 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
     }
 }
 
+fn package_defaults(path: &Path) -> groovylint_analysis::nullability::Defaults {
+    let Some(directory) = path.parent() else {
+        return groovylint_analysis::nullability::Defaults::default();
+    };
+    let info = directory.join("package-info.java");
+    let Ok(text) = fs::read_to_string(info) else {
+        return groovylint_analysis::nullability::Defaults::default();
+    };
+    if text.contains("NullMarked") {
+        return groovylint_analysis::nullability::Defaults::marked();
+    }
+    groovylint_analysis::nullability::Defaults {
+        params_nonnull: text.contains("ParametersAreNonnullByDefault")
+            || text.contains("NonNullApi"),
+        returns_nonnull: text.contains("ReturnValuesAreNonnullByDefault")
+            || text.contains("NonNullApi"),
+        fields_nonnull: false,
+    }
+}
+
 fn analyze_nullness_file(
     path: &Path,
     mode: groovylint_analysis::nullability::Mode,
@@ -160,9 +181,19 @@ fn analyze_nullness_file(
     let source = SourceFile::new(path.to_path_buf(), text);
     let diagnostics = match parse(source.text()) {
         Ok(parsed) => {
-            let contracts = groovylint_analysis::contracts::registry(&parsed.script, contracts_path)
-                .map_err(anyhow::Error::msg)?;
-            groovylint_analysis::nullcheck::analyze_with_contracts(&parsed.script, mode, contracts)
+            let defaults = package_defaults(path);
+            let contracts = groovylint_analysis::contracts::registry_with_defaults(
+                &parsed.script,
+                contracts_path,
+                defaults,
+            )
+            .map_err(anyhow::Error::msg)?;
+            groovylint_analysis::nullcheck::analyze_with_defaults(
+                &parsed.script,
+                mode,
+                contracts,
+                defaults,
+            )
             .into_iter()
             .map(|finding| {
                 let severity = if finding.code.starts_with("Possible") {

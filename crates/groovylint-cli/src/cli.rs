@@ -73,6 +73,8 @@ pub enum NullnessModeArg {
     Conservative,
     /// Also report possible-null dereferences.
     Inferred,
+    /// Inferred plus definite field-initialisation checks.
+    Strict,
 }
 
 /// Supported diagnostic output formats.

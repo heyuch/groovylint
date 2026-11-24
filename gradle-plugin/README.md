@@ -24,7 +24,7 @@ groovylint {
     ignoreFailures.set(false)
 
     // Nullcheck is opt-in. conservative reports definite null only.
-    nullcheckMode.set("conservative") // or "inferred"
+    nullcheckMode.set("conservative") // inferred or strict
     nullcheckContracts.set(layout.projectDirectory.file("config/nullness-contracts.toml"))
 }
 ```

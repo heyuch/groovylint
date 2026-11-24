@@ -234,19 +234,96 @@ fn parse_path(value: &str) -> Result<ContractPath, String> {
     Ok(ContractPath::Field(value.to_string()))
 }
 
-/// Builds the complete registry from built-ins, annotations, and an optional
-/// TOML contract file.
+/// Builds the complete registry from built-ins, annotations, optional package
+/// defaults, and an optional TOML contract file.
 pub fn registry(
     script: &groovylint_syntax::ast::Script,
     toml_path: Option<&Path>,
 ) -> Result<ContractRegistry, String> {
+    registry_with_defaults(script, toml_path, crate::nullability::Defaults::default())
+}
+
+/// Like [`registry`], with package/compiler defaults.
+pub fn registry_with_defaults(
+    script: &groovylint_syntax::ast::Script,
+    toml_path: Option<&Path>,
+    defaults: crate::nullability::Defaults,
+) -> Result<ContractRegistry, String> {
     let mut registry = ContractRegistry::new();
     registry.extend(builtins());
     registry.extend(from_annotations(script));
+    registry.extend(from_defaults(script, defaults));
     if let Some(path) = toml_path {
         registry.extend(ContractRegistry::load_toml(path)?);
     }
     Ok(registry)
+}
+
+/// Generates default contracts for unannotated parameters/returns.
+#[must_use]
+pub fn from_defaults(
+    script: &groovylint_syntax::ast::Script,
+    defaults: crate::nullability::Defaults,
+) -> Vec<Contract> {
+    if !defaults.any() {
+        return Vec::new();
+    }
+    let mut contracts = Vec::new();
+    collect_defaults(&script.items, defaults, &mut contracts);
+    contracts
+}
+
+fn collect_defaults(
+    items: &[groovylint_syntax::ast::Item],
+    defaults: crate::nullability::Defaults,
+    contracts: &mut Vec<Contract>,
+) {
+    for item in items {
+        match item {
+            groovylint_syntax::ast::Item::Class(class) => {
+                let unmarked = class.annotations.iter().any(|annotation| {
+                    annotation == "NullUnmarked" || annotation.ends_with(".NullUnmarked")
+                });
+                if !unmarked {
+                    for member in &class.members {
+                        if let groovylint_syntax::ast::Item::Method(method) = member {
+                            let mut contract = Contract {
+                                method: method.name.clone(),
+                                arity: Some(method.params.len()),
+                                origin: "package-default".to_string(),
+                                ..Contract::default()
+                            };
+                            if defaults.returns_nonnull
+                                && method.return_type.as_deref() != Some("void")
+                                && !method
+                                    .return_type
+                                    .as_deref()
+                                    .is_some_and(is_primitive_type_name)
+                                && annotation_nullness(&method.annotations).is_none()
+                            {
+                                contract.returns = Some(Nullness::NonNull);
+                            }
+                            if defaults.params_nonnull {
+                                for (index, param) in method.params.iter().enumerate() {
+                                    if annotation_nullness(&param.annotations).is_none() {
+                                        contract.required_params.push(index);
+                                    }
+                                }
+                            }
+                            if contract.returns.is_some() || !contract.required_params.is_empty() {
+                                contracts.push(contract);
+                            }
+                        }
+                    }
+                }
+                collect_defaults(&class.members, defaults, contracts);
+            }
+            groovylint_syntax::ast::Item::Group(items) => {
+                collect_defaults(items, defaults, contracts);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Builds the built-in JDK/collection contracts.
@@ -338,6 +415,36 @@ fn collect_from_items(items: &[groovylint_syntax::ast::Item], contracts: &mut Ve
     for item in items {
         match item {
             groovylint_syntax::ast::Item::Class(class) => {
+                let marked = class.annotations.iter().any(|annotation| {
+                    annotation == "NullMarked"
+                        || annotation.ends_with(".NullMarked")
+                        || annotation == "NonNullApi"
+                        || annotation.ends_with(".NonNullApi")
+                });
+                if marked {
+                    for member in &class.members {
+                        if let groovylint_syntax::ast::Item::Method(method) = member {
+                            let mut contract = contract_from_method(method);
+                            if contract.returns.is_none()
+                                && method.return_type.as_deref() != Some("void")
+                                && !method
+                                    .return_type
+                                    .as_deref()
+                                    .is_some_and(is_primitive_type_name)
+                            {
+                                contract.returns = Some(Nullness::NonNull);
+                            }
+                            for (index, param) in method.params.iter().enumerate() {
+                                if annotation_nullness(&param.annotations).is_none()
+                                    && !contract.required_params.contains(&index)
+                                {
+                                    contract.required_params.push(index);
+                                }
+                            }
+                            contracts.push(contract);
+                        }
+                    }
+                }
                 collect_from_items(&class.members, contracts);
             }
             groovylint_syntax::ast::Item::Method(method) => {
@@ -347,6 +454,9 @@ fn collect_from_items(items: &[groovylint_syntax::ast::Item], contracts: &mut Ve
                     || !contract.ensures.is_empty()
                     || !contract.ensures_if.is_empty()
                     || contract.never_returns
+                    || contract.condition_param.is_some()
+                    || contract.return_nonnull_if_param.is_some()
+                    || contract.receiver_param.is_some()
                 {
                     contracts.push(contract);
                 }
@@ -364,16 +474,16 @@ fn contract_from_method(method: &groovylint_syntax::ast::MethodDecl) -> Contract
         origin: format!("annotation:{}", method.name),
         ..Contract::default()
     };
-    if has_annotation(&method.annotations, "Nullable") {
-        contract.returns = Some(Nullness::MaybeNull);
-    } else if has_annotation(&method.annotations, "NonNull") {
-        contract.returns = Some(Nullness::NonNull);
+    match annotation_nullness(&method.annotations) {
+        Some(Nullness::MaybeNull) => contract.returns = Some(Nullness::MaybeNull),
+        Some(Nullness::NonNull) => contract.returns = Some(Nullness::NonNull),
+        _ => {}
     }
     for (index, param) in method.params.iter().enumerate() {
-        if has_annotation(&param.annotations, "NonNull") {
-            contract.required_params.push(index);
-        } else if has_annotation(&param.annotations, "Nullable") {
-            contract.nullable_params.push(index);
+        match annotation_nullness(&param.annotations) {
+            Some(Nullness::NonNull) => contract.required_params.push(index),
+            Some(Nullness::MaybeNull) => contract.nullable_params.push(index),
+            _ => {}
         }
     }
     for annotation in &method.annotation_details {
@@ -457,8 +567,30 @@ fn parse_contract_clause(raw: &str, contract: &mut Contract) {
     }
 }
 
-fn has_annotation(annotations: &[String], name: &str) -> bool {
-    annotations
+fn is_primitive_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "boolean" | "byte" | "short" | "int" | "long" | "float" | "double" | "char"
+    )
+}
+
+fn annotation_nullness(annotations: &[String]) -> Option<Nullness> {
+    if annotations
         .iter()
-        .any(|annotation| annotation == name || annotation.ends_with(&format!(".{name}")))
+        .any(|annotation| annotation == "Nullable" || annotation.ends_with(".Nullable"))
+    {
+        return Some(Nullness::MaybeNull);
+    }
+    if annotations.iter().any(|annotation| {
+        matches!(
+            annotation.as_str(),
+            "NonNull" | "NotNull" | "NotBlank" | "NotEmpty"
+        ) || annotation.ends_with(".NonNull")
+            || annotation.ends_with(".NotNull")
+            || annotation.ends_with(".NotBlank")
+            || annotation.ends_with(".NotEmpty")
+    }) {
+        return Some(Nullness::NonNull);
+    }
+    None
 }

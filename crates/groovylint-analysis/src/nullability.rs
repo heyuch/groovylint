@@ -122,7 +122,7 @@ impl Store {
     /// `MaybeNull` rather than disappearing from the store.
     pub fn invalidate_fields(&mut self, root: &AccessPath) {
         for (path, value) in &mut self.values {
-            if is_field_rooted_at(path, root) {
+            if path != root && is_field_rooted_at(path, root) {
                 *value = Nullness::MaybeNull;
             }
         }
@@ -149,6 +149,35 @@ pub struct Finding {
     pub message: String,
 }
 
+/// Default declaration nullness for a scope (package/class/compiler config).
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct Defaults {
+    /// Unannotated parameters are non-null.
+    pub params_nonnull: bool,
+    /// Unannotated returns are non-null.
+    pub returns_nonnull: bool,
+    /// Unannotated fields are non-null.
+    pub fields_nonnull: bool,
+}
+
+impl Defaults {
+    /// Marked scopes cover parameters, returns, and fields.
+    #[must_use]
+    pub fn marked() -> Self {
+        Self {
+            params_nonnull: true,
+            returns_nonnull: true,
+            fields_nonnull: true,
+        }
+    }
+
+    /// True when any default is enabled.
+    #[must_use]
+    pub fn any(self) -> bool {
+        self.params_nonnull || self.returns_nonnull || self.fields_nonnull
+    }
+}
+
 /// Reporting mode.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
@@ -156,4 +185,6 @@ pub enum Mode {
     Conservative,
     /// Also report possible-null dereferences.
     Inferred,
+    /// Inferred plus definite-initialisation checks for non-null fields.
+    Strict,
 }

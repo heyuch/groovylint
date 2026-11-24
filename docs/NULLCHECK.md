@@ -27,12 +27,17 @@ Current implementation in `groovylint-analysis`:
   closures;
 - local/field access paths, unqualified field resolution, and guard refinement;
 - conservative and inferred modes;
-- `groovylint nullcheck [paths]` with `--mode conservative|inferred` and
-  `--contracts <file.toml>`;
+- `groovylint nullcheck [paths]` with
+  `--mode conservative|inferred|strict` and `--contracts <file.toml>`;
 - local method return summaries, direct closure summaries, Map/List/Optional
   models, and fluent assertion guards;
-- `@Nullable`, `@NonNull` declaration annotations, `@EnsuresNonNull`,
-  `@EnsuresNonNullIf`, `@Contract`, and `@NoReturn`;
+- `@Nullable`, `@NonNull`, `@MonotonicNonNull`, Bean Validation
+  `@NotNull`/`@NotBlank`/`@NotEmpty`, `@EnsuresNonNull`, `@EnsuresNonNullIf`,
+  `@Contract`, and `@NoReturn`;
+- package defaults from `package-info.java` (`@NullMarked`, `@NonNullApi`,
+  `@ParametersAreNonnullByDefault`, `@ReturnValuesAreNonnullByDefault`);
+- strict-mode definite-initialisation checks for non-null fields; unboxing
+  diagnostics for primitive arguments, returns, and locals;
 - a TOML contract DSL using the same `Contract` domain as annotations and
   built-ins;
 - strict-flow, annotation, contract, and negative-guard corpus checks.
@@ -42,11 +47,9 @@ Build-in contract sources:
 - `contracts::from_annotations()` for source annotations;
 - `ContractRegistry::load_toml()` for project/library DSL files.
 
-Still pending: full generic/type-use annotations, package-level defaults,
-full generic/type-use annotations, package-level defaults, `@MonotonicNonNull`
-semantics, cross-method parameter contracts, complete closure capture, field
-initialization diagnostics, and Kotlin-like default-non-null scopes. The design below remains
-the target.
+Still pending: full generic/type-use annotations (annotations inside generic
+arguments and local variable types), complete closure capture, generic element
+nullness, and complex `@Contract` shapes. The design below remains the target.
 
 ### Contract DSL
 
@@ -701,13 +704,10 @@ dependency:
 - Bean Validation `NotNull`, `NotBlank`, `NotEmpty`;
 - JSR-305/Spring package defaults.
 
-This requires syntax support for type-use annotations and local-variable
-annotations. The current parser records declaration annotations but not full
-type-use annotations or `package-info.java`; that is a prerequisite for the
-annotation corpus, not for the first inferred-flow milestone.
-
-Annotation mode should be developed after the inferred analysis is stable, so
-the analysis does not accidentally depend on annotation availability.
+Declaration annotations, local-variable annotations, Bean Validation
+constraints, and `package-info.java` defaults are implemented. Full type-use
+annotations inside generic arguments remain pending; the analysis still works
+without annotations in conservative/inferred mode.
 
 ## 10. Diagnostics and integration
 
