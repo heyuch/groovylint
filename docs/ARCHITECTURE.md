@@ -2,8 +2,9 @@
 
 **Status:** design accepted in part; first vertical slice implemented
 (2026-11-24). The parser is a self-developed subset, the default CodeNarc
-`basic.xml` ruleset is wired in, and all 44 basic rules are implemented (plus
-one token rule and five import rules and one formatting rule) through the layered engine.
+the default `basic.xml` ruleset is wired in, 125 rules are implemented through
+the layered engine (the full 96-rule production `codenarc-bug.xml` ruleset among
+them), and `@SuppressWarnings` is applied before reporting.
 CFG/data-flow/nullness is not implemented yet. The parser covers the syntax of a
 118,470-file private Groovy corpus end to end, including newline continuation
 rules, GString interpolation, closures/lambdas, spread and method references. The benchmark harness and first public-corpus CodeNarc comparison are in place (`benchmarks/`).

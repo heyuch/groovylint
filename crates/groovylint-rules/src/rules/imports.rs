@@ -1,5 +1,7 @@
 //! `CodeNarc` import rules.
 
+use std::collections::BTreeSet;
+
 use groovylint_core::Severity;
 use groovylint_syntax::ast::ImportDecl;
 
@@ -268,6 +270,27 @@ fn bool_property(properties: &RuleProperties, name: &str) -> Result<bool, String
     }
 }
 
+/// Flags repeated import statements.
+pub struct DuplicateImportRule;
+
+impl Rule for DuplicateImportRule {}
+
+impl FileRule for DuplicateImportRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut seen = BTreeSet::new();
+        for import in &context.script.imports {
+            let key = (import.path.clone(), import.alias.clone(), import.is_static);
+            if seen.insert(key) {
+                continue;
+            }
+            sink.report(
+                import.span,
+                format!("The import [{}] is duplicated", import.path),
+            );
+        }
+    }
+}
+
 /// Descriptors for import rules.
 #[must_use]
 pub fn descriptors() -> Vec<RuleDescriptor> {
@@ -311,6 +334,16 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 "Checks for imports from the `sun.*` packages.",
             ),
             || RuleInstanceImpl::File(Box::new(ImportFromSunPackagesRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "DuplicateImport",
+                "org.codenarc.rule.imports.DuplicateImportRule",
+                Category::Imports,
+                Severity::Warning,
+                "Checks for duplicate imports.",
+            ),
+            || RuleInstanceImpl::File(Box::new(DuplicateImportRule)),
         ),
         descriptor(
             RuleMeta::new(

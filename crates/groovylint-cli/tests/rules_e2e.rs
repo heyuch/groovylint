@@ -61,6 +61,25 @@ const CASES: &[RuleCase] = &[
     case("ImportFromSunPackages", 1),
     case("UnusedImport", 1),
     case("TrailingWhitespace", 1),
+    case("IfStatementBraces", 3),
+    case("Println", 3),
+    case("NoDef", 3),
+    case("VariableTypeRequired", 3),
+    case("MethodReturnTypeRequired", 2),
+    case("MethodName", 2),
+    case("ClassNameSameAsFilename", 1),
+    case("UnusedPrivateField", 2),
+    case("UnusedPrivateMethod", 2),
+    case("DuplicateImport", 2),
+    case("SerialVersionUID", 2),
+    case("SystemExit", 3),
+    case("ConfusingTernary", 3),
+    case("ParameterReassignment", 3),
+    case("ImplicitReturnStatement", 6),
+    case("MissingOverrideAnnotation", 2),
+    case("InsecureRandom", 3),
+    case("UnusedObject", 3),
+    case("MultipleLoggers", 3),
 ];
 
 const fn case(rule: &'static str, line: u64) -> RuleCase {
@@ -74,8 +93,64 @@ fn codenarc_class(case: &RuleCase) -> String {
         | "UnnecessaryGroovyImport"
         | "ImportFromSamePackage"
         | "ImportFromSunPackages"
-        | "UnusedImport" => "imports",
+        | "UnusedImport"
+        | "DuplicateImport" => "imports",
         "TrailingWhitespace" => "formatting",
+        "IfStatementBraces" | "ForStatementBraces" | "WhileStatementBraces" | "ElseBlockBraces" => {
+            "braces"
+        }
+        "Println"
+        | "SystemOutPrint"
+        | "SystemErrPrint"
+        | "PrintStackTrace"
+        | "MultipleLoggers"
+        | "LoggerWithWrongModifiers"
+        | "LoggerForDifferentClass"
+        | "LoggingSwallowsStacktrace" => "logging",
+        "NoDef"
+        | "VariableTypeRequired"
+        | "FieldTypeRequired"
+        | "MethodReturnTypeRequired"
+        | "MethodParameterTypeRequired"
+        | "ParameterReassignment"
+        | "ImplicitReturnStatement"
+        | "ConfusingTernary"
+        | "InvertedIfElse"
+        | "NoFloat"
+        | "NoDouble"
+        | "HashtableIsObsolete"
+        | "VectorIsObsolete"
+        | "LongLiteralWithLowerCaseL"
+        | "NoTabCharacter" => "convention",
+        "MethodName"
+        | "VariableName"
+        | "PropertyName"
+        | "ParameterName"
+        | "ClassName"
+        | "InterfaceName"
+        | "ClassNameSameAsFilename"
+        | "ClassNameSameAsSuperclass"
+        | "ConfusingMethodName"
+        | "ObjectOverrideMisspelledMethodName" => "naming",
+        "UnusedPrivateField"
+        | "UnusedPrivateMethod"
+        | "UnusedPrivateMethodParameter"
+        | "UnusedObject"
+        | "UnusedArray"
+        | "UnusedVariable" => "unused",
+        "SerialVersionUID" | "SerialPersistentFields" | "EnumCustomSerializationIgnored" => {
+            "serialization"
+        }
+        "SystemExit"
+        | "InsecureRandom"
+        | "NonFinalPublicField"
+        | "ObjectFinalize"
+        | "PublicFinalizeMethod"
+        | "UnsafeArrayDeclaration"
+        | "NonFinalSubclassOfSensitiveInterface"
+        | "UnsafeImplementationAsMap"
+        | "FileCreateTempFile" => "security",
+        "MissingOverrideAnnotation" => "enhanced",
         _ => "basic",
     };
     format!("org.codenarc.rule.{category}.{}Rule", case.rule)

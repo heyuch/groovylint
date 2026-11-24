@@ -170,6 +170,12 @@ impl<'a> Parser<'a> {
             }));
         }
 
+        // A declaration without a type: `private static SALT = "salt"`.
+        if in_class && self.at_ident_like() && self.peek_kind(1) == TokenKind::Assign {
+            let name = self.expect_ident_text()?;
+            return self.parse_field_or_var(start, name, true, None, &prefix);
+        }
+
         if self.at(TokenKind::Def) {
             self.advance();
             if self.at(TokenKind::Lt) {
@@ -184,16 +190,17 @@ impl<'a> Parser<'a> {
                 && self.at_ident_like()
             {
                 if self.peek_kind(1) == TokenKind::LeftParen {
+                    let method_prefix = prefix;
                     return self
-                        .parse_method(start, prefix, Some(type_name))
+                        .parse_method(start, method_prefix, Some(type_name))
                         .map(Item::Method);
                 }
                 let name = self.expect_ident_text()?;
-                return self.parse_field_or_var(start, name, in_class);
+                return self.parse_field_or_var(start, name, in_class, Some(type_name), &prefix);
             }
             self.pos = saved;
             let name = self.expect_ident_text()?;
-            return self.parse_field_or_var(start, name, in_class);
+            return self.parse_field_or_var(start, name, in_class, None, &prefix);
         }
 
         if in_class && self.at(TokenKind::String) && self.peek_kind(1) == TokenKind::LeftParen {
@@ -219,12 +226,19 @@ impl<'a> Parser<'a> {
                 self.skip_newlines_before_method_name();
                 if self.at_ident_like() {
                     if self.peek_kind(1) == TokenKind::LeftParen {
+                        let method_prefix = prefix;
                         return self
-                            .parse_method(start, prefix, Some(type_name))
+                            .parse_method(start, method_prefix, Some(type_name))
                             .map(Item::Method);
                     }
                     let name = self.expect_ident_text()?;
-                    return self.parse_field_or_var(start, name, in_class);
+                    return self.parse_field_or_var(
+                        start,
+                        name,
+                        in_class,
+                        Some(type_name),
+                        &prefix,
+                    );
                 }
             }
             self.pos = saved;
@@ -259,6 +273,7 @@ impl<'a> Parser<'a> {
             kind: ClassKind::Annotation,
             is_abstract: false,
             extends: None,
+            implements: Vec::new(),
             annotations: Vec::new(),
             suppressed_rules: Vec::new(),
             members: Vec::new(),
@@ -286,9 +301,15 @@ impl<'a> Parser<'a> {
         }
 
         let mut extends = None;
+        let mut implements = Vec::new();
         while !self.at(TokenKind::LeftBrace) && !self.at(TokenKind::Eof) {
             if self.eat(TokenKind::Extends) {
                 extends = Some(self.parse_type_name()?);
+            } else if self.eat(TokenKind::Implements) {
+                implements.push(self.parse_type_name()?);
+                while self.eat(TokenKind::Comma) {
+                    implements.push(self.parse_type_name()?);
+                }
             } else {
                 self.advance();
             }
@@ -299,7 +320,7 @@ impl<'a> Parser<'a> {
         self.skip_separators();
 
         if kind == ClassKind::Enum {
-            self.skip_enum_constants();
+            self.parse_enum_constants();
             self.skip_separators();
         }
 
@@ -319,6 +340,7 @@ impl<'a> Parser<'a> {
             kind,
             is_abstract: prefix.is_abstract,
             extends,
+            implements,
             annotations: prefix.annotations,
             suppressed_rules: prefix.suppressed_rules,
             members,
@@ -326,30 +348,41 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn skip_enum_constants(&mut self) {
-        // Enum constants are not needed by the first rules. Skip to the first
-        // top-level semicolon or the closing brace.
-        let mut depth = 0usize;
-        while !self.at(TokenKind::Eof) {
-            match self.current().kind {
-                TokenKind::LeftParen | TokenKind::LeftBracket | TokenKind::LeftBrace => {
-                    depth += 1;
-                    self.advance();
-                }
-                TokenKind::RightParen | TokenKind::RightBracket | TokenKind::RightBrace => {
-                    if self.current().kind == TokenKind::RightBrace && depth == 0 {
-                        return;
-                    }
-                    depth = depth.saturating_sub(1);
-                    self.advance();
-                }
-                TokenKind::Semicolon if depth == 0 => {
-                    self.advance();
-                    return;
-                }
-                _ => {
-                    self.advance();
-                }
+    /// Consumes the enum constant list. Constants are `NAME`, `NAME(args)` or
+    /// `NAME { ... }`, separated by commas and optionally terminated by `;`.
+    /// Everything after them is parsed as regular class members.
+    fn parse_enum_constants(&mut self) {
+        loop {
+            self.skip_separators();
+            if !self.at_ident_like() {
+                return;
+            }
+            let next = self.peek_kind(1);
+            let is_constant = matches!(
+                next,
+                TokenKind::LeftParen
+                    | TokenKind::LeftBrace
+                    | TokenKind::Comma
+                    | TokenKind::Semicolon
+                    | TokenKind::Newline
+                    | TokenKind::At
+                    | TokenKind::RightBrace
+                    | TokenKind::Eof
+            );
+            if !is_constant {
+                return;
+            }
+
+            self.advance();
+            if self.at(TokenKind::LeftParen) {
+                let _ = self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen);
+            }
+            if self.at(TokenKind::LeftBrace) {
+                let _ = self.skip_balanced(TokenKind::LeftBrace, TokenKind::RightBrace);
+            }
+            if !self.eat(TokenKind::Comma) {
+                self.eat(TokenKind::Semicolon);
+                return;
             }
         }
     }
@@ -428,6 +461,8 @@ impl<'a> Parser<'a> {
         Ok(MethodDecl {
             name,
             return_type,
+            is_static: prefix.is_static,
+            is_private: prefix.is_private,
             params,
             annotations: prefix.annotations,
             suppressed_rules: prefix.suppressed_rules,
@@ -441,6 +476,8 @@ impl<'a> Parser<'a> {
         start: usize,
         name: String,
         in_class: bool,
+        type_name: Option<String>,
+        prefix: &PrefixInfo,
     ) -> Result<Item, ParseError> {
         let init = if self.eat(TokenKind::Assign) {
             Some(self.parse_expression()?)
@@ -449,18 +486,27 @@ impl<'a> Parser<'a> {
         };
         self.eat(TokenKind::Semicolon);
         self.skip_newlines();
+        let span = Span::new(start, self.previous_span().end);
 
         if in_class {
             Ok(Item::Field(FieldDecl {
                 name,
+                type_name,
+                annotations: prefix.annotations.clone(),
+                suppressed_rules: prefix.suppressed_rules.clone(),
+                is_static: prefix.is_static,
+                is_final: prefix.is_final,
+                is_private: prefix.is_private,
+                is_public: prefix.is_public,
                 init,
-                span: Span::new(start, self.previous_span().end),
+                span,
             }))
         } else {
             Ok(Item::Statement(Stmt::VarDecl(VarDecl {
                 name,
+                type_name,
                 init,
-                span: Span::new(start, self.previous_span().end),
+                span,
             })))
         }
     }
@@ -519,8 +565,9 @@ impl<'a> Parser<'a> {
         if self.looks_like_local_declaration() {
             let _ = self.parse_prefix()?;
             let start = self.current().span.start;
+            let mut type_name = None;
             if !self.eat(TokenKind::Def) && !self.eat(TokenKind::Var) {
-                let _ = self.parse_type_name()?;
+                type_name = Some(self.parse_type_name()?);
             }
             let name = self.expect_ident_text()?;
             let init = if self.eat(TokenKind::Assign) {
@@ -530,6 +577,7 @@ impl<'a> Parser<'a> {
             };
             let mut declarations = vec![Stmt::VarDecl(VarDecl {
                 name,
+                type_name,
                 init,
                 span: Span::new(start, self.previous_span().end),
             })];
@@ -660,9 +708,10 @@ impl<'a> Parser<'a> {
     fn parse_for_declaration(&mut self) -> Result<Stmt, ParseError> {
         let start = self.current().span.start;
         let _ = self.parse_prefix()?;
+        let mut type_name = None;
         if self.eat(TokenKind::Def) || self.eat(TokenKind::Var) {
         } else if self.looks_like_local_declaration() {
-            let _ = self.parse_type_name()?;
+            type_name = Some(self.parse_type_name()?);
         }
 
         let name = self.expect_ident_text()?;
@@ -673,6 +722,7 @@ impl<'a> Parser<'a> {
         };
         Ok(Stmt::VarDecl(VarDecl {
             name,
+            type_name,
             init,
             span: Span::new(start, self.previous_span().end),
         }))
@@ -727,13 +777,29 @@ impl<'a> Parser<'a> {
 
     fn parse_try(&mut self, start: usize) -> Result<Stmt, ParseError> {
         self.expect(TokenKind::Try)?;
-        // try-with-resources: the resource list carries no information any rule
-        // uses yet, so it is only skipped. shortcut: resource declarations are
-        // dropped from the AST, revisit when a rule needs them.
+        let mut resources = Vec::new();
         if self.at(TokenKind::LeftParen) {
-            self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen)?;
+            self.advance();
+            self.nesting += 1;
+            self.skip_newlines();
+            while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
+                resources.push(self.parse_for_declaration()?);
+                self.skip_newlines();
+                if !self.eat(TokenKind::Comma) {
+                    break;
+                }
+                self.skip_newlines();
+            }
+            self.expect(TokenKind::RightParen)?;
+            self.nesting -= 1;
         }
-        let body = self.parse_block()?;
+
+        let mut body = self.parse_block()?;
+        if !resources.is_empty() {
+            let mut statements = resources;
+            statements.extend(body.statements);
+            body.statements = statements;
+        }
         let mut catches = Vec::new();
         self.skip_newlines();
 
@@ -2247,12 +2313,18 @@ impl<'a> Parser<'a> {
             } else if self.at(TokenKind::Abstract) {
                 prefix.is_abstract = true;
                 self.advance();
+            } else if self.at(TokenKind::Final) {
+                prefix.is_final = true;
+                self.advance();
+            } else if self.at(TokenKind::Public) {
+                prefix.is_public = true;
+                self.advance();
+            } else if self.at(TokenKind::Private) {
+                prefix.is_private = true;
+                self.advance();
             } else if matches!(
                 self.current().kind,
-                TokenKind::Public
-                    | TokenKind::Private
-                    | TokenKind::Protected
-                    | TokenKind::Final
+                TokenKind::Protected
                     | TokenKind::Synchronized
                     | TokenKind::Transient
                     | TokenKind::Volatile
@@ -2607,11 +2679,15 @@ fn is_property_name_keyword(kind: TokenKind) -> bool {
 }
 
 #[derive(Default)]
+#[allow(clippy::struct_excessive_bools)]
 struct PrefixInfo {
     annotations: Vec<String>,
     suppressed_rules: Vec<String>,
     is_static: bool,
     is_abstract: bool,
+    is_final: bool,
+    is_public: bool,
+    is_private: bool,
 }
 
 fn simple_name(name: &str) -> String {

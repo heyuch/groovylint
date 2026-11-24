@@ -97,6 +97,16 @@ def main() -> int:
     parser.add_argument("--binary", type=Path, default=Path("target/release/groovylint"))
     parser.add_argument("--codenarc-classpath", default=os.environ.get("CODENARC_CLASSPATH"))
     parser.add_argument("--iterations", type=int, default=3)
+    parser.add_argument(
+        "--ruleset",
+        type=Path,
+        help="CodeNarc XML ruleset to use for both tools (default: rulesets/basic.xml)",
+    )
+    parser.add_argument(
+        "--skip-timing",
+        action="store_true",
+        help="only compare findings, do not measure wall-clock time",
+    )
     parser.add_argument("--threads", type=int)
     parser.add_argument("--keep-workdir", action="store_true")
     args = parser.parse_args()
@@ -119,7 +129,11 @@ def main() -> int:
         staged = stage_corpus(files, corpus, workdir)
         print(f"corpus: {len(files)} parseable files (from {corpus})")
 
+        ruleset = args.ruleset.resolve() if args.ruleset else None
         cn_report = workdir / "codenarc.txt"
+        ruleset_arg = "rulesets/basic.xml"
+        if ruleset is not None:
+            ruleset_arg = f"file:{ruleset}"
         cn_base = [
             "java",
             "-cp",
@@ -127,7 +141,7 @@ def main() -> int:
             "org.codenarc.CodeNarc",
             f"-basedir={staged}",
             "-includes=**/*.groovy",
-            "-rulesetfiles=rulesets/basic.xml",
+            f"-rulesetfiles={ruleset_arg}",
             f"-report=text:{cn_report}",
             "-failOnError=false",
         ]
@@ -138,12 +152,19 @@ def main() -> int:
             "json",
             "--threads",
             str(args.threads or os.cpu_count() or 1),
-            str(staged),
         ]
+        if ruleset is not None:
+            our_cmd += ["--config", str(ruleset)]
+        our_cmd.append(str(staged))
 
         first = run(our_cmd)
         if first.returncode not in (0, 1):
             raise RuntimeError(first.stderr)
+        skipped = re.search(
+            r"(\d+) CodeNarc rule\(s\) are not implemented", first.stderr
+        )
+        if skipped:
+            print(f"groovylint skipped {skipped.group(1)} unimplemented rules")
         our_data = json.loads(first.stdout)
         cn_first = run(cn_base)
         if not cn_report.exists():
@@ -161,8 +182,17 @@ def main() -> int:
             print("  sample CodeNarc-only:", sorted(only_cn)[:5])
         if only_ours:
             print("  sample groovylint-only:", sorted(only_ours)[:5])
-        print("our rule counts:", Counter(rule for _, rule, _ in our_findings).most_common(10))
-        print("cn rule counts:", Counter(rule for _, rule, _ in cn_findings).most_common(10))
+        missing_by_rule = Counter(rule for _, rule, _ in only_cn)
+        extra_by_rule = Counter(rule for _, rule, _ in only_ours)
+        if missing_by_rule:
+            print("CodeNarc-only by rule:", missing_by_rule.most_common(15))
+        if extra_by_rule:
+            print("groovylint-only by rule:", extra_by_rule.most_common(15))
+        shared = Counter(rule for _, rule, _ in cn_findings & our_findings)
+        if shared:
+            print("matched by rule:", shared.most_common(15))
+        if args.skip_timing:
+            return 0
 
         # Warm up both tools once.
         timed(our_cmd, None)

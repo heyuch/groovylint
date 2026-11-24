@@ -1,15 +1,26 @@
 //! Built-in rules.
 
 pub mod api_usage;
+pub mod braces;
 pub mod casts;
 pub mod class_design;
 pub mod conditionals;
+pub mod convention;
+pub mod dry;
 pub mod empty_blocks;
 pub mod empty_declarations;
+pub mod enhanced;
 pub mod filter_closure;
 pub mod finally;
 pub mod formatting;
+pub mod generic;
 pub mod imports;
+pub mod jdbc;
+pub mod logging;
+pub mod naming;
+pub mod security;
+pub mod serialization;
 pub mod unary;
 pub mod unnecessary_semicolon;
+pub mod unused;
 pub mod util;

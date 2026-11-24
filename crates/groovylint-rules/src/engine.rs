@@ -145,6 +145,8 @@ impl Engine {
             active.rule.check(&context, &mut sink);
         }
 
+        apply_suppressions(&parsed.script, &mut diagnostics);
+
         diagnostics.sort_by(|left, right| {
             left.span
                 .start
@@ -154,6 +156,66 @@ impl Engine {
                 .then_with(|| left.message.cmp(&right.message))
         });
         diagnostics
+    }
+}
+
+/// A range of the file that suppresses a set of rules.
+struct Suppression {
+    span: groovylint_core::Span,
+    rules: Vec<String>,
+}
+
+/// Drops diagnostics inside a declaration whose `@SuppressWarnings` lists them.
+fn apply_suppressions(script: &groovylint_syntax::ast::Script, diagnostics: &mut Vec<Diagnostic>) {
+    let mut suppressions = Vec::new();
+    for item in &script.items {
+        collect_suppressions(item, &mut suppressions);
+    }
+    if suppressions.is_empty() {
+        return;
+    }
+
+    diagnostics.retain(|diagnostic| {
+        !suppressions.iter().any(|suppression| {
+            suppression.span.start <= diagnostic.span.start
+                && diagnostic.span.end <= suppression.span.end
+                && suppression
+                    .rules
+                    .iter()
+                    .any(|rule| rule == &diagnostic.rule || rule.eq_ignore_ascii_case("all"))
+        })
+    });
+}
+
+fn collect_suppressions(item: &groovylint_syntax::ast::Item, suppressions: &mut Vec<Suppression>) {
+    use groovylint_syntax::ast::Item;
+    match item {
+        Item::Class(class) => {
+            if !class.suppressed_rules.is_empty() {
+                suppressions.push(Suppression {
+                    span: class.span,
+                    rules: class.suppressed_rules.clone(),
+                });
+            }
+            for member in &class.members {
+                collect_suppressions(member, suppressions);
+            }
+        }
+        Item::Method(method) => {
+            if !method.suppressed_rules.is_empty() {
+                suppressions.push(Suppression {
+                    span: method.span,
+                    rules: method.suppressed_rules.clone(),
+                });
+            }
+        }
+        Item::Field(field) if !field.suppressed_rules.is_empty() => {
+            suppressions.push(Suppression {
+                span: field.span,
+                rules: field.suppressed_rules.clone(),
+            });
+        }
+        _ => {}
     }
 }
 

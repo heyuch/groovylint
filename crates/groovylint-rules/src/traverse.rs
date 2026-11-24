@@ -74,7 +74,7 @@ fn walk_initializer(initializer: &InitializerDecl, visitor: &mut impl AstVisitor
     visitor.exit(node);
 }
 
-fn walk_block(block: &Block, visitor: &mut impl AstVisitor) {
+pub fn walk_block(block: &Block, visitor: &mut impl AstVisitor) {
     let node = NodeRef::Block(block);
     visitor.enter(node);
     for stmt in &block.statements {
@@ -83,7 +83,7 @@ fn walk_block(block: &Block, visitor: &mut impl AstVisitor) {
     visitor.exit(node);
 }
 
-fn walk_stmt(stmt: &Stmt, visitor: &mut impl AstVisitor) {
+pub fn walk_stmt(stmt: &Stmt, visitor: &mut impl AstVisitor) {
     match stmt {
         Stmt::Block(block) => walk_block(block, visitor),
         Stmt::VarDecl(decl) => {
@@ -213,7 +213,7 @@ fn walk_stmt(stmt: &Stmt, visitor: &mut impl AstVisitor) {
     }
 }
 
-fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
+pub fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
     let node = NodeRef::Expr(expr);
     visitor.enter(node);
 

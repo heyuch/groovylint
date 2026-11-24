@@ -58,6 +58,20 @@ impl RuleRegistry {
         descriptors.extend(crate::rules::filter_closure::descriptors());
         descriptors.extend(crate::rules::imports::descriptors());
         descriptors.extend(crate::rules::formatting::descriptors());
+        descriptors.extend(crate::rules::logging::descriptors());
+        descriptors.extend(crate::rules::logging::logger_descriptors());
+        descriptors.extend(crate::rules::braces::descriptors());
+        descriptors.extend(crate::rules::convention::descriptors());
+        descriptors.extend(crate::rules::convention::more_descriptors());
+        descriptors.extend(crate::rules::convention::extra_descriptors());
+        descriptors.extend(crate::rules::unused::descriptors());
+        descriptors.extend(crate::rules::naming::descriptors());
+        descriptors.extend(crate::rules::security::descriptors());
+        descriptors.extend(crate::rules::jdbc::descriptors());
+        descriptors.extend(crate::rules::serialization::descriptors());
+        descriptors.extend(crate::rules::dry::descriptors());
+        descriptors.extend(crate::rules::generic::descriptors());
+        descriptors.extend(crate::rules::enhanced::descriptors());
 
         Self { descriptors }
     }

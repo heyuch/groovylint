@@ -156,9 +156,31 @@ impl ClassStack {
         }
     }
 
+    pub(crate) fn push(&mut self, name: &str) {
+        self.names.push(name.to_string());
+    }
+
+    pub(crate) fn pop(&mut self) {
+        self.names.pop();
+    }
+
     pub(crate) fn current(&self) -> &str {
         self.names.last().map_or("null", String::as_str)
     }
+}
+
+/// Matches the file-name patterns `CodeNarc` treats as test sources.
+pub(crate) fn is_test_file(path: &str) -> bool {
+    let Some(name) = path.rsplit('/').next() else {
+        return false;
+    };
+    let Some(stem) = name.strip_suffix(".groovy") else {
+        return false;
+    };
+    stem.ends_with("Test")
+        || stem.ends_with("Tests")
+        || stem.ends_with("TestCase")
+        || stem.ends_with("Spec")
 }
 
 /// Tracks whether traversal is inside a `finally` block.

@@ -23,6 +23,28 @@ pub enum Category {
     Imports,
     /// Formatting rules.
     Formatting,
+    /// Logging rules.
+    Logging,
+    /// Brace rules.
+    Braces,
+    /// Convention rules.
+    Convention,
+    /// Unused-code rules.
+    Unused,
+    /// Naming rules.
+    Naming,
+    /// Security rules.
+    Security,
+    /// JDBC rules.
+    Jdbc,
+    /// Serialization rules.
+    Serialization,
+    /// DRY rules.
+    Dry,
+    /// Configurable generic rules.
+    Generic,
+    /// Enhanced rules.
+    Enhanced,
 }
 
 impl Category {
@@ -34,6 +56,17 @@ impl Category {
             Self::Unnecessary => "unnecessary",
             Self::Imports => "imports",
             Self::Formatting => "formatting",
+            Self::Logging => "logging",
+            Self::Braces => "braces",
+            Self::Convention => "convention",
+            Self::Unused => "unused",
+            Self::Naming => "naming",
+            Self::Security => "security",
+            Self::Jdbc => "jdbc",
+            Self::Serialization => "serialization",
+            Self::Dry => "dry",
+            Self::Generic => "generic",
+            Self::Enhanced => "enhanced",
         }
     }
 }

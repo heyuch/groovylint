@@ -84,6 +84,8 @@ pub struct ClassDecl {
     pub is_abstract: bool,
     /// Simple or qualified superclass name, if explicitly declared.
     pub extends: Option<String>,
+    /// Simple or qualified names of implemented interfaces.
+    pub implements: Vec<String>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
     /// Rules suppressed by `@SuppressWarnings` on this declaration.
@@ -101,6 +103,10 @@ pub struct MethodDecl {
     pub name: String,
     /// Return type, if explicitly declared.
     pub return_type: Option<String>,
+    /// Whether the method is declared `static`.
+    pub is_static: bool,
+    /// Whether the method is declared `private`.
+    pub is_private: bool,
     /// Parameters.
     pub params: Vec<Param>,
     /// Annotation names, normalized to simple names.
@@ -139,9 +145,24 @@ pub struct InitializerDecl {
 
 /// A field declaration.
 #[derive(Clone, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct FieldDecl {
     /// Field name.
     pub name: String,
+    /// Declared type, or `None` for `def`/`var`.
+    pub type_name: Option<String>,
+    /// Annotation names, normalized to simple names.
+    pub annotations: Vec<String>,
+    /// Rules suppressed by `@SuppressWarnings` on this field.
+    pub suppressed_rules: Vec<String>,
+    /// Whether the field is declared `static`.
+    pub is_static: bool,
+    /// Whether the field is declared `final`.
+    pub is_final: bool,
+    /// Whether the field is declared `private`.
+    pub is_private: bool,
+    /// Whether the field is declared `public`.
+    pub is_public: bool,
     /// Optional initializer.
     pub init: Option<Expr>,
     /// Source span.
@@ -201,6 +222,8 @@ pub enum Stmt {
 pub struct VarDecl {
     /// Variable name.
     pub name: String,
+    /// Declared type, or `None` for `def`/`var`.
+    pub type_name: Option<String>,
     /// Optional initializer.
     pub init: Option<Expr>,
     /// Source span.

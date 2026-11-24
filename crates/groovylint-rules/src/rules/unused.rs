@@ -1,0 +1,568 @@
+//! `CodeNarc` rules about unused declarations and allocations.
+
+use std::collections::BTreeSet;
+
+use groovylint_core::Severity;
+use groovylint_syntax::ast::{ClassDecl, ExprKind, Item, MethodDecl, Script, Stmt};
+
+use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
+use crate::rule::{
+    Category, DiagnosticSink, FileContext, FileRule, NodeRef, Rule, RuleMeta, RuleProperties,
+};
+use crate::rules::util::is_test_file;
+use crate::traverse::{self, AstVisitor};
+
+/// Collects every name that is read, called or assigned.
+struct NameCollector {
+    names: BTreeSet<String>,
+}
+
+impl AstVisitor for NameCollector {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        match &expr.kind {
+            ExprKind::Variable(name) => {
+                self.names.insert(name.clone());
+            }
+            ExprKind::Property { name, .. } | ExprKind::Call { name, .. } => {
+                let bare = name.trim_start_matches('&');
+                self.names.insert(bare.to_string());
+            }
+            ExprKind::Literal(groovylint_syntax::ast::Literal::String(text)) => {
+                // Interpolated identifiers are part of the string token.
+                for name in identifier_words(text) {
+                    self.names.insert(name);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+/// Splits identifier words out of a string literal. Interpolated expressions
+/// are plain text in the token stream, so every word may be a reference.
+fn identifier_words(text: &str) -> Vec<String> {
+    text.split(|ch: char| !(ch.is_alphanumeric() || ch == '_'))
+        .filter(|word| !word.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn names_in_script(script: &Script) -> BTreeSet<String> {
+    let mut collector = NameCollector {
+        names: BTreeSet::new(),
+    };
+    traverse::walk_script(script, &mut collector);
+    collector.names
+}
+
+fn names_in_method(method: &MethodDecl) -> BTreeSet<String> {
+    let mut collector = NameCollector {
+        names: BTreeSet::new(),
+    };
+    if let Some(body) = &method.body {
+        traverse::walk_block(body, &mut collector);
+    }
+    collector.names
+}
+
+fn classes_in_script(script: &Script) -> Vec<&ClassDecl> {
+    let mut classes = Vec::new();
+    for item in &script.items {
+        if let Item::Class(class) = item {
+            collect_classes(class, &mut classes);
+        }
+    }
+    classes
+}
+
+fn collect_classes<'a>(class: &'a ClassDecl, classes: &mut Vec<&'a ClassDecl>) {
+    classes.push(class);
+    for member in &class.members {
+        if let Item::Class(nested) = member {
+            collect_classes(nested, classes);
+        }
+    }
+}
+
+fn qualified_class_name(script: &Script, class: &ClassDecl) -> String {
+    match &script.package {
+        Some(package) => format!("{}.{}", package.name, class.name),
+        None => class.name.clone(),
+    }
+}
+
+fn has_annotation(annotations: &[String], name: &str) -> bool {
+    annotations
+        .iter()
+        .any(|annotation| annotation == name || annotation.ends_with(&format!(".{name}")))
+}
+
+/// Flags private fields that are never referenced in the file.
+pub struct UnusedPrivateFieldRule {
+    ignored_names: Vec<String>,
+    ignored_class_annotations: Vec<String>,
+}
+
+impl Default for UnusedPrivateFieldRule {
+    fn default() -> Self {
+        Self {
+            ignored_names: vec!["serialVersionUID".to_string()],
+            ignored_class_annotations: vec!["Entity".to_string()],
+        }
+    }
+}
+
+impl Rule for UnusedPrivateFieldRule {
+    fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("ignoreFieldNames") {
+            self.ignored_names = split_names(value);
+        }
+        if let Some(value) = properties.get("ignoreClassesAnnotatedWithNames") {
+            self.ignored_class_annotations = split_names(value);
+        }
+        Ok(())
+    }
+}
+
+impl FileRule for UnusedPrivateFieldRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let used = names_in_script(context.script);
+        for class in classes_in_script(context.script) {
+            if self.should_ignore_class(class) {
+                continue;
+            }
+            for field in private_fields(class) {
+                if self.ignored_names.contains(&field.name) {
+                    continue;
+                }
+                if has_annotation(&field.annotations, "Delegate") {
+                    continue;
+                }
+                if used.contains(&field.name) {
+                    continue;
+                }
+                sink.report(
+                    field.span,
+                    format!(
+                        "The field {} is not used within the class {}",
+                        field.name,
+                        qualified_class_name(context.script, class)
+                    ),
+                );
+            }
+        }
+    }
+}
+
+impl UnusedPrivateFieldRule {
+    fn should_ignore_class(&self, class: &ClassDecl) -> bool {
+        self.ignored_class_annotations
+            .iter()
+            .any(|name| has_annotation(&class.annotations, name))
+    }
+}
+
+fn private_fields(class: &ClassDecl) -> Vec<&groovylint_syntax::ast::FieldDecl> {
+    class
+        .members
+        .iter()
+        .filter_map(|member| match member {
+            Item::Field(field) if field.is_private => Some(field),
+            _ => None,
+        })
+        .collect()
+}
+
+fn private_methods(class: &ClassDecl) -> Vec<&MethodDecl> {
+    class
+        .members
+        .iter()
+        .filter_map(|member| match member {
+            Item::Method(method) if method.is_private && method.body.is_some() => Some(method),
+            _ => None,
+        })
+        .collect()
+}
+
+fn split_names(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+/// Flags private methods that are never called in the file.
+#[derive(Default)]
+pub struct UnusedPrivateMethodRule {
+    ignored_annotations: Vec<String>,
+}
+
+impl Rule for UnusedPrivateMethodRule {
+    fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
+        let value = properties
+            .get("ignoreMethodsWithAnnotationNames")
+            .map_or("", String::as_str);
+        self.ignored_annotations = split_names(value);
+        Ok(())
+    }
+}
+
+impl FileRule for UnusedPrivateMethodRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let used = names_in_script(context.script);
+        let mut reported = BTreeSet::new();
+        for class in classes_in_script(context.script) {
+            for method in private_methods(class) {
+                if method.name == class.name {
+                    continue;
+                }
+                if reported.contains(&method.name) {
+                    continue;
+                }
+                if self.is_ignored(method) {
+                    continue;
+                }
+                if used.contains(&method.name) || Self::is_used_as_property(method, &used) {
+                    continue;
+                }
+                reported.insert(method.name.clone());
+                sink.report(
+                    method.span,
+                    format!(
+                        "The method {} is not used within the class {}",
+                        method.name,
+                        qualified_class_name(context.script, class)
+                    ),
+                );
+            }
+        }
+    }
+}
+
+impl UnusedPrivateMethodRule {
+    /// Groovy property syntax calls `getX`/`setX`/`isX` through `x`.
+    fn is_used_as_property(method: &MethodDecl, used: &BTreeSet<String>) -> bool {
+        let prefix_length = if method.name.starts_with("get") || method.name.starts_with("set") {
+            3
+        } else if method.name.starts_with("is") {
+            2
+        } else {
+            return false;
+        };
+        let property = &method.name[prefix_length..];
+        let mut chars = property.chars();
+        let Some(first) = chars.next() else {
+            return false;
+        };
+        let derived = format!("{}{}", first.to_ascii_lowercase(), chars.as_str());
+        used.contains(&derived)
+    }
+
+    fn is_ignored(&self, method: &MethodDecl) -> bool {
+        self.ignored_annotations
+            .iter()
+            .any(|name| has_annotation(&method.annotations, name))
+    }
+}
+
+/// Flags parameters of private methods that the body never reads.
+pub struct UnusedPrivateMethodParameterRule {
+    ignored_pattern: regex::Regex,
+}
+
+impl Default for UnusedPrivateMethodParameterRule {
+    fn default() -> Self {
+        Self {
+            ignored_pattern: regex::Regex::new("ignore|ignored").expect("valid default regex"),
+        }
+    }
+}
+
+impl Rule for UnusedPrivateMethodParameterRule {
+    fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
+        let Some(value) = properties.get("ignoreRegex") else {
+            return Ok(());
+        };
+        self.ignored_pattern =
+            regex::Regex::new(value).map_err(|error| format!("invalid ignoreRegex: {error}"))?;
+        Ok(())
+    }
+}
+
+impl FileRule for UnusedPrivateMethodParameterRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for class in classes_in_script(context.script) {
+            for method in private_methods(class) {
+                let used = names_in_method(method);
+                for param in &method.params {
+                    if used.contains(&param.name) {
+                        continue;
+                    }
+                    if self.ignored_pattern.is_match(&param.name) {
+                        continue;
+                    }
+                    sink.report(
+                        method.span,
+                        format!(
+                            "Method parameter [{}] is never referenced in the method {} of class {}",
+                            param.name,
+                            method.name,
+                            qualified_class_name(context.script, class)
+                        ),
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Flags allocations whose result is discarded.
+pub struct UnusedObjectRule {
+    is_array: bool,
+    skip_test_files: bool,
+}
+
+impl Rule for UnusedObjectRule {}
+
+impl FileRule for UnusedObjectRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        if self.skip_test_files && is_test_file(context.source.path().to_string_lossy().as_ref()) {
+            return;
+        }
+        for item in &context.script.items {
+            self.check_item(item, sink);
+        }
+    }
+}
+
+impl UnusedObjectRule {
+    fn check_item(&mut self, item: &Item, sink: &mut DiagnosticSink<'_>) {
+        match item {
+            Item::Class(class) => {
+                for member in &class.members {
+                    self.check_item(member, sink);
+                }
+            }
+            Item::Method(method) => {
+                if let Some(body) = &method.body {
+                    self.check_statements(&body.statements, sink);
+                }
+            }
+            Item::Initializer(initializer) => {
+                self.check_statements(&initializer.body.statements, sink);
+            }
+            Item::Statement(stmt) => self.check_single_statement(stmt, true, sink),
+            Item::Field(_) => {}
+        }
+    }
+
+    fn check_statements(&mut self, statements: &[Stmt], sink: &mut DiagnosticSink<'_>) {
+        for (index, stmt) in statements.iter().enumerate() {
+            let is_last = index + 1 == statements.len();
+            self.check_single_statement(stmt, is_last, sink);
+        }
+    }
+
+    fn check_single_statement(
+        &mut self,
+        stmt: &Stmt,
+        is_last: bool,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        match stmt {
+            Stmt::Expr(expr) => {
+                if is_last {
+                    return;
+                }
+                let is_allocation = match &expr.kind {
+                    ExprKind::New { type_name, .. } => type_name.ends_with("[]") == self.is_array,
+                    _ => false,
+                };
+                if !is_allocation {
+                    return;
+                }
+                if self.is_array {
+                    sink.report(expr.span, "The result of the array expression is ignored");
+                } else {
+                    sink.report(expr.span, "The instantiated object is not used");
+                }
+            }
+            Stmt::Block(block) => {
+                self.check_statements(&block.statements, sink);
+            }
+            Stmt::If(if_stmt) => {
+                self.check_single_statement(&if_stmt.then_branch, false, sink);
+                if let Some(else_branch) = &if_stmt.else_branch {
+                    self.check_single_statement(else_branch, false, sink);
+                }
+            }
+            Stmt::While(while_stmt) => {
+                self.check_single_statement(&while_stmt.body, false, sink);
+            }
+            Stmt::DoWhile(do_while) => {
+                self.check_single_statement(&do_while.body, false, sink);
+            }
+            Stmt::For(for_stmt) => {
+                self.check_single_statement(&for_stmt.body, false, sink);
+            }
+            Stmt::ForEach(for_each) => {
+                self.check_single_statement(&for_each.body, false, sink);
+            }
+            Stmt::Try(try_stmt) => {
+                self.check_statements(&try_stmt.body.statements, sink);
+                for catch in &try_stmt.catches {
+                    self.check_statements(&catch.body.statements, sink);
+                }
+                if let Some(finally) = &try_stmt.finally {
+                    self.check_statements(&finally.statements, sink);
+                }
+            }
+            Stmt::Synchronized(synchronized) => {
+                self.check_single_statement(&synchronized.body, false, sink);
+            }
+            Stmt::Switch(switch) => {
+                for case in &switch.cases {
+                    for statement in &case.body {
+                        self.check_single_statement(statement, false, sink);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Flags local variables that the file never reads.
+pub struct UnusedVariableRule;
+
+impl Rule for UnusedVariableRule {}
+
+impl FileRule for UnusedVariableRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let used = names_in_script(context.script);
+        let mut declarations = Vec::new();
+        let mut collector = DeclarationCollector {
+            declarations: &mut declarations,
+        };
+        traverse::walk_script(context.script, &mut collector);
+
+        for (name, span) in declarations {
+            if used.contains(&name) {
+                continue;
+            }
+            sink.report(span, format!("Variable [{name}] is never referenced"));
+        }
+    }
+}
+
+/// Collects local variable declarations.
+struct DeclarationCollector<'a> {
+    declarations: &'a mut Vec<(String, groovylint_core::Span)>,
+}
+
+impl AstVisitor for DeclarationCollector<'_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        if let NodeRef::Stmt(Stmt::VarDecl(decl)) = node {
+            self.declarations.push((decl.name.clone(), decl.span));
+        }
+    }
+
+    fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+/// Descriptors for unused rules.
+#[must_use]
+pub fn descriptors() -> Vec<RuleDescriptor> {
+    vec![
+        descriptor(
+            RuleMeta::new(
+                "UnusedPrivateField",
+                "org.codenarc.rule.unused.UnusedPrivateFieldRule",
+                Category::Unused,
+                Severity::Warning,
+                "Checks for private fields that are never referenced.",
+            ),
+            || RuleInstanceImpl::File(Box::new(UnusedPrivateFieldRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnusedPrivateMethod",
+                "org.codenarc.rule.unused.UnusedPrivateMethodRule",
+                Category::Unused,
+                Severity::Warning,
+                "Checks for private methods that are never called.",
+            ),
+            || RuleInstanceImpl::File(Box::new(UnusedPrivateMethodRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnusedPrivateMethodParameter",
+                "org.codenarc.rule.unused.UnusedPrivateMethodParameterRule",
+                Category::Unused,
+                Severity::Warning,
+                "Checks for unused private method parameters.",
+            ),
+            || RuleInstanceImpl::File(Box::new(UnusedPrivateMethodParameterRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnusedVariable",
+                "org.codenarc.rule.unused.UnusedVariableRule",
+                Category::Unused,
+                Severity::Warning,
+                "Checks for local variables that are never read.",
+            ),
+            || RuleInstanceImpl::File(Box::new(UnusedVariableRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnusedObject",
+                "org.codenarc.rule.unused.UnusedObjectRule",
+                Category::Unused,
+                Severity::Warning,
+                "Checks for discarded object allocations.",
+            ),
+            || {
+                RuleInstanceImpl::File(Box::new(UnusedObjectRule {
+                    is_array: false,
+                    skip_test_files: true,
+                }))
+            },
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnusedArray",
+                "org.codenarc.rule.unused.UnusedArrayRule",
+                Category::Unused,
+                Severity::Warning,
+                "Checks for discarded array allocations.",
+            ),
+            || {
+                RuleInstanceImpl::File(Box::new(UnusedObjectRule {
+                    is_array: true,
+                    skip_test_files: false,
+                }))
+            },
+        ),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_test_file;
+
+    #[test]
+    fn detects_test_file_names() {
+        assert!(is_test_file("a/b/PolicyServiceTest.groovy"));
+        assert!(is_test_file("a/PolicySpec.groovy"));
+        assert!(!is_test_file("a/PolicyService.groovy"));
+        assert!(!is_test_file("a/PolicyTestHelper.groovy"));
+    }
+}

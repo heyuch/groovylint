@@ -15,6 +15,23 @@ Two layers are used:
      --iterations 5
    ```
 
+### Reusing a CodeNarc report
+
+CodeNarc takes minutes on a large module while `groovylint` takes seconds, so for
+iteration run CodeNarc once and diff against its XML report:
+
+```bash
+java -cp "$CODENARC_CLASSPATH" org.codenarc.CodeNarc -basedir=. \
+  -includes='some/module/src/**/*.groovy' -rulesetfiles=file:path/to/ruleset.xml \
+  -report=xml:/tmp/codenarc.xml
+
+python3 benchmarks/diff_codenarc_report.py --codenarc-report /tmp/codenarc.xml \
+  --corpus . --config path/to/ruleset.xml --paths some/module/src
+```
+
+The diff is `< 1 s` and reports findings that only one side sees, grouped by
+rule, so rule implementations can be iterated quickly.
+
 The comparison script first runs `groovylint` to find files it can parse, stages
 only those files in a temporary corpus, then runs both tools on the same staged
 files with CodeNarc's `rulesets/basic.xml`. This avoids comparing a full parse
