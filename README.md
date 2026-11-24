@@ -5,11 +5,13 @@ toward deeper semantic checks such as nullness, type inference, and control-flow
 analysis.
 
 > [!IMPORTANT]
-> **Status: CodeNarc basic coverage milestone.** The project has a working
-> lexer/parser subset, a layered rule engine, CodeNarc XML loading, parallel file
-> processing, and all 44 rules from CodeNarc's `rulesets/basic.xml`, plus the
-> token-level `UnnecessarySemicolon` rule. It is not yet a full Groovy parser and
-> does not yet implement CodeNarc base properties or suppressions.
+> **Status: CodeNarc coverage expansion and semantic-analysis design.** The
+> project has a layered rule engine, CodeNarc XML/property loading, parallel file
+> processing, a Gradle plugin, and **327 unique CodeNarc 4.0.0 rule classes**
+> registered. Grails and Jenkins rules are explicitly out of scope. Architecture
+> dependency rules, a custom-rule plugin mechanism, and unannotated nullness
+> analysis are planned in [`ROADMAP.md`](ROADMAP.md); detailed gaps are tracked in
+> [`docs/COVERAGE.md`](docs/COVERAGE.md).
 
 ## What works today
 
@@ -176,6 +178,8 @@ cargo doc-all
 
 - [Architecture and open questions](docs/ARCHITECTURE.md)
 - [CodeNarc compatibility notes](docs/COMPATIBILITY.md)
+- [Roadmap](ROADMAP.md)
+- [CodeNarc rule coverage](docs/COVERAGE.md)
 - [Gradle plugin](gradle-plugin/README.md)
 - [Benchmark methodology](benchmarks/README.md) and [local results](benchmarks/RESULTS.md)
 - [Contributing](CONTRIBUTING.md)

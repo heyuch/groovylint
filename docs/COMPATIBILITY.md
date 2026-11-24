@@ -1,5 +1,7 @@
 # CodeNarc compatibility notes
 
+For the remediation plan and scope decisions, see [`ROADMAP.md`](../ROADMAP.md) and [`COVERAGE.md`](COVERAGE.md).
+
 Baseline: **CodeNarc 4.0.0** (released 2026-07-18). The CodeNarc 4.0.0 artifact
 used for the comparisons depended on Groovy 5.0.3.
 
