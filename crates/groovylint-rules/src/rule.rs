@@ -41,6 +41,8 @@ pub enum Category {
     Serialization,
     /// DRY rules.
     Dry,
+    /// Groovy idiom rules.
+    Groovyism,
     /// Configurable generic rules.
     Generic,
     /// Enhanced rules.
@@ -77,6 +79,7 @@ impl Category {
             Self::Jdbc => "jdbc",
             Self::Serialization => "serialization",
             Self::Dry => "dry",
+            Self::Groovyism => "groovyism",
             Self::Generic => "generic",
             Self::Enhanced => "enhanced",
             Self::Junit => "junit",

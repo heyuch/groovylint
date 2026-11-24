@@ -79,6 +79,8 @@ impl RuleRegistry {
         descriptors.extend(crate::rules::serialization::descriptors());
         descriptors.extend(crate::rules::dry::descriptors());
         descriptors.extend(crate::rules::generic::descriptors());
+        descriptors.extend(crate::rules::groovyism::descriptors());
+        descriptors.extend(crate::rules::size::descriptors());
         descriptors.extend(crate::rules::enhanced::descriptors());
 
         Self { descriptors }

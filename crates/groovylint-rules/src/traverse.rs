@@ -37,6 +37,11 @@ fn walk_item(item: &Item, visitor: &mut impl AstVisitor) {
         Item::Field(field) => walk_field(field, visitor),
         Item::Initializer(initializer) => walk_initializer(initializer, visitor),
         Item::Statement(stmt) => walk_stmt(stmt, visitor),
+        Item::Group(items) => {
+            for item in items {
+                walk_item(item, visitor);
+            }
+        }
     }
 }
 

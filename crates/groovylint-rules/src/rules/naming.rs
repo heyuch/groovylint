@@ -292,6 +292,11 @@ impl NamePatternRule {
                 self.check_statements(&initializer.body.statements, sink);
             }
             Item::Statement(stmt) => self.check_statement(stmt, sink),
+            Item::Group(items) => {
+                for item in items {
+                    self.check_item(item, sink);
+                }
+            }
         }
     }
 
@@ -713,10 +718,72 @@ impl FileRule for PackageNameMatchesFilePathRule {
     }
 }
 
+/// Flags factory methods outside builder classes.
+pub struct FactoryMethodNameRule {
+    pattern: regex::Regex,
+}
+
+impl Default for FactoryMethodNameRule {
+    fn default() -> Self {
+        Self {
+            pattern: regex::Regex::new("^(build|create).*").expect("valid default regex"),
+        }
+    }
+}
+
+impl Rule for FactoryMethodNameRule {
+    fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("regex") {
+            self.pattern = regex::Regex::new(value)
+                .map_err(|error| format!("invalid factory method regex: {error}"))?;
+        }
+        Ok(())
+    }
+}
+
+impl AstRule for FactoryMethodNameRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Method)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Method(method) = node else {
+            return;
+        };
+        if !self.pattern.is_match(&method.name)
+            || crate::rules::util::has_annotation(&method.annotations, "Override")
+        {
+            return;
+        }
+        sink.report(
+            method.span,
+            format!(
+                "The method {} matches the factory-method naming pattern",
+                method.name
+            ),
+        );
+    }
+}
+
 /// Descriptors for naming rules.
 #[must_use]
 pub fn descriptors() -> Vec<RuleDescriptor> {
     vec![
+        descriptor(
+            RuleMeta::new(
+                "FactoryMethodName",
+                "org.codenarc.rule.naming.FactoryMethodNameRule",
+                Category::Naming,
+                Severity::Warning,
+                "Factory methods should follow the configured naming convention.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(FactoryMethodNameRule::default())),
+        ),
         descriptor(
             RuleMeta::new(
                 "ClassName",

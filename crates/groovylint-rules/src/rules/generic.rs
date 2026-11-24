@@ -6,8 +6,7 @@ use groovylint_syntax::ast::Item;
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
-    Category, DiagnosticSink, FileContext, FileRule, NodeRef, Rule, RuleMeta, RuleProperties,
-    TokenRule,
+    Category, DiagnosticSink, FileContext, FileRule, Rule, RuleMeta, RuleProperties,
 };
 
 fn names_property(properties: &RuleProperties, name: &str) -> Vec<String> {
@@ -295,28 +294,132 @@ impl FileRule for StatelessClassRule {
 /// Checks member modifiers against configured allowed or illegal sets.
 #[derive(Default)]
 pub struct IllegalClassMemberRule {
-    configured: bool,
+    illegal_field: Vec<String>,
+    allowed_field: Vec<String>,
+    illegal_method: Vec<String>,
+    allowed_method: Vec<String>,
 }
 
 impl Rule for IllegalClassMemberRule {
     fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
-        self.configured = properties
-            .keys()
-            .any(|key| key.starts_with("illegal") || key.starts_with("allowed"));
+        self.illegal_field = names_property(properties, "illegalFieldModifiers");
+        self.allowed_field = names_property(properties, "allowedFieldModifiers");
+        self.illegal_method = names_property(properties, "illegalMethodModifiers");
+        self.allowed_method = names_property(properties, "allowedMethodModifiers");
         Ok(())
     }
 }
 
-impl TokenRule for IllegalClassMemberRule {
-    fn check(&mut self, _context: &FileContext<'_>, _sink: &mut DiagnosticSink<'_>) {
-        // Modifier-set matching needs the full CodeNarc property vocabulary; the
-        // rule is registered so rulesets load, but it reports nothing yet.
+fn field_modifiers(field: &groovylint_syntax::ast::FieldDecl) -> Vec<&'static str> {
+    let mut modifiers = Vec::new();
+    if field.is_public {
+        modifiers.push("public");
     }
+    if field.is_private {
+        modifiers.push("private");
+    }
+    if field.is_protected {
+        modifiers.push("protected");
+    }
+    if field.is_static {
+        modifiers.push("static");
+    }
+    if field.is_final {
+        modifiers.push("final");
+    }
+    if field.is_transient {
+        modifiers.push("transient");
+    }
+    if field.is_volatile {
+        modifiers.push("volatile");
+    }
+    modifiers
 }
 
-/// Unused hook that keeps the node type referenced for future extension.
-#[allow(dead_code)]
-fn _node_ref(_: NodeRef<'_>) {}
+fn method_modifiers(method: &groovylint_syntax::ast::MethodDecl) -> Vec<&'static str> {
+    let mut modifiers = Vec::new();
+    if method.is_public {
+        modifiers.push("public");
+    }
+    if method.is_private {
+        modifiers.push("private");
+    }
+    if method.is_protected {
+        modifiers.push("protected");
+    }
+    if method.is_static {
+        modifiers.push("static");
+    }
+    if method.is_final {
+        modifiers.push("final");
+    }
+    if method.is_abstract {
+        modifiers.push("abstract");
+    }
+    if method.is_synchronized {
+        modifiers.push("synchronized");
+    }
+    modifiers
+}
+
+fn matches_any(modifiers: &[&str], configured: &[String]) -> bool {
+    configured
+        .iter()
+        .any(|wanted| modifiers.contains(&wanted.as_str()))
+}
+
+impl FileRule for IllegalClassMemberRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for item in &context.script.items {
+            let Item::Class(class) = item else {
+                continue;
+            };
+            for member in &class.members {
+                match member {
+                    Item::Field(field) => {
+                        let modifiers = field_modifiers(field);
+                        if matches_any(&modifiers, &self.illegal_field) {
+                            sink.report(
+                                field.span,
+                                format!("Field \"{}\" has an illegal modifier", field.name),
+                            );
+                        } else if !self.allowed_field.is_empty()
+                            && !matches_any(&modifiers, &self.allowed_field)
+                        {
+                            sink.report(
+                                field.span,
+                                format!(
+                                    "Field \"{}\" does not have an allowed modifier",
+                                    field.name
+                                ),
+                            );
+                        }
+                    }
+                    Item::Method(method) => {
+                        let modifiers = method_modifiers(method);
+                        if matches_any(&modifiers, &self.illegal_method) {
+                            sink.report(
+                                method.span,
+                                format!("Method \"{}\" has an illegal modifier", method.name),
+                            );
+                        } else if !self.allowed_method.is_empty()
+                            && !matches_any(&modifiers, &self.allowed_method)
+                        {
+                            sink.report(
+                                method.span,
+                                format!(
+                                    "Method \"{}\" does not have an allowed modifier",
+                                    method.name
+                                ),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
 
 /// Descriptors for generic rules.
 #[must_use]
@@ -410,7 +513,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Warning,
                 "Checks member modifiers against configured sets.",
             ),
-            || RuleInstanceImpl::Token(Box::new(IllegalClassMemberRule::default())),
+            || RuleInstanceImpl::File(Box::new(IllegalClassMemberRule::default())),
         ),
     ]
 }

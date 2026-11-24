@@ -7,15 +7,15 @@ used for the comparisons depended on Groovy 5.0.3.
 
 ## Current coverage
 
-318 rules are registered. That covers the in-scope subset of:
+384 rules are registered. That covers all in-scope CodeNarc 4.0.0 rule classes:
 
 - every rule in CodeNarc 4.0.0's `rulesets/basic.xml`;
 - a production `codenarc-bug.xml` quality gate (96 rule classes);
 - an "all rules except the disabled ones" `codenarc.xml` gate (323 rule classes).
 
-Grails, Jenkins, and Spock rules are unsupported and are not registered. The
-production and full gates are therefore evaluated on their in-scope subsets, not
-on a claim that all 323 classes are present.
+Grails (12), Jenkins (7), and Spock (3) rules are unsupported and are not
+registered. The production and full gates are evaluated on their in-scope
+subsets, not on a claim that all 323 gate classes are present.
 
 Rulesets are read with their `<property>` values, so configured rule variants
 work (`groovylint check --config codenarc.xml`). Lookarounds in configured
@@ -126,13 +126,8 @@ more of CodeNarc's own positive/negative test cases per rule.
   - `TrailingComma`, `UnnecessaryDotClass` and `Space*Brace` still differ on a
     few percent of findings in code bases that use many collection literals and
     interpolated strings.
-- Rules that need resolved types, project-specific configuration or a data-flow
-  analysis are registered but report nothing (documented with a `shortcut:`
-  comment in the source): `Indentation` (continuation lines are not modelled),
-  `BusyWait`, `DoubleCheckedLocking`, `InconsistentProperty*`,
-  `NoScriptBindings`, `ExceptionNotThrown` and the `Generic` rules that require
-  properties (`Illegal*`, `Required*`, `StatelessClass`,
-  `IllegalClassMember`). Jenkins and Spock rules are unsupported and removed.
+- The former stub rules now have implementations, but several are intentionally
+  approximate and still need broader CodeNarc differential fixtures.
 - The parser is a common-syntax subset, not full Groovy. Unsupported syntax
   becomes a `ParseError` diagnostic for that file. On a 118,470-file private
   Groovy corpus (Spring/Grails services, Spock tests, Gradle build logic) every

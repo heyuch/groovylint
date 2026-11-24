@@ -291,10 +291,65 @@ impl FileRule for DuplicateImportRule {
     }
 }
 
+/// Flags static imports that come after normal imports.
+pub struct MisorderedStaticImportsRule {
+    comes_before: bool,
+}
+
+impl Default for MisorderedStaticImportsRule {
+    fn default() -> Self {
+        Self { comes_before: true }
+    }
+}
+
+impl Rule for MisorderedStaticImportsRule {
+    fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("comesBefore") {
+            self.comes_before = value != "false";
+        }
+        Ok(())
+    }
+}
+
+impl FileRule for MisorderedStaticImportsRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut normal_found = false;
+        for import in &context.script.imports {
+            if self.comes_before {
+                if !import.is_static {
+                    normal_found = true;
+                } else if normal_found {
+                    sink.report(
+                        import.span,
+                        "Static imports should appear before normal imports",
+                    );
+                }
+            } else if import.is_static {
+                normal_found = true;
+            } else if normal_found {
+                sink.report(
+                    import.span,
+                    "Normal imports should appear before static imports",
+                );
+            }
+        }
+    }
+}
+
 /// Descriptors for import rules.
 #[must_use]
 pub fn descriptors() -> Vec<RuleDescriptor> {
     vec![
+        descriptor(
+            RuleMeta::new(
+                "MisorderedStaticImports",
+                "org.codenarc.rule.imports.MisorderedStaticImportsRule",
+                Category::Imports,
+                Severity::Info,
+                "Static and normal imports should be ordered consistently.",
+            ),
+            || RuleInstanceImpl::File(Box::new(MisorderedStaticImportsRule::default())),
+        ),
         descriptor(
             RuleMeta::new(
                 "NoWildcardImports",

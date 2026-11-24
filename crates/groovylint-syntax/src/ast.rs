@@ -54,6 +54,8 @@ pub enum Item {
     Initializer(InitializerDecl),
     /// Statement at script scope.
     Statement(Stmt),
+    /// Several declarations parsed from one comma-separated declaration.
+    Group(Vec<Item>),
 }
 
 /// The kind of a type declaration.

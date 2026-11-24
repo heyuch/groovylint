@@ -2,130 +2,26 @@
 
 Baseline: CodeNarc 4.0.0, 24 rulesets, **406 concrete rule classes**.
 
-Current registry:
+Current status:
 
 | Status | Count |
 |---|---:|
-| Unique registered rule classes | 318 |
-| Missing from CodeNarc 4.0.0 | 88 |
-| Grails rules (unsupported) | 12 |
-| Jenkins rules (removed from code) | 7 |
-| Spock rules (removed from code) | 3 |
-| Non-framework/non-Spock missing | 66 |
-| Non-framework/non-Spock registered stubs/partial | 8 |
+| Unique registered rule classes | 384 |
+| Unsupported (Grails/Jenkins/Spock) | 22 |
 | In-scope CodeNarc target | 384 |
+| In-scope rules not registered | 0 |
+| Unsupported framework rules registered | 0 |
 
-The registry has 318 entries and 318 unique classes. Unsupported Grails, Jenkins,
-and Spock rules are not registered.
+All in-scope CodeNarc classes are registered. This is **coverage**, not a claim
+of complete behavioral parity: the rules have unit/smoke coverage, while
+CodeNarc differential fixtures for the newly added rules are still being
+expanded.
 
-## Non-framework, non-Spock rules still missing (66)
+## Unsupported rules
 
-### `groovyism` (33)
+These classes are intentionally not supported and are not registered.
 
-- `AssignCollectionSort`
-- `AssignCollectionUnique`
-- `ClosureAsLastMethodParameter`
-- `CollectAllIsDeprecated`
-- `ConfusingMultipleReturns`
-- `ExplicitArrayListInstantiation`
-- `ExplicitCallToAndMethod`
-- `ExplicitCallToCompareToMethod`
-- `ExplicitCallToDivMethod`
-- `ExplicitCallToEqualsMethod`
-- `ExplicitCallToGetAtMethod`
-- `ExplicitCallToLeftShiftMethod`
-- `ExplicitCallToMinusMethod`
-- `ExplicitCallToModMethod`
-- `ExplicitCallToMultiplyMethod`
-- `ExplicitCallToOrMethod`
-- `ExplicitCallToPlusMethod`
-- `ExplicitCallToPowerMethod`
-- `ExplicitCallToPutAtMethod`
-- `ExplicitCallToRightShiftMethod`
-- `ExplicitCallToXorMethod`
-- `ExplicitHashMapInstantiation`
-- `ExplicitHashSetInstantiation`
-- `ExplicitLinkedHashMapInstantiation`
-- `ExplicitLinkedListInstantiation`
-- `ExplicitStackInstantiation`
-- `ExplicitTreeSetInstantiation`
-- `GStringAsMapKey`
-- `GStringExpressionWithinString`
-- `GetterMethodCouldBeProperty`
-- `GroovyLangImmutable`
-- `UseCollectMany`
-- `UseCollectNested`
-
-### `size` (7)
-
-- `AbcMetric`
-- `ClassSize`
-- `CyclomaticComplexity`
-- `MethodCount`
-- `MethodSize`
-- `NestedBlockDepth`
-- `ParameterCount`
-
-### `unnecessary` (7)
-
-- `UnnecessaryCast`
-- `UnnecessaryCollectCall`
-- `UnnecessaryGString`
-- `UnnecessaryGetter`
-- `UnnecessaryReturnKeyword`
-- `UnnecessarySetter`
-- `UnnecessaryToString`
-
-### `convention` (5)
-
-- `CouldBeSwitchStatement`
-- `IfStatementCouldBeTernary`
-- `PublicMethodsBeforeNonPublicMethods`
-- `StaticFieldsBeforeInstanceFields`
-- `StaticMethodsBeforeInstanceMethods`
-
-### `design` (5)
-
-- `AssignmentToStaticFieldFromInstanceMethod`
-- `BooleanMethodReturnsNull`
-- `Instanceof`
-- `NestedForLoop`
-- `ReturnsNullInsteadOfEmptyCollection`
-
-### `dry` (2)
-
-- `DuplicateNumberLiteral`
-- `DuplicateStringLiteral`
-
-### `formatting` (2)
-
-- `LineLength`
-- `SpaceAroundMapEntryColon`
-
-### Remaining singles (5)
-
-- `concurrency`: `SynchronizedOnThis`
-- `exceptions`: `CatchThrowable`
-- `imports`: `MisorderedStaticImports`
-- `naming`: `FactoryMethodName`
-- `security`: `JavaIoPackageAccess`
-
-## Registered but stub/partial (8 non-framework)
-
-These load and accept configuration, but do not currently provide full behavior:
-
-- `Indentation`
-- `BusyWait`
-- `DoubleCheckedLocking`
-- `InconsistentPropertyLocking`
-- `InconsistentPropertySynchronization`
-- `NoScriptBindings`
-- `ExceptionNotThrown`
-- `IllegalClassMember`
-
-## Unsupported framework rules (removed or never implemented)
-
-### Grails (12, never implemented)
+### Grails (12)
 
 - `GrailsDomainGormMethods`
 - `GrailsDomainHasEquals`
@@ -140,13 +36,7 @@ These load and accept configuration, but do not currently provide full behavior:
 - `GrailsServletContextReference`
 - `GrailsStatelessService`
 
-### Spock (3, removed from code)
-
-- `SpockIgnoreRestUsed` (removed)
-- `SpockMissingAssert` (removed)
-- `SpockUseVerifyEach` (never implemented)
-
-### Jenkins (7, removed from code)
+### Jenkins (7)
 
 - `ParameterOrReturnTypeNotSerializable`
 - `ObjectOverrideOnlyNonCpsMethods`
@@ -155,6 +45,12 @@ These load and accept configuration, but do not currently provide full behavior:
 - `CpsCallFromNonCpsMethod`
 - `ClosureInGString`
 - `ClassNotSerializable`
+
+### Spock (3)
+
+- `SpockIgnoreRestUsed`
+- `SpockMissingAssert`
+- `SpockUseVerifyEach`
 
 ## How this list is maintained
 
@@ -166,4 +62,4 @@ The list is derived by:
 3. comparing the two sets by fully-qualified class name.
 
 A future `groovylint rules --coverage --format json` command will generate this
-report automatically and gate it in CI, replacing this hand-maintained table.
+report automatically and gate it in CI.

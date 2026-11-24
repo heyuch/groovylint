@@ -7,9 +7,10 @@ use groovylint_syntax::ast::{
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
-    AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
+    AstRule, Category, DiagnosticSink, FileContext, FileRule, NodeKind, NodeMask, NodeRef, Rule,
+    RuleMeta,
 };
-use crate::rules::util::{ClassStack, has_annotation, unparen, variable_name};
+use crate::rules::util::{ClassStack, expr_text, has_annotation, unparen, variable_name};
 
 fn simple_name(name: &str) -> &str {
     name.rsplit('.').next().unwrap_or(name)
@@ -1234,13 +1235,56 @@ impl AstRule for ExceptionNotThrownRule {
         &mut self,
         node: NodeRef<'_>,
         _context: &FileContext<'_>,
-        _sink: &mut DiagnosticSink<'_>,
+        sink: &mut DiagnosticSink<'_>,
     ) {
-        // shortcut: deciding whether a checked exception can be thrown needs
-        // resolved types, so the rule is registered but reports nothing.
-        let NodeRef::Stmt(Stmt::Try(_)) = node else {
+        let NodeRef::Stmt(Stmt::Try(try_stmt)) = node else {
             return;
         };
+        for catch in &try_stmt.catches {
+            let Some(Stmt::Expr(expr)) = catch.body.statements.last() else {
+                continue;
+            };
+            let ExprKind::New { type_name, .. } = &expr.kind else {
+                continue;
+            };
+            if simple_name(type_name).ends_with("Exception") {
+                sink.report(
+                    expr.span,
+                    format!("The catch block constructs a {type_name} but does not throw it"),
+                );
+            }
+        }
+    }
+}
+
+/// Flags catching `Throwable`.
+pub struct CatchThrowableRule;
+
+impl Rule for CatchThrowableRule {}
+
+impl AstRule for CatchThrowableRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Try)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Stmt(Stmt::Try(try_stmt)) = node else {
+            return;
+        };
+        for catch in &try_stmt.catches {
+            if catch
+                .type_names
+                .iter()
+                .any(|name| simple_name(name) == "Throwable")
+            {
+                sink.report(catch.span, "Catching Throwable is dangerous");
+            }
+        }
     }
 }
 
@@ -1257,7 +1301,7 @@ impl AstRule for MissingNewInThrowStatementRule {
     fn enter(
         &mut self,
         node: NodeRef<'_>,
-        context: &FileContext<'_>,
+        _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
         let NodeRef::Stmt(Stmt::Throw(throw_stmt)) = node else {
@@ -1269,14 +1313,12 @@ impl AstRule for MissingNewInThrowStatementRule {
         let ExprKind::Call { name, .. } = &throw_stmt.value.kind else {
             return;
         };
-        if !name.ends_with("Exception") && !name.ends_with("Error") {
-            return;
+        if name.ends_with("Exception") || name.ends_with("Error") {
+            sink.report(
+                throw_stmt.span,
+                format!("Did you forget the new keyword before {name}()?"),
+            );
         }
-        let _ = context;
-        sink.report(
-            throw_stmt.span,
-            format!("Did you forget the new keyword before {name}()?"),
-        );
     }
 }
 
@@ -1350,12 +1392,324 @@ impl AstRule for SwallowThreadDeathRule {
                 .text()
                 .get(catch.body.span.range())
                 .unwrap_or_default();
-            if body.contains("throw") {
-                continue;
+            if !body.contains("throw") {
+                sink.report(catch.span, "ThreadDeath should be rethrown when caught");
             }
-            sink.report(catch.span, "ThreadDeath should be rethrown when caught");
         }
     }
+}
+
+/// Flags assignments to static fields from instance methods.
+pub struct AssignmentToStaticFieldFromInstanceMethodRule;
+
+impl Rule for AssignmentToStaticFieldFromInstanceMethodRule {}
+
+impl FileRule for AssignmentToStaticFieldFromInstanceMethodRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for item in &context.script.items {
+            if let Item::Class(class) = item {
+                check_static_field_assignments(class, sink);
+            }
+        }
+    }
+}
+
+fn check_static_field_assignments(class: &ClassDecl, sink: &mut DiagnosticSink<'_>) {
+    let static_fields: Vec<&str> = class
+        .members
+        .iter()
+        .filter_map(|member| match member {
+            Item::Field(field) if field.is_static => Some(field.name.as_str()),
+            _ => None,
+        })
+        .collect();
+    if !static_fields.is_empty() {
+        for member in &class.members {
+            let Item::Method(method) = member else {
+                continue;
+            };
+            if method.is_static {
+                continue;
+            }
+            let Some(body) = &method.body else {
+                continue;
+            };
+            let mut checker = StaticFieldAssignment {
+                fields: &static_fields,
+                locals: Vec::new(),
+                violations: Vec::new(),
+            };
+            crate::traverse::walk_block(body, &mut checker);
+            for span in checker.violations {
+                sink.report(
+                    span,
+                    format!(
+                        "The instance method {} contains an assignment to a static field",
+                        method.name
+                    ),
+                );
+            }
+        }
+    }
+    for member in &class.members {
+        if let Item::Class(nested) = member {
+            check_static_field_assignments(nested, sink);
+        }
+    }
+}
+
+struct StaticFieldAssignment<'a> {
+    fields: &'a [&'a str],
+    locals: Vec<String>,
+    violations: Vec<groovylint_core::Span>,
+}
+
+impl crate::traverse::AstVisitor for StaticFieldAssignment<'_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        match node {
+            NodeRef::Stmt(Stmt::VarDecl(decl)) => self.locals.push(decl.name.clone()),
+            NodeRef::Expr(expr) => {
+                let ExprKind::Assign {
+                    target,
+                    op: AssignOp::Assign,
+                    ..
+                } = &expr.kind
+                else {
+                    return;
+                };
+                let Some(name) = variable_name(target) else {
+                    return;
+                };
+                if self.fields.contains(&name) && !self.locals.iter().any(|local| local == name) {
+                    self.violations.push(expr.span);
+                }
+            }
+            _ => {}
+        }
+    }
+    fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+/// Flags Boolean methods that return null.
+pub struct BooleanMethodReturnsNullRule;
+
+impl Rule for BooleanMethodReturnsNullRule {}
+
+impl AstRule for BooleanMethodReturnsNullRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Method)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Method(method) = node else {
+            return;
+        };
+        let is_boolean = method
+            .return_type
+            .as_deref()
+            .is_some_and(|name| matches!(simple_name(name), "Boolean" | "boolean"));
+        if !is_boolean {
+            return;
+        }
+        let Some(body) = &method.body else {
+            return;
+        };
+        for span in null_returns(body) {
+            sink.report(
+                span,
+                "Returning null from a method that might return a Boolean",
+            );
+        }
+    }
+}
+
+/// Flags instanceof checks.
+pub struct InstanceofRule {
+    ignore_type_names: Vec<String>,
+}
+
+impl Default for InstanceofRule {
+    fn default() -> Self {
+        Self {
+            ignore_type_names: vec!["*Exception".to_string()],
+        }
+    }
+}
+
+impl Rule for InstanceofRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("ignoreTypeNames") {
+            self.ignore_type_names = value
+                .split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(ToString::to_string)
+                .collect();
+        }
+        Ok(())
+    }
+}
+
+impl AstRule for InstanceofRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Binary {
+            op: groovylint_syntax::ast::BinaryOp::InstanceOf,
+            right,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        let type_name = expr_text(right, context.source.text());
+        let simple = simple_name(type_name.trim());
+        if self
+            .ignore_type_names
+            .iter()
+            .any(|pattern| pattern == "*" || pattern.trim_start_matches('*') == simple)
+        {
+            return;
+        }
+        sink.report(
+            expr.span,
+            format!("The instanceof operator is used with {simple}"),
+        );
+    }
+}
+
+/// Flags nested for loops.
+#[derive(Default)]
+pub struct NestedForLoopRule {
+    depth: usize,
+}
+
+impl Rule for NestedForLoopRule {}
+
+impl AstRule for NestedForLoopRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::For).union(NodeMask::of(NodeKind::ForEach))
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        self.depth += 1;
+        if self.depth >= 2
+            && let NodeRef::Stmt(stmt) = node
+        {
+            sink.report(stmt.span(), "Nested for loop");
+        }
+    }
+
+    fn exit(
+        &mut self,
+        _node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        _sink: &mut DiagnosticSink<'_>,
+    ) {
+        self.depth = self.depth.saturating_sub(1);
+    }
+}
+
+/// Flags returning null from collection-returning methods.
+pub struct ReturnsNullInsteadOfEmptyCollectionRule;
+
+impl Rule for ReturnsNullInsteadOfEmptyCollectionRule {}
+
+impl AstRule for ReturnsNullInsteadOfEmptyCollectionRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Method)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Method(method) = node else {
+            return;
+        };
+        let Some(body) = &method.body else {
+            return;
+        };
+        let declared_collection = method.return_type.as_deref().is_some_and(|name| {
+            matches!(
+                simple_name(name),
+                "Iterable" | "Collection" | "List" | "Map" | "Set" | "ArrayList" | "HashSet"
+            )
+        });
+        if !declared_collection && !body_returns_collection(body) {
+            return;
+        }
+        for span in null_returns(body) {
+            sink.report(
+                span,
+                "Returning null from a method that might return a Collection or Map",
+            );
+        }
+    }
+}
+
+fn null_returns(block: &groovylint_syntax::ast::Block) -> Vec<groovylint_core::Span> {
+    struct Finder {
+        nulls: Vec<groovylint_core::Span>,
+    }
+    impl crate::traverse::AstVisitor for Finder {
+        fn enter(&mut self, node: NodeRef<'_>) {
+            let NodeRef::Stmt(Stmt::Return(ret)) = node else {
+                return;
+            };
+            if ret.value.as_ref().is_some_and(|value| {
+                matches!(&unparen(value).kind, ExprKind::Literal(Literal::Null))
+            }) {
+                self.nulls.push(ret.span);
+            }
+        }
+        fn exit(&mut self, _node: NodeRef<'_>) {}
+    }
+    let mut finder = Finder { nulls: Vec::new() };
+    crate::traverse::walk_block(block, &mut finder);
+    finder.nulls
+}
+
+fn body_returns_collection(block: &groovylint_syntax::ast::Block) -> bool {
+    struct Finder {
+        found: bool,
+    }
+    impl crate::traverse::AstVisitor for Finder {
+        fn enter(&mut self, node: NodeRef<'_>) {
+            if let NodeRef::Stmt(Stmt::Return(ret)) = node
+                && let Some(value) = &ret.value
+                && matches!(&unparen(value).kind, ExprKind::List(_) | ExprKind::Map(_))
+            {
+                self.found = true;
+            }
+        }
+        fn exit(&mut self, _node: NodeRef<'_>) {}
+    }
+    let mut finder = Finder { found: false };
+    crate::traverse::walk_block(block, &mut finder);
+    finder.found
 }
 
 /// Descriptors for the design rules.
@@ -1572,6 +1926,56 @@ pub fn design_descriptors() -> Vec<RuleDescriptor> {
             ),
             || RuleInstanceImpl::Ast(Box::new(ToStringReturnsNullRule)),
         ),
+        descriptor(
+            RuleMeta::new(
+                "AssignmentToStaticFieldFromInstanceMethod",
+                "org.codenarc.rule.design.AssignmentToStaticFieldFromInstanceMethodRule",
+                Category::Design,
+                Severity::Warning,
+                "Assignments to static fields from instance methods are error-prone.",
+            ),
+            || RuleInstanceImpl::File(Box::new(AssignmentToStaticFieldFromInstanceMethodRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "BooleanMethodReturnsNull",
+                "org.codenarc.rule.design.BooleanMethodReturnsNullRule",
+                Category::Design,
+                Severity::Warning,
+                "Boolean methods should not return null.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(BooleanMethodReturnsNullRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "Instanceof",
+                "org.codenarc.rule.design.InstanceofRule",
+                Category::Design,
+                Severity::Warning,
+                "Avoid instanceof checks.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(InstanceofRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "NestedForLoop",
+                "org.codenarc.rule.design.NestedForLoopRule",
+                Category::Design,
+                Severity::Warning,
+                "Avoid nested for loops.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(NestedForLoopRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "ReturnsNullInsteadOfEmptyCollection",
+                "org.codenarc.rule.design.ReturnsNullInsteadOfEmptyCollectionRule",
+                Category::Design,
+                Severity::Warning,
+                "Return an empty collection instead of null.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(ReturnsNullInsteadOfEmptyCollectionRule)),
+        ),
     ]
 }
 
@@ -1579,6 +1983,16 @@ pub fn design_descriptors() -> Vec<RuleDescriptor> {
 #[must_use]
 pub fn exception_descriptors() -> Vec<RuleDescriptor> {
     vec![
+        descriptor(
+            RuleMeta::new(
+                "CatchThrowable",
+                "org.codenarc.rule.exceptions.CatchThrowableRule",
+                Category::Exceptions,
+                Severity::Warning,
+                "Catching Throwable is dangerous.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(CatchThrowableRule)),
+        ),
         descriptor(
             RuleMeta::new(
                 "ConfusingClassNamedException",

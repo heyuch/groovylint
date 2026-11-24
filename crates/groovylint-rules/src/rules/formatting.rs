@@ -690,7 +690,7 @@ impl Rule for IndentationRule {
 }
 
 impl FileRule for IndentationRule {
-    fn check(&mut self, context: &FileContext<'_>, _sink: &mut DiagnosticSink<'_>) {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
         let width = self.spaces_per_indent_level.unwrap_or(4);
         if width == 0 {
             return;
@@ -710,10 +710,136 @@ impl FileRule for IndentationRule {
                     _ => break,
                 }
             }
-            if indent % width != 0 {
-                // shortcut: indentation is only checked for multiples of the
-                // configured width, continuation lines are not modelled.
-                let _ = line;
+            if indent % width != 0
+                && let Some(span) = context.source.line_span(line)
+            {
+                sink.report(
+                    span,
+                    format!("The indentation is not a multiple of {width} spaces"),
+                );
+            }
+        }
+    }
+}
+
+/// Flags lines longer than the configured maximum.
+pub struct LineLengthRule {
+    length: usize,
+    ignore_imports: bool,
+    ignore_packages: bool,
+    ignore_line_regex: Option<regex::Regex>,
+}
+
+impl Default for LineLengthRule {
+    fn default() -> Self {
+        Self {
+            length: 120,
+            ignore_imports: true,
+            ignore_packages: true,
+            ignore_line_regex: None,
+        }
+    }
+}
+
+impl Rule for LineLengthRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("length") {
+            self.length = value
+                .parse()
+                .map_err(|_| "length must be a number".to_string())?;
+        }
+        if let Some(value) = properties.get("ignoreImportStatements") {
+            self.ignore_imports = value != "false";
+        }
+        if let Some(value) = properties.get("ignorePackageStatements") {
+            self.ignore_packages = value != "false";
+        }
+        if let Some(value) = properties.get("ignoreLineRegex") {
+            self.ignore_line_regex = Some(
+                regex::Regex::new(value)
+                    .map_err(|error| format!("invalid ignoreLineRegex: {error}"))?,
+            );
+        }
+        Ok(())
+    }
+}
+
+impl FileRule for LineLengthRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for line in 1..=context.source.line_count() {
+            let Some(text) = context.source.line_text(line) else {
+                continue;
+            };
+            if text.chars().count() <= self.length {
+                continue;
+            }
+            let trimmed = text.trim_start();
+            if (trimmed.starts_with("import ") && self.ignore_imports)
+                || (trimmed.starts_with("package ") && self.ignore_packages)
+            {
+                continue;
+            }
+            if self
+                .ignore_line_regex
+                .as_ref()
+                .is_some_and(|pattern| pattern.is_match(text))
+            {
+                continue;
+            }
+            if let Some(span) = context.source.line_span(line) {
+                sink.report(
+                    span,
+                    format!(
+                        "The line exceeds {} characters. The line is {} characters.",
+                        self.length,
+                        text.chars().count()
+                    ),
+                );
+            }
+        }
+    }
+}
+
+/// Flags map entries without spaces around the colon.
+pub struct SpaceAroundMapEntryColonRule;
+
+impl Rule for SpaceAroundMapEntryColonRule {}
+
+impl AstRule for SpaceAroundMapEntryColonRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Map(entries) = &expr.kind else {
+            return;
+        };
+        for (key, value) in entries {
+            let start = key.span.end;
+            let end = value.span.start;
+            if start >= end {
+                continue;
+            }
+            let Some(between) = context.source.text().get(start..end) else {
+                continue;
+            };
+            let Some(colon) = between.find(':') else {
+                continue;
+            };
+            let before = between[..colon].chars().next_back();
+            let after = between[colon + 1..].chars().next();
+            if before.is_some_and(|ch| !ch.is_whitespace())
+                || after.is_some_and(|ch| !ch.is_whitespace())
+            {
+                sink.report(expr.span, "Map entry colon should be surrounded by spaces");
             }
         }
     }
@@ -723,6 +849,26 @@ impl FileRule for IndentationRule {
 #[must_use]
 pub fn descriptors() -> Vec<RuleDescriptor> {
     vec![
+        descriptor(
+            RuleMeta::new(
+                "LineLength",
+                "org.codenarc.rule.formatting.LineLengthRule",
+                Category::Formatting,
+                Severity::Warning,
+                "Lines should not exceed the configured length.",
+            ),
+            || RuleInstanceImpl::File(Box::new(LineLengthRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "SpaceAroundMapEntryColon",
+                "org.codenarc.rule.formatting.SpaceAroundMapEntryColonRule",
+                Category::Formatting,
+                Severity::Info,
+                "Map entry colons should be surrounded by spaces.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(SpaceAroundMapEntryColonRule)),
+        ),
         descriptor(
             RuleMeta::new(
                 "TrailingWhitespace",

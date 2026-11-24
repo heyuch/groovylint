@@ -1,16 +1,17 @@
 //! Remaining `CodeNarc` rules: concurrency, JDBC, serialization and a few
 //! naming and unused-code rules.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{Expr, ExprKind, Item, Stmt};
+use groovylint_syntax::ast::{Expr, ExprKind, Item, MethodDecl, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
-    AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
+    AstRule, Category, DiagnosticSink, FileContext, FileRule, NodeKind, NodeMask, NodeRef, Rule,
+    RuleMeta,
 };
-use crate::rules::util::{is_serializable, simple_name, unparen, variable_name};
+use crate::rules::util::{has_annotation, is_serializable, simple_name, unparen, variable_name};
 
 fn statement_is(statement: &Stmt) -> Option<&Expr> {
     match statement {
@@ -649,7 +650,7 @@ impl AstRule for VolatileLongOrDoubleFieldRule {
     }
 }
 
-/// Flags busy waiting on a `while` loop.
+/// Flags busy waiting on a loop that only calls `sleep`.
 pub struct BusyWaitRule;
 
 impl Rule for BusyWaitRule {}
@@ -657,19 +658,37 @@ impl Rule for BusyWaitRule {}
 impl AstRule for BusyWaitRule {
     fn interests(&self) -> NodeMask {
         NodeMask::of(NodeKind::While)
+            .union(NodeMask::of(NodeKind::For))
+            .union(NodeMask::of(NodeKind::ForEach))
     }
 
     fn enter(
         &mut self,
         node: NodeRef<'_>,
         _context: &FileContext<'_>,
-        _sink: &mut DiagnosticSink<'_>,
+        sink: &mut DiagnosticSink<'_>,
     ) {
-        // shortcut: a busy-wait needs loop-carried state tracking, which is not
-        // modelled; the rule is registered but reports nothing.
-        let NodeRef::Stmt(Stmt::While(_)) = node else {
+        let body = match node {
+            NodeRef::Stmt(Stmt::While(while_stmt)) => &while_stmt.body,
+            NodeRef::Stmt(Stmt::For(for_stmt)) => &for_stmt.body,
+            NodeRef::Stmt(Stmt::ForEach(for_each)) => &for_each.body,
+            _ => return,
+        };
+        let Stmt::Block(block) = body.as_ref() else {
             return;
         };
+        let [Stmt::Expr(expr)] = block.statements.as_slice() else {
+            return;
+        };
+        let ExprKind::Call { name, args, .. } = &expr.kind else {
+            return;
+        };
+        if name == "sleep" && (args.len() == 1 || args.len() == 2) {
+            sink.report(
+                expr.span,
+                "Busy wait detected; use a lock or gate from java.util.concurrent",
+            );
+        }
     }
 }
 
@@ -907,8 +926,8 @@ impl AstRule for UnusedMethodParameterRule {
         if method.is_private || method.is_abstract {
             return;
         }
-        if crate::rules::util::has_annotation(&method.annotations, "Override")
-            || crate::rules::util::has_annotation(&method.annotations, "Pointcut")
+        if has_annotation(&method.annotations, "Override")
+            || has_annotation(&method.annotations, "Pointcut")
         {
             return;
         }
@@ -1036,74 +1055,179 @@ fn cyclomatic_complexity(block: &groovylint_syntax::ast::Block) -> usize {
     counter.count
 }
 
-/// Flags `NullPointerException`-prone string conversions in scripts.
+/// Flags script assignments that create implicit bindings.
 pub struct NoScriptBindingsRule;
 
 impl Rule for NoScriptBindingsRule {}
 
-impl AstRule for NoScriptBindingsRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Script)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Script(script) = node else {
-            return;
-        };
-        let _ = script;
-        let _ = sink;
+impl FileRule for NoScriptBindingsRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut declared = BTreeSet::new();
+        collect_top_level_declarations(&context.script.items, &mut declared);
+        for item in &context.script.items {
+            if let Item::Statement(statement) = item {
+                let mut finder = ScriptBindingFinder {
+                    declared: &declared,
+                    violations: Vec::new(),
+                };
+                crate::traverse::walk_stmt(statement, &mut finder);
+                for span in finder.violations {
+                    sink.report(
+                        span,
+                        "The script variable has no type declaration and becomes a script binding",
+                    );
+                }
+            }
+        }
     }
 }
 
-/// Flags property accesses that are not consistent in their locking.
+fn collect_top_level_declarations(items: &[Item], declared: &mut BTreeSet<String>) {
+    for item in items {
+        if let Item::Statement(statement) = item {
+            let mut collector = DeclarationCollector { names: declared };
+            crate::traverse::walk_stmt(statement, &mut collector);
+        }
+    }
+}
+
+struct DeclarationCollector<'a> {
+    names: &'a mut BTreeSet<String>,
+}
+
+impl crate::traverse::AstVisitor for DeclarationCollector<'_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        if let NodeRef::Stmt(Stmt::VarDecl(decl)) = node {
+            self.names.insert(decl.name.clone());
+        }
+    }
+    fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+struct ScriptBindingFinder<'a> {
+    declared: &'a BTreeSet<String>,
+    violations: Vec<groovylint_core::Span>,
+}
+
+impl crate::traverse::AstVisitor for ScriptBindingFinder<'_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Assign {
+            target,
+            op: groovylint_syntax::ast::AssignOp::Assign,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        let Some(name) = variable_name(target) else {
+            return;
+        };
+        if !self.declared.contains(name) {
+            self.violations.push(expr.span);
+        }
+    }
+    fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+/// Flags getter/setter pairs with inconsistent lock annotations.
 pub struct InconsistentPropertyLockingRule;
 
 impl Rule for InconsistentPropertyLockingRule {}
 
-impl AstRule for InconsistentPropertyLockingRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Class)
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Class(_) = node else {
-            return;
-        };
-        let _ = sink;
+impl FileRule for InconsistentPropertyLockingRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        check_property_guards(context.script, sink, GuardKind::Lock);
     }
 }
 
-/// Flags property accesses that are not consistent in their synchronization.
+/// Flags getter/setter pairs with inconsistent synchronization.
 pub struct InconsistentPropertySynchronizationRule;
 
 impl Rule for InconsistentPropertySynchronizationRule {}
 
-impl AstRule for InconsistentPropertySynchronizationRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Class)
+impl FileRule for InconsistentPropertySynchronizationRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        check_property_guards(context.script, sink, GuardKind::Synchronized);
     }
+}
 
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Class(_) = node else {
-            return;
+#[derive(Clone, Copy)]
+enum GuardKind {
+    Lock,
+    Synchronized,
+}
+
+fn check_property_guards(
+    script: &groovylint_syntax::ast::Script,
+    sink: &mut DiagnosticSink<'_>,
+    kind: GuardKind,
+) {
+    for item in &script.items {
+        let Item::Class(class) = item else {
+            continue;
         };
-        let _ = sink;
+        let mut getters = BTreeMap::<String, (&MethodDecl, bool)>::new();
+        let mut setters = BTreeMap::<String, (&MethodDecl, bool)>::new();
+        for member in &class.members {
+            let Item::Method(method) = member else {
+                continue;
+            };
+            let name = method.name.as_str();
+            let is_getter = method.params.is_empty()
+                && ((name.starts_with("get") && name.len() > 3)
+                    || (name.starts_with("is") && name.len() > 2));
+            let is_setter = method.params.len() == 1 && name.starts_with("set") && name.len() > 3;
+            if !is_getter && !is_setter {
+                continue;
+            }
+            let property = property_name(name);
+            let guarded = match kind {
+                GuardKind::Lock => {
+                    has_annotation(&method.annotations, "WithReadLock")
+                        || has_annotation(&method.annotations, "WithWriteLock")
+                }
+                GuardKind::Synchronized => {
+                    method.is_synchronized || has_annotation(&method.annotations, "Synchronized")
+                }
+            };
+            let target = if method.params.is_empty() {
+                &mut getters
+            } else {
+                &mut setters
+            };
+            target.insert(property, (method, guarded));
+        }
+        for (property, (getter, getter_guarded)) in &getters {
+            let Some((setter, setter_guarded)) = setters.get(property) else {
+                continue;
+            };
+            if getter_guarded == setter_guarded {
+                continue;
+            }
+            let unguarded = if *getter_guarded { setter } else { getter };
+            sink.report(
+                unguarded.span,
+                format!(
+                    "The getter and setter for property {property} do not use the same synchronization or lock"
+                ),
+            );
+        }
     }
+}
+
+fn property_name(method: &str) -> String {
+    let name = method
+        .strip_prefix("get")
+        .or_else(|| method.strip_prefix("set"))
+        .or_else(|| method.strip_prefix("is"))
+        .unwrap_or(method);
+    let mut chars = name.chars();
+    chars.next().map_or_else(String::new, |first| {
+        format!("{}{}", first.to_ascii_lowercase(), chars.as_str())
+    })
 }
 
 /// Flags double-checked locking.
@@ -1113,19 +1237,121 @@ impl Rule for DoubleCheckedLockingRule {}
 
 impl AstRule for DoubleCheckedLockingRule {
     fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::If)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Stmt(Stmt::If(outer)) = node else {
+            return;
+        };
+        let Some(variable) = null_check_variable(&outer.condition) else {
+            return;
+        };
+        let Some(synchronized) = single_synchronized(&outer.then_branch) else {
+            return;
+        };
+        let Some(inner) = single_if(&synchronized.body) else {
+            return;
+        };
+        if null_check_variable(&inner.condition) != Some(variable) {
+            return;
+        }
+        let Some(assignment) = single_statement(&inner.then_branch) else {
+            return;
+        };
+        let Stmt::Expr(expr) = assignment else {
+            return;
+        };
+        let ExprKind::Assign { target, .. } = &expr.kind else {
+            return;
+        };
+        if variable_name(target) != Some(variable) {
+            return;
+        }
+        sink.report(
+            expr.span,
+            format!(
+                "Double checked locking detected for variable {variable}; use robust lazy initialization"
+            ),
+        );
+    }
+}
+
+fn single_statement(statement: &Stmt) -> Option<&Stmt> {
+    match statement {
+        Stmt::Block(block) if block.statements.len() == 1 => block.statements.first(),
+        _ => Some(statement),
+    }
+}
+
+fn single_synchronized(statement: &Stmt) -> Option<&groovylint_syntax::ast::SynchronizedStmt> {
+    match single_statement(statement)? {
+        Stmt::Synchronized(synchronized) => Some(synchronized),
+        _ => None,
+    }
+}
+
+fn single_if(statement: &Stmt) -> Option<&groovylint_syntax::ast::IfStmt> {
+    match single_statement(statement)? {
+        Stmt::If(if_stmt) => Some(if_stmt),
+        _ => None,
+    }
+}
+
+fn null_check_variable(expr: &Expr) -> Option<&str> {
+    let ExprKind::Binary {
+        op: groovylint_syntax::ast::BinaryOp::Eq,
+        left,
+        right,
+    } = &expr.kind
+    else {
+        return None;
+    };
+    if matches!(
+        unparen(left).kind,
+        ExprKind::Literal(groovylint_syntax::ast::Literal::Null)
+    ) {
+        return variable_name(right);
+    }
+    if matches!(
+        unparen(right).kind,
+        ExprKind::Literal(groovylint_syntax::ast::Literal::Null)
+    ) {
+        return variable_name(left);
+    }
+    None
+}
+
+/// Flags synchronization on `this`.
+pub struct SynchronizedOnThisRule;
+
+impl Rule for SynchronizedOnThisRule {}
+
+impl AstRule for SynchronizedOnThisRule {
+    fn interests(&self) -> NodeMask {
         NodeMask::of(NodeKind::Synchronized)
     }
 
     fn enter(
         &mut self,
         node: NodeRef<'_>,
-        context: &FileContext<'_>,
+        _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        let NodeRef::Stmt(Stmt::Synchronized(_)) = node else {
+        let NodeRef::Stmt(Stmt::Synchronized(synchronized)) = node else {
             return;
         };
-        let _ = (context, sink);
+        if matches!(unparen(&synchronized.expression).kind, ExprKind::This) {
+            sink.report(
+                synchronized.span,
+                "Synchronizing on this is unsafe; use a private lock object",
+            );
+        }
     }
 }
 
@@ -1133,6 +1359,16 @@ impl AstRule for DoubleCheckedLockingRule {
 #[must_use]
 pub fn concurrency_descriptors() -> Vec<RuleDescriptor> {
     vec![
+        descriptor(
+            RuleMeta::new(
+                "SynchronizedOnThis",
+                "org.codenarc.rule.concurrency.SynchronizedOnThisRule",
+                Category::Concurrency,
+                Severity::Warning,
+                "Avoid synchronizing on this.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(SynchronizedOnThisRule)),
+        ),
         descriptor(
             RuleMeta::new(
                 "BusyWait",
@@ -1161,7 +1397,7 @@ pub fn concurrency_descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "InconsistentPropertyLocking concurrency rule.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(InconsistentPropertyLockingRule)),
+            || RuleInstanceImpl::File(Box::new(InconsistentPropertyLockingRule)),
         ),
         descriptor(
             RuleMeta::new(
@@ -1171,7 +1407,7 @@ pub fn concurrency_descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "InconsistentPropertySynchronization concurrency rule.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(InconsistentPropertySynchronizationRule)),
+            || RuleInstanceImpl::File(Box::new(InconsistentPropertySynchronizationRule)),
         ),
         descriptor(
             RuleMeta::new(
@@ -1191,7 +1427,7 @@ pub fn concurrency_descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "NoScriptBindings concurrency rule.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(NoScriptBindingsRule)),
+            || RuleInstanceImpl::File(Box::new(NoScriptBindingsRule)),
         ),
         descriptor(
             RuleMeta::new(

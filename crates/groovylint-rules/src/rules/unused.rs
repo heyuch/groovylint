@@ -360,6 +360,11 @@ impl UnusedObjectRule {
             }
             Item::Statement(stmt) => self.check_single_statement(stmt, true, sink),
             Item::Field(_) => {}
+            Item::Group(items) => {
+                for item in items {
+                    self.check_item(item, sink);
+                }
+            }
         }
     }
 

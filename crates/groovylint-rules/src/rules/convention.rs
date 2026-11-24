@@ -1,7 +1,7 @@
 //! `CodeNarc` convention rules about declarations and characters.
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{AssignOp, ExprKind, Literal, MethodDecl, Param, Stmt};
+use groovylint_syntax::ast::{AssignOp, Expr, ExprKind, Literal, MethodDecl, Param, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
@@ -768,6 +768,226 @@ impl AstRule for FloatingPointTypeRule {
     }
 }
 
+/// Flags public methods declared after non-public methods.
+pub struct PublicMethodsBeforeNonPublicMethodsRule;
+
+impl Rule for PublicMethodsBeforeNonPublicMethodsRule {}
+
+impl FileRule for PublicMethodsBeforeNonPublicMethodsRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for item in &context.script.items {
+            check_public_method_order(item, sink);
+        }
+    }
+}
+
+fn check_public_method_order(item: &groovylint_syntax::ast::Item, sink: &mut DiagnosticSink<'_>) {
+    if let groovylint_syntax::ast::Item::Class(class) = item {
+        let mut saw_non_public = false;
+        for member in &class.members {
+            if let groovylint_syntax::ast::Item::Method(method) = member {
+                let public = method.is_public || (!method.is_private && !method.is_protected);
+                if public && saw_non_public {
+                    sink.report(
+                        method.span,
+                        format!(
+                            "The public method {} is declared after a non-public method",
+                            method.name
+                        ),
+                    );
+                } else if !public {
+                    saw_non_public = true;
+                }
+            }
+        }
+        for member in &class.members {
+            check_public_method_order(member, sink);
+        }
+    }
+}
+
+/// Flags static fields declared after instance fields.
+pub struct StaticFieldsBeforeInstanceFieldsRule;
+
+impl Rule for StaticFieldsBeforeInstanceFieldsRule {}
+
+impl FileRule for StaticFieldsBeforeInstanceFieldsRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for item in &context.script.items {
+            check_static_field_order(item, sink);
+        }
+    }
+}
+
+fn check_static_field_order(item: &groovylint_syntax::ast::Item, sink: &mut DiagnosticSink<'_>) {
+    if let groovylint_syntax::ast::Item::Class(class) = item {
+        let mut saw_instance = false;
+        for member in &class.members {
+            if let groovylint_syntax::ast::Item::Field(field) = member {
+                if !field.is_static {
+                    saw_instance = true;
+                } else if saw_instance {
+                    sink.report(
+                        field.span,
+                        format!(
+                            "The static field {} is declared after an instance field",
+                            field.name
+                        ),
+                    );
+                }
+            }
+        }
+        for member in &class.members {
+            check_static_field_order(member, sink);
+        }
+    }
+}
+
+/// Flags static methods declared after instance methods of the same visibility.
+pub struct StaticMethodsBeforeInstanceMethodsRule;
+
+impl Rule for StaticMethodsBeforeInstanceMethodsRule {}
+
+impl FileRule for StaticMethodsBeforeInstanceMethodsRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        for item in &context.script.items {
+            check_static_method_order(item, sink);
+        }
+    }
+}
+
+fn visibility(method: &MethodDecl) -> u8 {
+    if method.is_private {
+        0
+    } else if method.is_protected {
+        1
+    } else {
+        2
+    }
+}
+
+fn check_static_method_order(item: &groovylint_syntax::ast::Item, sink: &mut DiagnosticSink<'_>) {
+    if let groovylint_syntax::ast::Item::Class(class) = item {
+        let mut saw_instance = [false; 3];
+        for member in &class.members {
+            if let groovylint_syntax::ast::Item::Method(method) = member {
+                let level = visibility(method) as usize;
+                if method.is_static {
+                    if saw_instance[level] {
+                        sink.report(
+                            method.span,
+                            format!(
+                                "The static method {} is declared after an instance method",
+                                method.name
+                            ),
+                        );
+                    }
+                } else {
+                    saw_instance[level] = true;
+                }
+            }
+        }
+        for member in &class.members {
+            check_static_method_order(member, sink);
+        }
+    }
+}
+
+/// Flags if statements whose branches are simple return/expression values.
+pub struct IfStatementCouldBeTernaryRule;
+
+impl Rule for IfStatementCouldBeTernaryRule {}
+
+impl AstRule for IfStatementCouldBeTernaryRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::If)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Stmt(Stmt::If(if_stmt)) = node else {
+            return;
+        };
+        let Some(else_branch) = &if_stmt.else_branch else {
+            return;
+        };
+        if branch_value(&if_stmt.then_branch).is_some() && branch_value(else_branch).is_some() {
+            sink.report(
+                if_stmt.span,
+                "The if statement can be rewritten using the ternary operator",
+            );
+        }
+    }
+}
+
+fn branch_value(stmt: &Stmt) -> Option<&Expr> {
+    match stmt {
+        Stmt::Return(ret) => ret.value.as_ref(),
+        Stmt::Expr(expr) => Some(expr),
+        Stmt::Block(block) if block.statements.len() == 1 => branch_value(&block.statements[0]),
+        _ => None,
+    }
+}
+
+/// Flags if/else-if chains that compare one value for equality.
+pub struct CouldBeSwitchStatementRule;
+
+impl Rule for CouldBeSwitchStatementRule {}
+
+impl AstRule for CouldBeSwitchStatementRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::If)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Stmt(Stmt::If(if_stmt)) = node else {
+            return;
+        };
+        let Some(subject) = equality_subject(&if_stmt.condition, context.source.text()) else {
+            return;
+        };
+        let mut count = 1;
+        let mut current = if_stmt.else_branch.as_deref();
+        while let Some(Stmt::If(next)) = current {
+            if equality_subject(&next.condition, context.source.text()).as_deref()
+                == Some(subject.as_str())
+            {
+                count += 1;
+                current = next.else_branch.as_deref();
+            } else {
+                break;
+            }
+        }
+        if count >= 2 {
+            sink.report(
+                if_stmt.span,
+                "The if/else-if chain can be rewritten as a switch statement",
+            );
+        }
+    }
+}
+
+fn equality_subject(expr: &Expr, source: &str) -> Option<String> {
+    let ExprKind::Binary {
+        op: groovylint_syntax::ast::BinaryOp::Eq,
+        left,
+        ..
+    } = &expr.kind
+    else {
+        return None;
+    };
+    Some(crate::rules::util::expr_text(left, source))
+}
+
 /// Descriptors for the remaining convention rules.
 #[must_use]
 pub fn more_descriptors() -> Vec<RuleDescriptor> {
@@ -844,7 +1064,7 @@ pub fn more_descriptors() -> Vec<RuleDescriptor> {
 }
 
 /// Returns whether an expression is a boolean negation.
-fn is_negation(expr: &groovylint_syntax::ast::Expr) -> bool {
+fn is_negation(expr: &Expr) -> bool {
     use groovylint_syntax::ast::{BinaryOp, UnaryOp};
     matches!(
         &expr.kind,
@@ -859,14 +1079,14 @@ fn is_negation(expr: &groovylint_syntax::ast::Expr) -> bool {
 }
 
 /// Returns whether an expression compares against `null`.
-fn is_null_comparison(expr: &groovylint_syntax::ast::Expr) -> bool {
+fn is_null_comparison(expr: &Expr) -> bool {
     let ExprKind::Binary { left, right, .. } = &expr.kind else {
         return false;
     };
     is_null_literal(left) || is_null_literal(right)
 }
 
-fn is_null_literal(expr: &groovylint_syntax::ast::Expr) -> bool {
+fn is_null_literal(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Literal(Literal::Null))
 }
 
@@ -912,7 +1132,7 @@ impl AstRule for ConfusingTernaryRule {
 }
 
 /// Returns whether an expression is a unary `!` negation.
-fn is_unary_negation(expr: &groovylint_syntax::ast::Expr) -> bool {
+fn is_unary_negation(expr: &Expr) -> bool {
     matches!(
         &expr.kind,
         ExprKind::Unary {
@@ -1080,6 +1300,56 @@ pub fn extra_descriptors() -> Vec<RuleDescriptor> {
                     replacement: "ArrayList or Collections.synchronizedList()",
                 }))
             },
+        ),
+        descriptor(
+            RuleMeta::new(
+                "CouldBeSwitchStatement",
+                "org.codenarc.rule.convention.CouldBeSwitchStatementRule",
+                Category::Convention,
+                Severity::Warning,
+                "If/else-if chains comparing one value can be a switch.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(CouldBeSwitchStatementRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "IfStatementCouldBeTernary",
+                "org.codenarc.rule.convention.IfStatementCouldBeTernaryRule",
+                Category::Convention,
+                Severity::Warning,
+                "If statements returning values can be ternaries.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(IfStatementCouldBeTernaryRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "PublicMethodsBeforeNonPublicMethods",
+                "org.codenarc.rule.convention.PublicMethodsBeforeNonPublicMethodsRule",
+                Category::Convention,
+                Severity::Info,
+                "Public methods should appear before non-public methods.",
+            ),
+            || RuleInstanceImpl::File(Box::new(PublicMethodsBeforeNonPublicMethodsRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "StaticFieldsBeforeInstanceFields",
+                "org.codenarc.rule.convention.StaticFieldsBeforeInstanceFieldsRule",
+                Category::Convention,
+                Severity::Info,
+                "Static fields should appear before instance fields.",
+            ),
+            || RuleInstanceImpl::File(Box::new(StaticFieldsBeforeInstanceFieldsRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "StaticMethodsBeforeInstanceMethods",
+                "org.codenarc.rule.convention.StaticMethodsBeforeInstanceMethodsRule",
+                Category::Convention,
+                Severity::Info,
+                "Static methods should appear before instance methods.",
+            ),
+            || RuleInstanceImpl::File(Box::new(StaticMethodsBeforeInstanceMethodsRule)),
         ),
     ]
 }

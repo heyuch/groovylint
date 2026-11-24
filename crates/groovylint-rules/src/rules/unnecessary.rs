@@ -49,6 +49,19 @@ fn property_parts(expr: &Expr) -> Option<(&Expr, &str)> {
     Some((receiver, name))
 }
 
+fn call_parts(expr: &Expr) -> Option<(&Expr, &str, &[Expr])> {
+    let ExprKind::Call {
+        receiver: Some(receiver),
+        name,
+        args,
+        ..
+    } = &unparen(expr).kind
+    else {
+        return None;
+    };
+    Some((receiver, name, args))
+}
+
 /// Flags `X.class` where `X` is a class name.
 pub struct UnnecessaryDotClassRule;
 
@@ -1553,6 +1566,338 @@ impl AstRule for UnnecessaryCallForLastElementRule {
     }
 }
 
+/// Flags casts that cannot change the value.
+pub struct UnnecessaryCastRule;
+
+impl Rule for UnnecessaryCastRule {}
+
+impl AstRule for UnnecessaryCastRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Cast {
+            expr: inner,
+            type_name,
+        } = &expr.kind
+        else {
+            return;
+        };
+        let target = type_name.rsplit('.').next().unwrap_or(type_name);
+        let matches_literal = match &unparen(inner).kind {
+            ExprKind::Literal(Literal::String(_)) => target == "String",
+            ExprKind::Literal(Literal::Number(_)) => matches!(
+                target,
+                "int"
+                    | "Integer"
+                    | "long"
+                    | "Long"
+                    | "double"
+                    | "Double"
+                    | "float"
+                    | "Float"
+                    | "short"
+                    | "Short"
+                    | "byte"
+                    | "Byte"
+                    | "BigDecimal"
+                    | "BigInteger"
+            ),
+            ExprKind::List(_) => matches!(target, "List" | "ArrayList" | "Collection" | "Iterable"),
+            ExprKind::Map(_) => matches!(target, "Map" | "HashMap" | "LinkedHashMap"),
+            _ => false,
+        };
+        if matches_literal {
+            sink.report(expr.span, format!("The cast to {target} is unnecessary"));
+        }
+    }
+}
+
+/// Flags a single-statement collect closure that could use the spread operator.
+pub struct UnnecessaryCollectCallRule;
+
+impl Rule for UnnecessaryCollectCallRule {}
+
+impl AstRule for UnnecessaryCollectCallRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Call {
+            receiver: Some(_),
+            name,
+            args,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        if name != "collect" || args.len() != 1 {
+            return;
+        }
+        let ExprKind::Closure { params, body, .. } = &unparen(&args[0]).kind else {
+            return;
+        };
+        let param = params.first().map_or("it", |param| param.name.as_str());
+        let [Stmt::Expr(inner)] = body.statements.as_slice() else {
+            return;
+        };
+        let Some((receiver, _, _)) = call_parts(inner) else {
+            // A property access on the closure parameter is also spreadable.
+            if let ExprKind::Property { receiver, .. } = &unparen(inner).kind
+                && variable_name(receiver) == Some(param)
+            {
+                sink.report(
+                    expr.span,
+                    "The call to collect could probably be rewritten as a spread expression",
+                );
+            }
+            return;
+        };
+        if variable_name(receiver) == Some(param) {
+            sink.report(
+                expr.span,
+                "The call to collect could probably be rewritten as a spread expression",
+            );
+        }
+    }
+}
+
+/// Flags double-quoted strings without interpolation.
+pub struct UnnecessaryGStringRule;
+
+impl Rule for UnnecessaryGStringRule {}
+
+impl AstRule for UnnecessaryGStringRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Literal(Literal::String(raw)) = &expr.kind else {
+            return;
+        };
+        if raw.starts_with('"') && !raw.starts_with("\"\"\"") && !raw.contains('$') {
+            sink.report(
+                expr.span,
+                "The string can be wrapped in single quotes instead of double quotes",
+            );
+        }
+    }
+}
+
+/// Flags getter calls that could use property access.
+pub struct UnnecessaryGetterRule;
+
+impl Rule for UnnecessaryGetterRule {}
+
+impl AstRule for UnnecessaryGetterRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Call {
+            receiver: Some(_),
+            name,
+            args,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        if !args.is_empty() || name == "getClass" {
+            return;
+        }
+        let is_getter =
+            name.starts_with("get") && name.len() > 3 && name.as_bytes()[3].is_ascii_uppercase();
+        let is_is_getter =
+            name.starts_with("is") && name.len() > 2 && name.as_bytes()[2].is_ascii_uppercase();
+        if is_getter || is_is_getter {
+            let property = if is_getter {
+                format!(
+                    "{}{}",
+                    name.as_bytes()[3].to_ascii_lowercase() as char,
+                    &name[4..]
+                )
+            } else {
+                format!(
+                    "{}{}",
+                    name.as_bytes()[2].to_ascii_lowercase() as char,
+                    &name[3..]
+                )
+            };
+            sink.report(
+                expr.span,
+                format!("{name}() can probably be rewritten as {property}"),
+            );
+        }
+    }
+}
+
+/// Flags an explicit return as the last statement of a method or closure.
+pub struct UnnecessaryReturnKeywordRule;
+
+impl Rule for UnnecessaryReturnKeywordRule {}
+
+impl AstRule for UnnecessaryReturnKeywordRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Method).union(NodeMask::of(NodeKind::Expr))
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let block = match node {
+            NodeRef::Method(method) => method.body.as_ref(),
+            NodeRef::Expr(expr) => match &expr.kind {
+                ExprKind::Closure { body, .. } => Some(body),
+                _ => None,
+            },
+            _ => None,
+        };
+        let Some(block) = block else {
+            return;
+        };
+        let Some(Stmt::Return(ret)) = block.statements.last() else {
+            return;
+        };
+        if ret.value.is_some() {
+            sink.report(
+                ret.span,
+                "The return keyword is not needed and can be removed",
+            );
+        }
+    }
+}
+
+/// Flags explicit setter calls that could use property assignment.
+pub struct UnnecessarySetterRule;
+
+impl Rule for UnnecessarySetterRule {}
+
+impl AstRule for UnnecessarySetterRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Call {
+            receiver: Some(receiver),
+            name,
+            args,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        if args.len() != 1
+            || !name.starts_with("set")
+            || name.len() <= 3
+            || !name.as_bytes()[3].is_ascii_uppercase()
+            || variable_name(receiver) == Some("super")
+        {
+            return;
+        }
+        let property = format!(
+            "{}{}",
+            name.as_bytes()[3].to_ascii_lowercase() as char,
+            &name[4..]
+        );
+        sink.report(
+            expr.span,
+            format!("{name}(...) can probably be rewritten as {property} = ..."),
+        );
+    }
+}
+
+/// Flags calls to `toString()` on values already known to be strings.
+pub struct UnnecessaryToStringRule;
+
+impl Rule for UnnecessaryToStringRule {}
+
+impl AstRule for UnnecessaryToStringRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Call {
+            receiver: Some(receiver),
+            name,
+            args,
+            ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        if name != "toString" || !args.is_empty() {
+            return;
+        }
+        let receiver = unparen(receiver);
+        let is_string = matches!(&receiver.kind, ExprKind::Literal(Literal::String(_)));
+        if is_string {
+            sink.report(
+                expr.span,
+                "Calling toString() on a String expression is unnecessary",
+            );
+        }
+    }
+}
+
 /// Descriptors for the rules.
 #[must_use]
 pub fn descriptors() -> Vec<RuleDescriptor> {
@@ -1936,6 +2281,76 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 "`transient` has no effect outside serializable classes.",
             ),
             || RuleInstanceImpl::Ast(Box::new(UnnecessaryTransientModifierRule::default())),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessaryCast",
+                "org.codenarc.rule.unnecessary.UnnecessaryCastRule",
+                Category::Unnecessary,
+                Severity::Warning,
+                "The cast is unnecessary.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryCastRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessaryCollectCall",
+                "org.codenarc.rule.unnecessary.UnnecessaryCollectCallRule",
+                Category::Unnecessary,
+                Severity::Info,
+                "collect() can use a spread expression.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryCollectCallRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessaryGString",
+                "org.codenarc.rule.unnecessary.UnnecessaryGStringRule",
+                Category::Unnecessary,
+                Severity::Info,
+                "Double-quoted strings without interpolation can use single quotes.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryGStringRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessaryGetter",
+                "org.codenarc.rule.unnecessary.UnnecessaryGetterRule",
+                Category::Unnecessary,
+                Severity::Info,
+                "Getter calls can use property access.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryGetterRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessaryReturnKeyword",
+                "org.codenarc.rule.unnecessary.UnnecessaryReturnKeywordRule",
+                Category::Unnecessary,
+                Severity::Info,
+                "The return keyword is optional at the end of a method or closure.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryReturnKeywordRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessarySetter",
+                "org.codenarc.rule.unnecessary.UnnecessarySetterRule",
+                Category::Unnecessary,
+                Severity::Info,
+                "Setter calls can use property assignment.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessarySetterRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
+                "UnnecessaryToString",
+                "org.codenarc.rule.unnecessary.UnnecessaryToStringRule",
+                Category::Unnecessary,
+                Severity::Warning,
+                "toString() on a String is unnecessary.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryToStringRule)),
         ),
     ]
 }

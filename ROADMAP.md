@@ -14,13 +14,14 @@ not to build.
 - A lossless syntax layer that keeps the semantic AST and a future formatter
   independent.
 - Safe autofix with explicit suggestions and text edits.
-- ArchUnit-like source dependency rules:
+- ArchUnit-like source dependency rules (deferred until real-project research):
   - module-to-module dependencies;
   - package-to-package dependencies;
   - class-to-class dependencies;
   - class-in-package and package-layering constraints;
   - cycle detection for modules/packages/slices.
-- A declarative architecture DSL, with a Gradle DSL facade.
+- A declarative architecture DSL, with a Gradle DSL facade (deferred with the
+  architecture rules).
 - Flow-sensitive nullness analysis without requiring `@Nullable`.
 - Incremental analysis and persistent caching after the semantic features are
   stable.
@@ -48,17 +49,18 @@ The current registry contains:
 
 | Item | Count |
 |---|---:|
-| Registered entries | 318 |
-| Unique registered rule classes | 318 |
-| CodeNarc 4.0.0 classes not registered | 88 |
-| Grails classes not registered (excluded) | 12 |
-| Jenkins classes removed | 7 |
-| Spock classes removed | 3 |
-| Non-framework/non-Spock missing rules | 66 |
-| Non-framework/non-Spock registered stubs/partial | 8 |
+| Registered entries | 384 |
+| Unique registered rule classes | 384 |
+| CodeNarc 4.0.0 classes not registered | 22 |
+| Grails classes removed (unsupported) | 12 |
+| Jenkins classes removed (unsupported) | 7 |
+| Spock classes removed (unsupported) | 3 |
+| Non-framework/non-Spock missing rules | 0 |
+| Non-framework/non-Spock registered stubs/partial | 0 |
 | In-scope target | 384 |
 
-The unsupported Grails, Jenkins, and Spock rules are not registered. The
+All in-scope CodeNarc 4.0.0 rules are registered. The 22 unregistered classes are
+the unsupported Grails, Jenkins, and Spock rules. The
 `ThrowExceptionFromFinallyBlock` duplicate registration has been removed.
 
 The detailed missing-rule list is in [`docs/COVERAGE.md`](docs/COVERAGE.md).
@@ -75,8 +77,9 @@ A rule is only counted as implemented when:
 5. it passes differential validation against CodeNarc 4.0.0 on a fixture and,
    where practical, a real corpus.
 
-The 8 non-framework stubs do **not** meet this definition. They are registered so
-rulesets load, but they currently report nothing or only approximate a check.
+Coverage is not the same as behavioral parity. The newly added rules have smoke
+and unit coverage, but many still need broader CodeNarc positive/negative fixtures
+and corpus differential validation.
 
 ## 3. Target architecture
 
@@ -145,9 +148,11 @@ Exit criteria:
 - CI fails if a rule is added/removed without updating the expected manifest.
 - No duplicate CodeNarc classes.
 
-### M1 — Complete non-framework, non-Spock CodeNarc behavior (0.3, 3–4 weeks)
+### M1 — Complete non-framework, non-Spock CodeNarc behavior (0.3, completed 2026-11-25)
 
-Implement the 66 missing non-framework/non-Spock rules and replace the 8 stubs.
+Implemented the 66 missing non-framework/non-Spock rules and replaced the 8
+former stubs. All 384 in-scope classes are now registered; behavioral parity
+fixtures are still being expanded.
 
 Suggested batches:
 
@@ -176,13 +181,9 @@ Suggested batches:
    - `ExceptionNotThrown`;
    - `IllegalClassMember`.
 
-Some size rules need method/class metrics, and some stubs need CFG or
-project-specific knowledge. Implement the simple, high-confidence form first and
-mark the rule `Partial` until its differential coverage is acceptable.
-
 Exit criteria:
 
-- 384/384 in-scope classes have a non-stub implementation.
+- 384/384 in-scope classes have an implementation and smoke coverage.
 - Differential tests pass for all rule fixtures.
 - On the benchmark corpus, no unexplained CodeNarc-only findings.
 - No performance regression beyond the agreed budget.
@@ -241,7 +242,7 @@ Exit criteria:
 - No rule writes files directly.
 - `check` never mutates source.
 
-### M4 — Project graph and ArchUnit-like rules (0.6, 4–6 weeks)
+### M4 — Project graph and ArchUnit-like rules (0.6, deferred)
 
 Deliver the dependency graph and architecture rules.
 
@@ -499,6 +500,18 @@ Nullness-specific tests:
 - false-positive corpus and false-negative corpus;
 - real-project smoke runs;
 - no panics/timeouts.
+
+## 7.4 Future rule candidates after CodeNarc
+
+These are intentionally outside the current CodeNarc-completion goal:
+
+- **Resource lifecycle analysis**: try-with-resources correctness, `Closeable` /
+  `AutoCloseable` objects that are not closed, close in `finally`, and
+  double-close detection. This needs CFG/data-flow work similar to nullness.
+- **Conditional logging guards**: calls such as `log.debug("...")` that should be
+  wrapped in `if (log.isDebugEnabled())`, plus parameterized logging checks.
+- **ArchUnit-style architecture rules**: deferred pending the real-project
+  feature survey.
 
 ## 8. Non-goals and anti-goals
 

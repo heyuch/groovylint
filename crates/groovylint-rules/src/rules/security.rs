@@ -286,10 +286,66 @@ impl FileRule for NonFinalSubclassOfSensitiveInterfaceRule {
     }
 }
 
+/// Flags direct java.io file access.
+pub struct JavaIoPackageAccessRule;
+
+impl Rule for JavaIoPackageAccessRule {}
+
+impl AstRule for JavaIoPackageAccessRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        match &expr.kind {
+            ExprKind::New { type_name, .. } => {
+                let name = simple_name(type_name);
+                if matches!(
+                    name,
+                    "File" | "FileOutputStream" | "FileReader" | "RandomAccessFile"
+                ) {
+                    sink.report(
+                        expr.span,
+                        format!("The use of java.io.{name} violates the EJB specification"),
+                    );
+                }
+            }
+            ExprKind::Property { receiver, name, .. }
+                if name == "FileSystem"
+                    && matches!(&receiver.kind, ExprKind::Variable(variable) if variable == "FileSystem") =>
+            {
+                sink.report(
+                    expr.span,
+                    "The use of java.io.FileSystem violates the EJB specification",
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Descriptors for security rules.
 #[must_use]
 pub fn descriptors() -> Vec<RuleDescriptor> {
     vec![
+        descriptor(
+            RuleMeta::new(
+                "JavaIoPackageAccess",
+                "org.codenarc.rule.security.JavaIoPackageAccessRule",
+                Category::Security,
+                Severity::Warning,
+                "Direct java.io access violates the EJB specification.",
+            ),
+            || RuleInstanceImpl::Ast(Box::new(JavaIoPackageAccessRule)),
+        ),
         descriptor(
             RuleMeta::new(
                 "SystemExit",

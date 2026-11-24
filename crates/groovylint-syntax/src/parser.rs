@@ -196,7 +196,13 @@ impl<'a> Parser<'a> {
                         .map(Item::Method);
                 }
                 let name = self.expect_ident_text()?;
-                return self.parse_field_or_var(start, name, in_class, Some(type_name), &prefix);
+                return self.parse_field_or_var(
+                    start,
+                    name,
+                    in_class,
+                    Some(type_name.as_str()),
+                    &prefix,
+                );
             }
             self.pos = saved;
             let name = self.expect_ident_text()?;
@@ -236,7 +242,7 @@ impl<'a> Parser<'a> {
                         start,
                         name,
                         in_class,
-                        Some(type_name),
+                        Some(type_name.as_str()),
                         &prefix,
                     );
                 }
@@ -504,41 +510,57 @@ impl<'a> Parser<'a> {
         start: usize,
         name: String,
         in_class: bool,
-        type_name: Option<String>,
+        type_name: Option<&str>,
         prefix: &PrefixInfo,
     ) -> Result<Item, ParseError> {
-        let init = if self.eat(TokenKind::Assign) {
-            Some(self.parse_expression()?)
-        } else {
-            None
-        };
+        let mut items = Vec::new();
+        let mut next_name = name;
+        let mut next_start = start;
+        loop {
+            let init = if self.eat(TokenKind::Assign) {
+                Some(self.parse_expression()?)
+            } else {
+                None
+            };
+            let span = Span::new(next_start, self.previous_span().end);
+            let item = if in_class {
+                Item::Field(FieldDecl {
+                    name: next_name,
+                    type_name: type_name.map(ToString::to_string),
+                    annotations: prefix.annotations.clone(),
+                    suppressed_rules: prefix.suppressed_rules.clone(),
+                    is_static: prefix.is_static,
+                    is_final: prefix.is_final,
+                    is_private: prefix.is_private,
+                    is_public: prefix.is_public,
+                    is_protected: prefix.is_protected,
+                    is_transient: prefix.is_transient,
+                    is_volatile: prefix.is_volatile,
+                    init,
+                    span,
+                })
+            } else {
+                Item::Statement(Stmt::VarDecl(VarDecl {
+                    name: next_name,
+                    type_name: type_name.map(ToString::to_string),
+                    init,
+                    span,
+                }))
+            };
+            items.push(item);
+            if !self.eat(TokenKind::Comma) {
+                break;
+            }
+            self.skip_newlines();
+            next_start = self.current().span.start;
+            next_name = self.expect_ident_text()?;
+        }
         self.eat(TokenKind::Semicolon);
         self.skip_newlines();
-        let span = Span::new(start, self.previous_span().end);
-
-        if in_class {
-            Ok(Item::Field(FieldDecl {
-                name,
-                type_name,
-                annotations: prefix.annotations.clone(),
-                suppressed_rules: prefix.suppressed_rules.clone(),
-                is_static: prefix.is_static,
-                is_final: prefix.is_final,
-                is_private: prefix.is_private,
-                is_public: prefix.is_public,
-                is_protected: prefix.is_protected,
-                is_transient: prefix.is_transient,
-                is_volatile: prefix.is_volatile,
-                init,
-                span,
-            }))
+        if items.len() == 1 {
+            Ok(items.pop().expect("one item"))
         } else {
-            Ok(Item::Statement(Stmt::VarDecl(VarDecl {
-                name,
-                type_name,
-                init,
-                span,
-            })))
+            Ok(Item::Group(items))
         }
     }
 

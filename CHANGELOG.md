@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registrations. Grails, Jenkins, and Spock rules are explicitly out of scope.
 - Custom-rule plugin mechanisms are out of scope; only built-in rules and the
   declarative architecture DSL are planned.
+- Implemented the remaining in-scope CodeNarc rules and replaced the former
+  stub rules. The registry now covers 384 of 406 CodeNarc 4.0.0 classes; the
+  remaining 22 are the unsupported Grails/Jenkins/Spock classes.
 
 ### Added
 
