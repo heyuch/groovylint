@@ -37,13 +37,17 @@ struct Analyzer {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct State {
     store: Store,
+    closures: std::collections::BTreeMap<AccessPath, Nullness>,
 }
 
 impl State {
     fn new() -> Self {
         let mut store = Store::new();
         store.set(AccessPath::This, Nullness::NonNull);
-        Self { store }
+        Self {
+            store,
+            closures: std::collections::BTreeMap::new(),
+        }
     }
 
     fn with_params(params: &[Param]) -> Self {
@@ -65,8 +69,16 @@ impl State {
     }
 
     fn join(&self, other: &Self) -> Self {
+        let mut closures = self.closures.clone();
+        for (path, value) in &other.closures {
+            closures
+                .entry(path.clone())
+                .and_modify(|existing| *existing = existing.join(*value))
+                .or_insert(*value);
+        }
         Self {
             store: self.store.join(&other.store),
+            closures,
         }
     }
 }
@@ -146,6 +158,24 @@ impl Analyzer {
             values.push(self.classify_expr(expr));
         }
         values.into_iter().reduce(Nullness::join)
+    }
+
+    fn summarize_block(&self, body: &groovylint_syntax::ast::Block) -> Nullness {
+        let mut values = Vec::new();
+        for statement in &body.statements {
+            if let Stmt::Return(ret) = statement
+                && let Some(expr) = &ret.value
+            {
+                values.push(self.classify_expr(expr));
+            }
+        }
+        if let Some(Stmt::Expr(expr)) = body.statements.last() {
+            values.push(self.classify_expr(expr));
+        }
+        values
+            .into_iter()
+            .reduce(Nullness::join)
+            .unwrap_or(Nullness::Unknown)
     }
 
     fn classify_expr(&self, expr: &Expr) -> Nullness {
@@ -277,7 +307,16 @@ impl Analyzer {
                 let value = init
                     .as_ref()
                     .map_or(Nullness::Null, |init| self.eval(init, state));
-                state.store.set(AccessPath::Local(name.clone()), value);
+                let path = AccessPath::Local(name.clone());
+                state.store.set(path.clone(), value);
+                if let Some(Expr {
+                    kind: ExprKind::Closure { body, .. },
+                    ..
+                }) = init
+                {
+                    let summary = self.summarize_block(body);
+                    state.closures.insert(path, summary);
+                }
             }
             Instruction::Assert { condition, message } => {
                 let (then_state, _) = self.condition_states(condition, state);
@@ -402,11 +441,57 @@ impl Analyzer {
                 } else {
                     state.store.invalidate_fields(&AccessPath::This);
                 }
+                let mut first_arg = None;
                 for arg in args {
-                    self.eval(arg, state);
+                    let value = self.eval(arg, state);
+                    first_arg.get_or_insert((arg, value));
                 }
                 if matches!(name.as_str(), "requireNonNull" | "checkNotNull") {
+                    if let Some((arg, value)) = first_arg {
+                        if value == Nullness::Null {
+                            self.report(
+                                arg.span,
+                                "NullDereference",
+                                "A null value was passed to a non-null validator",
+                            );
+                        } else if value == Nullness::MaybeNull {
+                            self.report(
+                                arg.span,
+                                "PossibleNullDereference",
+                                "A possibly-null value was passed to a non-null validator",
+                            );
+                        }
+                        if let Some(path) = path_of(arg) {
+                            state.store.set(path, Nullness::NonNull);
+                        }
+                    }
                     Nullness::NonNull
+                } else if matches!(name.as_str(), "orElse") && !args.is_empty() {
+                    match first_arg {
+                        Some((_, Nullness::Null)) => Nullness::Null,
+                        Some((_, Nullness::NonNull)) => Nullness::NonNull,
+                        _ => Nullness::Unknown,
+                    }
+                } else if matches!(name.as_str(), "assertNotNull") {
+                    if let Some((arg, value)) = first_arg {
+                        if value == Nullness::Null {
+                            self.report(
+                                arg.span,
+                                "NullDereference",
+                                "A null value was passed to assertNotNull",
+                            );
+                        }
+                        if let Some(path) = path_of(arg) {
+                            state.store.set(path, Nullness::NonNull);
+                        }
+                    }
+                    Nullness::NonNull
+                } else if matches!(name.as_str(), "call" | "invoke")
+                    && let Some(receiver) = receiver
+                    && let Some(path) = path_of(receiver)
+                    && let Some(summary) = state.closures.get(&path)
+                {
+                    *summary
                 } else if *safe {
                     Nullness::MaybeNull
                 } else if receiver.is_none() {
@@ -480,11 +565,15 @@ impl Analyzer {
                 }
             }
             ExprKind::Assign { target, value, .. } => {
-                let value = self.eval(value, state);
+                let assigned = self.eval(value, state);
                 if let Some(path) = path_of(target) {
-                    state.store.set(path, value);
+                    state.store.set(path.clone(), assigned);
+                    if let ExprKind::Closure { body, .. } = &unparen(value).kind {
+                        let summary = self.summarize_block(body);
+                        state.closures.insert(path, summary);
+                    }
                 }
-                value
+                assigned
             }
             ExprKind::Ternary {
                 condition,
