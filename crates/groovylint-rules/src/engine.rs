@@ -10,10 +10,11 @@ use crate::rule::{AstRule, DiagnosticSink, FileContext, FileRule, RuleProperties
 use crate::traverse::{self, AstVisitor};
 
 /// A rule selected for execution with its effective severity.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct ConfiguredRule {
     descriptor: RuleDescriptor,
     severity: Severity,
+    properties: RuleProperties,
 }
 
 /// The rule engine.
@@ -31,11 +32,24 @@ impl Engine {
     /// in [`Engine::unsupported`] instead of failing the run.
     #[must_use]
     pub fn from_codenarc_classes(registry: &RuleRegistry, class_names: &[String]) -> Self {
+        let entries: Vec<(String, RuleProperties)> = class_names
+            .iter()
+            .map(|name| (name.clone(), RuleProperties::new()))
+            .collect();
+        Self::from_codenarc_entries(registry, &entries)
+    }
+
+    /// Builds an engine from `CodeNarc` class names with configured properties.
+    #[must_use]
+    pub fn from_codenarc_entries(
+        registry: &RuleRegistry,
+        entries: &[(String, RuleProperties)],
+    ) -> Self {
         let mut rules = Vec::new();
         let mut unsupported = Vec::new();
         let mut seen = BTreeSet::new();
 
-        for class_name in class_names {
+        for (class_name, properties) in entries {
             if !seen.insert(class_name.clone()) {
                 continue;
             }
@@ -43,6 +57,7 @@ impl Engine {
                 rules.push(ConfiguredRule {
                     descriptor: *descriptor,
                     severity: descriptor.meta.default_severity,
+                    properties: properties.clone(),
                 });
             } else {
                 unsupported.push(class_name.clone());
@@ -61,6 +76,7 @@ impl Engine {
             .map(|descriptor| ConfiguredRule {
                 descriptor: *descriptor,
                 severity: descriptor.meta.default_severity,
+                properties: RuleProperties::new(),
             })
             .collect();
         Self {
@@ -88,11 +104,9 @@ impl Engine {
         let mut ast_rules = Vec::new();
         let mut token_rules = Vec::new();
         let mut file_rules = Vec::new();
-        let empty_properties = RuleProperties::new();
-
         for configured in &self.rules {
             let mut instance = (configured.descriptor.factory)();
-            if instance.configure(&empty_properties).is_err() {
+            if instance.configure(&configured.properties).is_err() {
                 continue;
             }
 

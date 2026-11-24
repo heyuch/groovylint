@@ -64,10 +64,18 @@ impl RuleRegistry {
         descriptors.extend(crate::rules::convention::descriptors());
         descriptors.extend(crate::rules::convention::more_descriptors());
         descriptors.extend(crate::rules::convention::extra_descriptors());
+        descriptors.extend(crate::rules::convention_extra::descriptors());
         descriptors.extend(crate::rules::unused::descriptors());
         descriptors.extend(crate::rules::naming::descriptors());
         descriptors.extend(crate::rules::security::descriptors());
         descriptors.extend(crate::rules::jdbc::descriptors());
+        descriptors.extend(crate::rules::junit::descriptors());
+        descriptors.extend(crate::rules::comments::descriptors());
+        descriptors.extend(crate::rules::unnecessary::descriptors());
+        descriptors.extend(crate::rules::design::design_descriptors());
+        descriptors.extend(crate::rules::design::exception_descriptors());
+        descriptors.extend(crate::rules::misc::concurrency_descriptors());
+        descriptors.extend(crate::rules::misc::misc_descriptors());
         descriptors.extend(crate::rules::serialization::descriptors());
         descriptors.extend(crate::rules::dry::descriptors());
         descriptors.extend(crate::rules::generic::descriptors());

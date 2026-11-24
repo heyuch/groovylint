@@ -45,6 +45,20 @@ pub enum Category {
     Generic,
     /// Enhanced rules.
     Enhanced,
+    /// Test rules.
+    Junit,
+    /// Comment rules.
+    Comments,
+    /// Design rules.
+    Design,
+    /// Exception rules.
+    Exceptions,
+    /// Concurrency rules.
+    Concurrency,
+    /// Jenkins pipeline rules.
+    Jenkins,
+    /// Size rules.
+    Size,
 }
 
 impl Category {
@@ -67,6 +81,13 @@ impl Category {
             Self::Dry => "dry",
             Self::Generic => "generic",
             Self::Enhanced => "enhanced",
+            Self::Junit => "junit",
+            Self::Comments => "comments",
+            Self::Design => "design",
+            Self::Exceptions => "exceptions",
+            Self::Concurrency => "concurrency",
+            Self::Jenkins => "jenkins",
+            Self::Size => "size",
         }
     }
 }

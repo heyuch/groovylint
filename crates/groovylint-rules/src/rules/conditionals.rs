@@ -13,7 +13,11 @@ fn condition_expressions(node: NodeRef<'_>) -> Vec<&Expr> {
         NodeRef::Stmt(Stmt::If(if_stmt)) => vec![&if_stmt.condition],
         NodeRef::Stmt(Stmt::While(while_stmt)) => vec![&while_stmt.condition],
         NodeRef::Expr(expr) if matches!(expr.kind, ExprKind::Ternary { .. }) => match &expr.kind {
-            ExprKind::Ternary { condition, .. } => vec![condition],
+            ExprKind::Ternary {
+                is_elvis: _,
+                condition,
+                ..
+            } => vec![condition],
             _ => Vec::new(),
         },
         _ => Vec::new(),
@@ -157,7 +161,11 @@ impl AstRule for ConstantTernaryExpressionRule {
         sink: &mut DiagnosticSink<'_>,
     ) {
         if let NodeRef::Expr(expr) = node
-            && let ExprKind::Ternary { condition, .. } = &expr.kind
+            && let ExprKind::Ternary {
+                is_elvis: _,
+                condition,
+                ..
+            } = &expr.kind
             && is_constant(condition)
         {
             sink.report(

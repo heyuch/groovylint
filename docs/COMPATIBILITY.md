@@ -5,11 +5,19 @@ used for the comparisons depended on Groovy 5.0.3.
 
 ## Current coverage
 
-125 rules are registered. That includes all 44 rules in CodeNarc 4.0.0's
-`rulesets/basic.xml`, `UnnecessarySemicolon`, and every rule a production
-codebase uses in its `codenarc-bug.xml` quality gate (96 rule classes across
-`basic`, `braces`, `convention`, `dry`, `enhanced`, `generic`, `imports`,
-`jdbc`, `logging`, `naming`, `security`, `serialization` and `unused`).
+327 rules are registered. That covers:
+
+- every rule in CodeNarc 4.0.0's `rulesets/basic.xml`;
+- every rule of a production `codenarc-bug.xml` quality gate (96 rule classes);
+- every rule of a "all rules except the disabled ones" `codenarc.xml` gate (323
+  rule classes across `basic`, `braces`, `comments`, `concurrency`,
+  `convention`, `design`, `dry`, `enhanced`, `exceptions`, `formatting`,
+  `generic`, `imports`, `jdbc`, `jenkins`, `junit`, `logging`, `naming`,
+  `security`, `serialization`, `size` and `unused`).
+
+Rulesets are read with their `<property>` values, so configured rule variants
+work (`groovylint check --config codenarc.xml`). Lookarounds in configured
+patterns are supported through a backtracking regex engine.
 
 64 rules have a minimal Groovy fixture at
 `crates/groovylint-cli/tests/fixtures/rules/<Rule>.groovy`; the rest are covered
@@ -36,9 +44,16 @@ python3 benchmarks/diff_codenarc_report.py \
     --paths claim/claim-domain/src component-utils/src
 ```
 
-Latest result on that two-module slice with the production `codenarc-bug.xml`:
-**CodeNarc 913 findings, `groovylint` 951, 909 of them identical on
-`(file, rule, line)`** (99.6%). The differences are listed below.
+Latest results:
+
+| Ruleset | Files | CodeNarc findings | `groovylint` findings | identical on `(file, rule, line)` |
+|---|---|---|---|---|
+| `codenarc-bug.xml` (96 rules) | 838 | 913 | 951 | 909 (99.6%) |
+| `codenarc.xml` (323 rules) | 838 | 9499 | 10277 | 9028 (95.0%) |
+
+Full `saas-service` corpus (24,345 files, 323 rules): `groovylint` reports
+266,058 findings in 11.5 s with no parse errors; CodeNarc needs minutes for the
+same work. The differences are listed below.
 
 ## Differential validation
 
@@ -95,6 +110,15 @@ more of CodeNarc's own positive/negative test cases per rule.
     implement `java.util.Random`, so the direct allocation slips through.
   - `JdbcConnectionReference`: we report declarations of `java.sql.Connection`,
     CodeNarc additionally reports the import line.
+- Rules that need resolved types, project-specific configuration or a data-flow
+  analysis are registered but report nothing (documented with a `shortcut:`
+  comment in the source): `Indentation` (continuation lines are not modelled),
+  `BusyWait`, `DoubleCheckedLocking`, `InconsistentProperty*`,
+  `NoScriptBindings`, `ExceptionNotThrown`, `CpsCallFromNonCpsMethod`,
+  `ExpressionInCpsMethodNotSerializable`, `ForbiddenCallInCpsMethod`,
+  `ParameterOrReturnTypeNotSerializable` and the `Generic` rules that require
+  properties (`Illegal*`, `Required*`, `StatelessClass`,
+  `IllegalClassMember`).
 - The parser is a common-syntax subset, not full Groovy. Unsupported syntax
   becomes a `ParseError` diagnostic for that file. On a 118,470-file private
   Groovy corpus (Spring/Grails services, Spock tests, Gradle build logic) every

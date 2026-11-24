@@ -889,7 +889,12 @@ impl AstRule for ConfusingTernaryRule {
         let NodeRef::Expr(expr) = node else {
             return;
         };
-        let ExprKind::Ternary { condition, .. } = &expr.kind else {
+        let ExprKind::Ternary {
+            is_elvis: _,
+            condition,
+            ..
+        } = &expr.kind
+        else {
             return;
         };
         if !is_negation(condition) {

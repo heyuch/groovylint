@@ -53,8 +53,8 @@ fn run_check(args: &cli::CheckArgs) -> Result<ExitCode> {
         eprintln!("warning: {warning}");
     }
 
-    let class_names = ruleset.class_names();
-    let engine = Engine::from_codenarc_classes(&registry, &class_names);
+    let entries = ruleset.entries();
+    let engine = Engine::from_codenarc_entries(&registry, &entries);
     if !engine.unsupported().is_empty() {
         eprintln!(
             "note: {} rule(s) enabled from {ruleset_label}; {} CodeNarc rule(s) are not implemented yet and were skipped",

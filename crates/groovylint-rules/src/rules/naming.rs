@@ -20,18 +20,22 @@ const UPPER_CAMEL: &str = "([A-Z]\\w*\\$?)*";
 const UPPER_SNAKE: &str = "[A-Z][A-Z0-9_]*";
 
 /// Builds a rule pattern. `CodeNarc` matches names with `==~`, so the pattern
-/// must cover the whole name.
-fn compile_anchored(pattern: &str) -> regex::Regex {
+/// must cover the whole name. Lookarounds are common in configured patterns, so
+/// a backtracking engine is used.
+fn compile_anchored(pattern: &str) -> Result<Pattern, String> {
     let anchored = format!("^(?:{pattern})$");
-    match regex::Regex::new(&anchored) {
-        Ok(regex) => regex,
-        Err(_) => regex::Regex::new("^(?:.*)$").expect("fallback pattern must compile"),
-    }
+    Pattern::new(&anchored).map_err(|error| format!("invalid regex {pattern}: {error}"))
 }
 
-fn regex_property(properties: &RuleProperties, name: &str, default: &str) -> regex::Regex {
-    let pattern = properties.get(name).map_or(default, String::as_str);
-    compile_anchored(pattern)
+fn regex_property(
+    properties: &RuleProperties,
+    name: &str,
+    default: &Pattern,
+) -> Result<Pattern, String> {
+    match properties.get(name) {
+        None => Ok(default.clone()),
+        Some(pattern) => compile_anchored(pattern),
+    }
 }
 
 fn ignored_names(properties: &RuleProperties, name: &str) -> Vec<String> {
@@ -50,18 +54,49 @@ fn simple_name(name: &str) -> &str {
     name.rsplit('.').next().unwrap_or(name)
 }
 
+/// A rule pattern backed by a backtracking engine so that configured
+/// lookarounds work like they do in `CodeNarc`.
+#[derive(Clone)]
+struct Pattern {
+    regex: fancy_regex::Regex,
+    text: String,
+}
+
+impl Pattern {
+    fn new(pattern: &str) -> Result<Self, String> {
+        let regex = fancy_regex::Regex::new(pattern)
+            .map_err(|error| format!("invalid regex {pattern}: {error}"))?;
+        Ok(Self {
+            regex,
+            text: pattern.to_string(),
+        })
+    }
+
+    fn is_match(&self, name: &str) -> bool {
+        self.regex.is_match(name).unwrap_or(false)
+    }
+
+    fn as_str(&self) -> &str {
+        &self.text
+    }
+
+    fn default_upper_snake() -> Self {
+        Self::new(&format!("^(?:{UPPER_SNAKE})$")).expect("default pattern must compile")
+    }
+}
+
 /// Checks declared names against a regular expression.
 pub struct NamePatternRule {
-    pattern: regex::Regex,
+    pattern: Pattern,
     ignored: Vec<String>,
     /// Which declaration the pattern applies to.
     target: NameTarget,
     /// Pattern for `static final` declarations.
-    static_final_pattern: Option<regex::Regex>,
+    static_final_pattern: Option<Pattern>,
     /// Pattern for `final` declarations, when configured.
-    final_pattern: Option<regex::Regex>,
+    final_pattern: Option<Pattern>,
     /// Pattern for `static` declarations, when configured.
-    static_pattern: Option<regex::Regex>,
+    static_pattern: Option<Pattern>,
     classes: ClassStack,
 }
 
@@ -74,28 +109,37 @@ enum NameTarget {
     Parameter,
     Property,
     Variable,
+    Field,
 }
 
 impl Rule for NamePatternRule {
     fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
-        let default = self.pattern.as_str().to_string();
-        self.pattern = regex_property(properties, "regex", &default);
+        self.pattern = regex_property(properties, "regex", &self.pattern)?;
         self.ignored = match self.target {
             NameTarget::Method => ignored_names(properties, "ignoreMethodNames"),
             NameTarget::Parameter => ignored_names(properties, "ignoreParameterNames"),
             NameTarget::Property => ignored_names(properties, "ignorePropertyNames"),
             NameTarget::Variable => ignored_names(properties, "ignoreVariableNames"),
+            NameTarget::Field => ignored_names(properties, "ignoreFieldNames"),
             _ => Vec::new(),
         };
-        if matches!(self.target, NameTarget::Variable | NameTarget::Property) {
-            self.static_final_pattern =
-                Some(regex_property(properties, "staticFinalRegex", UPPER_SNAKE));
-            self.final_pattern = properties
-                .get("finalRegex")
-                .map(|pattern| compile_anchored(pattern));
-            self.static_pattern = properties
-                .get("staticRegex")
-                .map(|pattern| compile_anchored(pattern));
+        if matches!(
+            self.target,
+            NameTarget::Variable | NameTarget::Property | NameTarget::Field
+        ) {
+            self.static_final_pattern = Some(regex_property(
+                properties,
+                "staticFinalRegex",
+                &Pattern::default_upper_snake(),
+            )?);
+            self.final_pattern = match properties.get("finalRegex") {
+                None => None,
+                Some(pattern) => Some(compile_anchored(pattern)?),
+            };
+            self.static_pattern = match properties.get("staticRegex") {
+                None => None,
+                Some(pattern) => Some(compile_anchored(pattern)?),
+            };
         }
         Ok(())
     }
@@ -211,6 +255,22 @@ impl NamePatternRule {
                 }
             }
             Item::Field(field) => {
+                if matches!(self.target, NameTarget::Field) {
+                    if self.is_ignored(&field.name) {
+                        return;
+                    }
+                    if !self.matches(&field.name, field.is_static, field.is_final) {
+                        sink.report(
+                            field.span,
+                            format!(
+                                "The field name {} does not match {}",
+                                field.name,
+                                self.pattern.as_str()
+                            ),
+                        );
+                    }
+                    return;
+                }
                 // Groovy properties are the fields without an explicit
                 // `public` or `private` modifier.
                 if matches!(self.target, NameTarget::Property)
@@ -557,20 +617,47 @@ fn parameter_signature(method: &MethodDecl) -> String {
     format!("({})", types.join(", "))
 }
 
-fn lower_camel() -> regex::Regex {
-    compile_anchored(LOWER_CAMEL)
+fn default_pattern(pattern: &str) -> Pattern {
+    compile_anchored(pattern).expect("built-in pattern must compile")
 }
 
-fn lower_camel_field() -> regex::Regex {
-    compile_anchored(LOWER_CAMEL_FIELD)
+fn lower_camel() -> Pattern {
+    default_pattern(LOWER_CAMEL)
 }
 
-fn upper_camel() -> regex::Regex {
-    compile_anchored(UPPER_CAMEL)
+fn lower_camel_field() -> Pattern {
+    default_pattern(LOWER_CAMEL_FIELD)
 }
 
-fn upper_snake() -> regex::Regex {
-    compile_anchored(UPPER_SNAKE)
+fn upper_camel() -> Pattern {
+    default_pattern(UPPER_CAMEL)
+}
+
+fn upper_snake() -> Pattern {
+    default_pattern(UPPER_SNAKE)
+}
+
+/// Checks the package name against a regular expression.
+pub struct PackageNameRule;
+
+impl Rule for PackageNameRule {}
+
+impl FileRule for PackageNameRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let Some(package) = &context.script.package else {
+            return;
+        };
+        let Ok(pattern) = fancy_regex::Regex::new(r"^(?:[a-z]+[a-z0-9]*(\.[a-z0-9]+)*)$") else {
+            return;
+        };
+        if pattern.is_match(&package.name).unwrap_or(false) {
+            return;
+        }
+        sink.report(
+            package.span,
+            format!("The package name {} is not valid", package.name),
+        );
+    }
 }
 
 /// Checks that the declared package matches the file path below `groupId`.
@@ -752,6 +839,36 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
         ),
         descriptor(
             RuleMeta::new(
+                "FieldName",
+                "org.codenarc.rule.naming.FieldNameRule",
+                Category::Naming,
+                Severity::Warning,
+                "Checks field names against a regular expression.",
+            ),
+            || {
+                RuleInstanceImpl::File(Box::new(NamePatternRule {
+                    pattern: lower_camel_field(),
+                    ignored: vec!["serialVersionUID".to_string()],
+                    target: NameTarget::Field,
+                    static_final_pattern: Some(upper_snake()),
+                    final_pattern: None,
+                    static_pattern: None,
+                    classes: ClassStack::default(),
+                }))
+            },
+        ),
+        descriptor(
+            RuleMeta::new(
+                "PackageName",
+                "org.codenarc.rule.naming.PackageNameRule",
+                Category::Naming,
+                Severity::Warning,
+                "Checks the package name against a regular expression.",
+            ),
+            || RuleInstanceImpl::File(Box::new(PackageNameRule)),
+        ),
+        descriptor(
+            RuleMeta::new(
                 "VariableName",
                 "org.codenarc.rule.naming.VariableNameRule",
                 Category::Naming,
@@ -854,6 +971,12 @@ mod tests {
             return_type: None,
             is_static: false,
             is_private: false,
+            is_public: false,
+            is_protected: false,
+            is_final: false,
+            is_abstract: false,
+            is_synchronized: false,
+            throws: Vec::new(),
             params: vec![
                 Param {
                     name: "a".to_string(),

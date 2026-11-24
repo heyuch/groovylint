@@ -247,6 +247,7 @@ pub fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
             walk_expr(value, visitor);
         }
         ExprKind::Ternary {
+            is_elvis: _,
             condition,
             then_expr,
             else_expr,

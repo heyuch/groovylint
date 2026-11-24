@@ -80,6 +80,23 @@ const CASES: &[RuleCase] = &[
     case("InsecureRandom", 3),
     case("UnusedObject", 3),
     case("MultipleLoggers", 3),
+    case("CatchException", 5),
+    case("UnnecessaryDotClass", 3),
+    case("UnnecessaryObjectReferences", 9),
+    case("UnnecessaryElseStatement", 5),
+    case("ClassEndsWithBlankLine", 3),
+    case("ClassStartsWithBlankLine", 2),
+    case("ConsecutiveBlankLines", 4),
+    case("FileEndsWithoutNewline", 2),
+    case("MissingBlankLineBeforeAnnotatedField", 4),
+    case("SpaceAfterIf", 3),
+    case("SpaceInsideParentheses", 3),
+    case("SpaceAfterComma", 3),
+    case("UnnecessaryPublicModifier", 1),
+    case("UnnecessaryBigDecimalInstantiation", 3),
+    case("EmptyMethodInAbstractClass", 2),
+    case("CatchRuntimeException", 5),
+    case("JUnitStyleAssertions", 5),
 ];
 
 const fn case(rule: &'static str, line: u64) -> RuleCase {
@@ -88,14 +105,12 @@ const fn case(rule: &'static str, line: u64) -> RuleCase {
 
 fn codenarc_class(case: &RuleCase) -> String {
     let category = match case.rule {
-        "UnnecessarySemicolon" => "unnecessary",
         "NoWildcardImports"
         | "UnnecessaryGroovyImport"
         | "ImportFromSamePackage"
         | "ImportFromSunPackages"
         | "UnusedImport"
         | "DuplicateImport" => "imports",
-        "TrailingWhitespace" => "formatting",
         "IfStatementBraces" | "ForStatementBraces" | "WhileStatementBraces" | "ElseBlockBraces" => {
             "braces"
         }
@@ -151,6 +166,24 @@ fn codenarc_class(case: &RuleCase) -> String {
         | "UnsafeImplementationAsMap"
         | "FileCreateTempFile" => "security",
         "MissingOverrideAnnotation" => "enhanced",
+        "CatchException" | "CatchRuntimeException" => "exceptions",
+        "UnnecessaryDotClass"
+        | "UnnecessaryObjectReferences"
+        | "UnnecessaryElseStatement"
+        | "UnnecessaryBigDecimalInstantiation"
+        | "UnnecessaryPublicModifier"
+        | "UnnecessarySemicolon" => "unnecessary",
+        "ClassEndsWithBlankLine"
+        | "ClassStartsWithBlankLine"
+        | "ConsecutiveBlankLines"
+        | "FileEndsWithoutNewline"
+        | "MissingBlankLineBeforeAnnotatedField"
+        | "SpaceAfterIf"
+        | "SpaceInsideParentheses"
+        | "SpaceAfterComma"
+        | "TrailingWhitespace" => "formatting",
+        "EmptyMethodInAbstractClass" => "design",
+        "JUnitStyleAssertions" => "junit",
         _ => "basic",
     };
     format!("org.codenarc.rule.{category}.{}Rule", case.rule)

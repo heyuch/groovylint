@@ -3,11 +3,12 @@
 //! Supported today:
 //!
 //! - `<ruleset>` documents with `<rule class='...'/>` entries;
+//! - `<property name='...' value='...'/>` children of a `<rule>`;
 //! - `<description>` is accepted and ignored.
 //!
-//! Rule properties and `<ruleset-ref>` are intentionally deferred until the
-//! first rule slice is stable.
+//! `<ruleset-ref>` is intentionally deferred.
 
+use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -16,6 +17,8 @@ use std::path::{Path, PathBuf};
 pub struct CodeNarcRule {
     /// Fully qualified `CodeNarc` rule class.
     pub class_name: String,
+    /// Configured rule properties.
+    pub properties: BTreeMap<String, String>,
 }
 
 /// A parsed `CodeNarc` ruleset.
@@ -34,6 +37,15 @@ impl Ruleset {
         self.rules
             .iter()
             .map(|rule| rule.class_name.clone())
+            .collect()
+    }
+
+    /// Returns the rules with their configured properties.
+    #[must_use]
+    pub fn entries(&self) -> Vec<(String, BTreeMap<String, String>)> {
+        self.rules
+            .iter()
+            .map(|rule| (rule.class_name.clone(), rule.properties.clone()))
             .collect()
     }
 }
@@ -104,8 +116,26 @@ pub fn parse(xml: &str) -> Result<Ruleset, ConfigError> {
                 let class_name = child
                     .attribute("class")
                     .ok_or_else(|| ConfigError::new("<rule> is missing the `class` attribute"))?;
+                let mut properties = BTreeMap::new();
+                for property in child.children().filter(roxmltree::Node::is_element) {
+                    if property.tag_name().name() != "property" {
+                        warnings.push(format!(
+                            "ignored unsupported element <{}> in <rule>",
+                            property.tag_name().name()
+                        ));
+                        continue;
+                    }
+                    let name = property.attribute("name").ok_or_else(|| {
+                        ConfigError::new("<property> is missing the `name` attribute")
+                    })?;
+                    let value = property.attribute("value").ok_or_else(|| {
+                        ConfigError::new("<property> is missing the `value` attribute")
+                    })?;
+                    properties.insert(name.to_string(), value.to_string());
+                }
                 rules.push(CodeNarcRule {
                     class_name: class_name.to_string(),
+                    properties,
                 });
             }
             "description" => {}

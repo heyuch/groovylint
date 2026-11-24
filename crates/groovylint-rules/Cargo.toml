@@ -12,6 +12,7 @@ categories.workspace = true
 [dependencies]
 groovylint-core = { path = "../groovylint-core" }
 groovylint-syntax = { path = "../groovylint-syntax" }
+fancy-regex = { workspace = true }
 regex = { workspace = true }
 
 [lints]

@@ -75,6 +75,7 @@ pub enum ClassKind {
 
 /// A class-like declaration.
 #[derive(Clone, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct ClassDecl {
     /// Type name.
     pub name: String,
@@ -82,6 +83,12 @@ pub struct ClassDecl {
     pub kind: ClassKind,
     /// Whether the class is abstract.
     pub is_abstract: bool,
+    /// Whether the class is declared `final`.
+    pub is_final: bool,
+    /// Whether the class is declared `public`.
+    pub is_public: bool,
+    /// Whether the class is declared `protected`.
+    pub is_protected: bool,
     /// Simple or qualified superclass name, if explicitly declared.
     pub extends: Option<String>,
     /// Simple or qualified names of implemented interfaces.
@@ -98,6 +105,7 @@ pub struct ClassDecl {
 
 /// A method or constructor declaration.
 #[derive(Clone, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct MethodDecl {
     /// Method name.
     pub name: String,
@@ -107,6 +115,18 @@ pub struct MethodDecl {
     pub is_static: bool,
     /// Whether the method is declared `private`.
     pub is_private: bool,
+    /// Whether the method is declared `public`.
+    pub is_public: bool,
+    /// Whether the method is declared `protected`.
+    pub is_protected: bool,
+    /// Whether the method is declared `final`.
+    pub is_final: bool,
+    /// Whether the method is declared `abstract`.
+    pub is_abstract: bool,
+    /// Whether the method is declared `synchronized`.
+    pub is_synchronized: bool,
+    /// Declared exception types.
+    pub throws: Vec<String>,
     /// Parameters.
     pub params: Vec<Param>,
     /// Annotation names, normalized to simple names.
@@ -163,6 +183,12 @@ pub struct FieldDecl {
     pub is_private: bool,
     /// Whether the field is declared `public`.
     pub is_public: bool,
+    /// Whether the field is declared `protected`.
+    pub is_protected: bool,
+    /// Whether the field is declared `transient`.
+    pub is_transient: bool,
+    /// Whether the field is declared `volatile`.
+    pub is_volatile: bool,
     /// Optional initializer.
     pub init: Option<Expr>,
     /// Source span.
@@ -315,6 +341,8 @@ pub struct TryStmt {
 pub struct CatchClause {
     /// Optional catch variable name.
     pub param_name: Option<String>,
+    /// Caught exception types; more than one for a multi-catch.
+    pub type_names: Vec<String>,
     /// Catch body.
     pub body: Block,
     /// Span including `catch (...)`.
@@ -459,6 +487,8 @@ pub enum ExprKind {
     },
     /// Ternary expression.
     Ternary {
+        /// Whether the source used the elvis operator (`a ?: b`).
+        is_elvis: bool,
         /// Condition.
         condition: Box<Expr>,
         /// Then expression.
@@ -483,6 +513,8 @@ pub enum ExprKind {
     Closure {
         /// Explicit parameters. Empty means implicit `it`.
         params: Vec<Param>,
+        /// Whether the closure declares a parameter list (`{ -> }` or `{ x -> }`).
+        has_arrow: bool,
         /// Closure body.
         body: Block,
     },

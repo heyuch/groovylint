@@ -164,6 +164,10 @@ impl ClassStack {
         self.names.pop();
     }
 
+    pub(crate) fn depth(&self) -> usize {
+        self.names.len()
+    }
+
     pub(crate) fn current(&self) -> &str {
         self.names.last().map_or("null", String::as_str)
     }
@@ -205,4 +209,18 @@ impl FinallyDepth {
     pub(crate) fn is_inside(&self) -> bool {
         self.depth > 0
     }
+}
+
+/// Returns the simple name of a possibly qualified type name.
+pub(crate) fn simple_name(name: &str) -> &str {
+    name.rsplit('.').next().unwrap_or(name)
+}
+
+/// Returns whether a class declaration is serializable.
+pub(crate) fn is_serializable(class: &groovylint_syntax::ast::ClassDecl) -> bool {
+    class
+        .implements
+        .iter()
+        .chain(class.extends.iter())
+        .any(|name| simple_name(name) == "Serializable")
 }

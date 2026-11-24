@@ -1,0 +1,3 @@
+class Example {
+    int value
+}

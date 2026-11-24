@@ -272,6 +272,9 @@ impl<'a> Parser<'a> {
             name,
             kind: ClassKind::Annotation,
             is_abstract: false,
+            is_final: false,
+            is_public: false,
+            is_protected: false,
             extends: None,
             implements: Vec::new(),
             annotations: Vec::new(),
@@ -304,10 +307,17 @@ impl<'a> Parser<'a> {
         let mut implements = Vec::new();
         while !self.at(TokenKind::LeftBrace) && !self.at(TokenKind::Eof) {
             if self.eat(TokenKind::Extends) {
+                self.skip_newlines();
                 extends = Some(self.parse_type_name()?);
             } else if self.eat(TokenKind::Implements) {
+                self.skip_newlines();
                 implements.push(self.parse_type_name()?);
-                while self.eat(TokenKind::Comma) {
+                loop {
+                    self.skip_newlines();
+                    if !self.eat(TokenKind::Comma) {
+                        break;
+                    }
+                    self.skip_newlines();
                     implements.push(self.parse_type_name()?);
                 }
             } else {
@@ -339,6 +349,9 @@ impl<'a> Parser<'a> {
             name,
             kind,
             is_abstract: prefix.is_abstract,
+            is_final: prefix.is_final,
+            is_public: prefix.is_public,
+            is_protected: prefix.is_protected,
             extends,
             implements,
             annotations: prefix.annotations,
@@ -354,7 +367,11 @@ impl<'a> Parser<'a> {
     fn parse_enum_constants(&mut self) {
         loop {
             self.skip_separators();
+            // Constants may be annotated; rewind when what follows is a member.
+            let checkpoint = self.pos;
+            let _ = self.parse_prefix();
             if !self.at_ident_like() {
+                self.pos = checkpoint;
                 return;
             }
             let next = self.peek_kind(1);
@@ -370,6 +387,7 @@ impl<'a> Parser<'a> {
                     | TokenKind::Eof
             );
             if !is_constant {
+                self.pos = checkpoint;
                 return;
             }
 
@@ -440,13 +458,17 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::RightParen)?;
         self.skip_newlines();
 
+        let mut throws = Vec::new();
         if self.eat(TokenKind::Throws) {
-            while !self.at(TokenKind::LeftBrace)
-                && !self.at(TokenKind::Semicolon)
-                && !self.at(TokenKind::Newline)
-                && !self.at(TokenKind::Eof)
-            {
-                self.advance();
+            loop {
+                self.skip_newlines();
+                if !self.at_ident_like() {
+                    break;
+                }
+                throws.push(self.parse_type_name()?);
+                if !self.eat(TokenKind::Comma) {
+                    break;
+                }
             }
         }
 
@@ -463,6 +485,12 @@ impl<'a> Parser<'a> {
             return_type,
             is_static: prefix.is_static,
             is_private: prefix.is_private,
+            is_public: prefix.is_public,
+            is_protected: prefix.is_protected,
+            is_final: prefix.is_final,
+            is_abstract: prefix.is_abstract,
+            is_synchronized: prefix.is_synchronized,
+            throws,
             params,
             annotations: prefix.annotations,
             suppressed_rules: prefix.suppressed_rules,
@@ -498,6 +526,9 @@ impl<'a> Parser<'a> {
                 is_final: prefix.is_final,
                 is_private: prefix.is_private,
                 is_public: prefix.is_public,
+                is_protected: prefix.is_protected,
+                is_transient: prefix.is_transient,
+                is_volatile: prefix.is_volatile,
                 init,
                 span,
             }))
@@ -785,7 +816,10 @@ impl<'a> Parser<'a> {
             while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
                 resources.push(self.parse_for_declaration()?);
                 self.skip_newlines();
-                if !self.eat(TokenKind::Comma) {
+                if !self.eat(TokenKind::Comma)
+                    && !self.eat(TokenKind::Semicolon)
+                    && !self.at_ident_like()
+                {
                     break;
                 }
                 self.skip_newlines();
@@ -806,18 +840,21 @@ impl<'a> Parser<'a> {
         while self.eat(TokenKind::Catch) {
             let catch_start = self.previous_span().start;
             self.expect(TokenKind::LeftParen)?;
-            let mut param_name = None;
+            let mut names: Vec<String> = Vec::new();
             while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
-                if self.at(TokenKind::Ident) {
-                    param_name = Some(self.current().text(self.source).to_string());
+                if self.at_ident_like() {
+                    names.push(self.current().text(self.source).to_string());
                 }
                 self.advance();
             }
             self.expect(TokenKind::RightParen)?;
+            let param_name = names.pop();
+            let type_names = names.split_off(0);
             self.skip_newlines();
             let block = self.parse_block()?;
             catches.push(CatchClause {
                 param_name,
+                type_names,
                 body: block,
                 span: Span::new(catch_start, self.previous_span().end),
             });
@@ -1013,6 +1050,7 @@ impl<'a> Parser<'a> {
             let span = condition.span.cover(else_expr.span);
             return Ok(Expr {
                 kind: ExprKind::Ternary {
+                    is_elvis: false,
                     condition: Box::new(condition),
                     then_expr: Box::new(then_expr),
                     else_expr: Box::new(else_expr),
@@ -1027,6 +1065,7 @@ impl<'a> Parser<'a> {
             let span = condition.span.cover(else_expr.span);
             return Ok(Expr {
                 kind: ExprKind::Ternary {
+                    is_elvis: true,
                     condition: Box::new(condition.clone()),
                     then_expr: Box::new(condition),
                     else_expr: Box::new(else_expr),
@@ -1730,6 +1769,7 @@ impl<'a> Parser<'a> {
         Ok(Expr {
             kind: ExprKind::Closure {
                 params,
+                has_arrow: true,
                 body: Block {
                     statements: vec![statement],
                     span: Span::new(start, end),
@@ -2072,6 +2112,7 @@ impl<'a> Parser<'a> {
         Ok(Expr {
             kind: ExprKind::Closure {
                 params,
+                has_arrow,
                 body: Block {
                     statements,
                     span: Span::new(start, end),
@@ -2322,14 +2363,19 @@ impl<'a> Parser<'a> {
             } else if self.at(TokenKind::Private) {
                 prefix.is_private = true;
                 self.advance();
-            } else if matches!(
-                self.current().kind,
-                TokenKind::Protected
-                    | TokenKind::Synchronized
-                    | TokenKind::Transient
-                    | TokenKind::Volatile
-                    | TokenKind::Default
-            ) {
+            } else if self.at(TokenKind::Protected) {
+                prefix.is_protected = true;
+                self.advance();
+            } else if self.at(TokenKind::Synchronized) {
+                prefix.is_synchronized = true;
+                self.advance();
+            } else if self.at(TokenKind::Transient) {
+                prefix.is_transient = true;
+                self.advance();
+            } else if self.at(TokenKind::Volatile) {
+                prefix.is_volatile = true;
+                self.advance();
+            } else if self.at(TokenKind::Default) {
                 self.advance();
             } else {
                 break;
@@ -2688,6 +2734,10 @@ struct PrefixInfo {
     is_final: bool,
     is_public: bool,
     is_private: bool,
+    is_protected: bool,
+    is_synchronized: bool,
+    is_transient: bool,
+    is_volatile: bool,
 }
 
 fn simple_name(name: &str) -> String {
