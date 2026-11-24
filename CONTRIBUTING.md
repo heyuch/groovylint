@@ -30,6 +30,9 @@ Before opening a pull request, run:
 cargo fmt-check
 cargo lint
 cargo test-all
+
+cd gradle-plugin
+./gradlew test validatePlugins
 ```
 
 ## Code standards

@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - First differential validation against CodeNarc 4.0.0: the seven implemented
   `basic` rules match CodeNarc on rule name, line, and message for the bundled
   fixture.
+- Gradle plugin (`io.github.heyuch.groovylint`) with per-source-set tasks,
+  embedded macOS arm64 / Linux x86_64 native binaries, `check` integration, and
+  configuration-cache support.
+- Maven Central and Gradle Plugin Portal publication configuration plus a
+  tag-driven GitHub Actions release pipeline.
 - Criterion microbenchmarks and an end-to-end CodeNarc comparison harness.
 - First public-corpus validation: 734 Apache Groovy files and 479 CodeNarc source
   files, with zero normalized finding differences; local median speedups of

@@ -139,6 +139,7 @@ crates/
   groovylint-config/     CodeNarc XML ruleset loading
   groovylint-rules/      rule contracts, registry, traversal, engine, rules
   groovylint-cli/        binary, discovery, parallel fan-out, reporters
+gradle-plugin/          Gradle plugin, embedded native binaries, publishing config
 docs/
   ARCHITECTURE.md        design, parser rationale, compatibility and benchmark plan
 ```
@@ -175,6 +176,7 @@ cargo doc-all
 
 - [Architecture and open questions](docs/ARCHITECTURE.md)
 - [CodeNarc compatibility notes](docs/COMPATIBILITY.md)
+- [Gradle plugin](gradle-plugin/README.md)
 - [Benchmark methodology](benchmarks/README.md) and [local results](benchmarks/RESULTS.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)

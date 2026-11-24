@@ -5,3 +5,7 @@ lcov.info
 
 .DS_Store
 .idea/
+
+gradle-plugin/.gradle/
+gradle-plugin/build/
+gradle-plugin/.kotlin/
