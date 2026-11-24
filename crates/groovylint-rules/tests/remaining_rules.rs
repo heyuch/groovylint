@@ -40,6 +40,40 @@ fn names(diagnostics: &[groovylint_core::Diagnostic]) -> BTreeSet<&str> {
 }
 
 #[test]
+fn all_registered_rules_run_on_one_source() {
+    let registry = RuleRegistry::builtin();
+    let classes: Vec<String> = registry
+        .descriptors()
+        .iter()
+        .map(|descriptor| descriptor.meta.codenarc_class.to_string())
+        .collect();
+    let source = r#"
+class Example {
+    static int count = 0
+    String name
+    synchronized String getName() { name }
+    void setName(String value) { name = value }
+    Boolean enabled() { return null }
+    void run() {
+        for (i in 1..3) {
+            for (j in 1..3) { println i + j }
+        }
+        try {
+            new File("x").text
+        } catch (Throwable error) {
+            new RuntimeException(error)
+        }
+    }
+}
+"#;
+    let source_file = SourceFile::new("Example.groovy", source);
+    let parsed = parse(source).expect("source should parse");
+    let engine = Engine::from_codenarc_classes(&registry, &classes);
+    let diagnostics = engine.lint(&source_file, &parsed);
+    assert_ne!(diagnostics.len(), 0);
+}
+
+#[test]
 fn all_in_scope_codenarc_classes_are_registered() {
     let registry = RuleRegistry::builtin();
     assert_eq!(registry.descriptors().len(), 384);
