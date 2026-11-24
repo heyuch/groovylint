@@ -12,6 +12,9 @@ not to build.
 
 - CodeNarc 4.0.0 behavior for all non-framework rules.
 - Spock-related rules (the project still uses Spock-style tests).
+- A lossless syntax layer that keeps the semantic AST and a future formatter
+  independent.
+- Safe autofix with explicit suggestions and text edits.
 - ArchUnit-like source dependency rules:
   - module-to-module dependencies;
   - package-to-package dependencies;
@@ -33,7 +36,9 @@ not to build.
 - Whole-program sound nullness for dynamic Groovy and external libraries.
 - In-process execution of arbitrary Groovy scripts as rules.
 - Native dynamic-library plugins (`.so`/`.dylib`) with an unstable Rust ABI.
-- Auto-fix and language-server integration in this roadmap.
+- A formatter implementation in the near-term milestones. The syntax layer is
+  made formatter-ready, but the formatter is a later milestone.
+- Language-server integration in this roadmap.
 
 ## 2. Current baseline
 
@@ -75,28 +80,37 @@ rulesets load, but they currently report nothing or only approximate a check.
 
 ## 3. Target architecture
 
-The current pipeline is still per-file. Architecture and nullness both need
-project/file facts that are computed once and shared.
+The current pipeline is per-file and AST-only. Architecture, autofix, and
+nullness need facts that are computed once and shared.
 
 ```text
-parse all files (parallel)
-    -> FileFacts (classes, packages, imports, references, spans)
-    -> ProjectIndex (symbols, packages, modules, classpath edges)
-    -> DependencyGraph
-    -> ProjectRule / ArchitectureRule
-    -> CFG per method (on demand)
-    -> data-flow / nullness
+source
+  -> lossless lexer (tokens + trivia)
+  -> parser events
+      -> semantic AST                         (rules, analysis)
+      -> lossless CST                         (autofix, formatter)
+  -> FileFacts                                (classes, imports, references)
+  -> ProjectIndex                             (symbols, packages, modules)
+  -> DependencyGraph
+  -> ProjectRule / ArchitectureRule
+  -> CFG per method
+  -> data-flow / nullness
+  -> FixEngine (text edits)                  (autofix)
 ```
 
 New core concepts:
 
-- `FileFacts`: immutable per-file summary; no AST retained by project rules.
+- `Trivia` and lossless tokens: comments, whitespace, shebang, line endings.
+- `SyntaxNode`/CST: exact source reconstruction for formatting and safe edits.
+- `FileFacts`: immutable per-file summary; project rules do not need the AST.
 - `ProjectIndex`: class/package/module symbols and containment.
 - `DependencyGraph`: typed edges with source spans.
-- `ProjectRule`: a rule capability that runs once over the project, unlike
-  `TokenRule`/`AstRule`/`FileRule`.
+- `ProjectRule`: a rule capability that runs once over the project.
 - `Cfg` and a worklist data-flow framework: on-demand per method.
+- `TextEdit`/`Fix`: explicit source edits with safety levels.
+- `FixEngine`: selection, conflict handling, application, reparse, re-lint.
 - `RuleStatus`: `Implemented`, `Partial`, `Stub`, `Excluded`, `Missing`.
+- `Fixability`: `None`, `Suggestion`, `Safe`, `Unsafe`.
 
 The CLI must be able to run in two modes:
 
@@ -115,6 +129,7 @@ parser regressions.
 - Mark the 7 Jenkins classes as `Excluded`; do not report them as missing.
 - Keep the 12 Grails classes as `Excluded`.
 - Remove the duplicate `ThrowExceptionFromFinallyBlock` registration.
+- Add `Fixability` metadata (the edit engine itself lands in M3).
 - Add a generated coverage test so the expected 387-rule target cannot silently
   regress.
 - Add negative fixtures for every currently implemented rule.
@@ -122,7 +137,8 @@ parser regressions.
 
 Exit criteria:
 
-- `groovylint rules --coverage --format json` reports exact counts by status.
+- `groovylint rules --coverage --format json` reports exact counts by status and
+  fixability.
 - CI fails if a rule is added/removed without updating the expected manifest.
 - No duplicate CodeNarc classes.
 
@@ -169,10 +185,64 @@ Exit criteria:
 - On the benchmark corpus, no unexplained CodeNarc-only findings.
 - No performance regression beyond the agreed budget.
 
-### M2 — Project graph and ArchUnit-like rules (0.4, 4–6 weeks)
+### M2 — Lossless syntax foundation (0.4, 2–3 weeks)
 
-Deliver the dependency graph and architecture rules before the null checker,
-because the graph is also useful for several CodeNarc rules and plugin APIs.
+Make the syntax layer ready for autofix and a future formatter without coupling
+the formatter to rules.
+
+- Add trivia-preserving tokenization: whitespace, line comments, block comments,
+  shebang, newlines.
+- Add a lossless CST with exact source reconstruction.
+- Add `parse_lossless` while keeping `parse` as the AST-only fast path.
+- Add parser error recovery and collected errors.
+- Guarantee `groovylint-syntax` has no dependency on rules, config, analysis,
+  reporting, or CLI.
+- Add round-trip, comment-preservation, Unicode, CRLF, and fuzz tests.
+- Add AST-only and CST parse benchmarks.
+
+Design: [`docs/SYNTAX.md`](docs/SYNTAX.md).
+
+Exit criteria:
+
+- Every parseable corpus file round-trips exactly through the CST.
+- Comments and shebangs are never discarded by the lossless path.
+- AST-only parse performance stays within the existing budget.
+- The formatter can be built later in a separate crate using only syntax APIs.
+
+### M3 — Safe autofix (0.5, 2–3 weeks)
+
+Implement the edit engine and a conservative first set of fixes. This can begin
+with token-level fixes in parallel with M2, but it should not ship before
+comment-preservation tests exist.
+
+- Add `TextEdit`, `Fix`, `FixSafety`, and `Fixability`.
+- Extend diagnostics and JSON output with fix metadata.
+- Implement selection, overlap rejection, atomic writes, reparse, re-lint, and
+  bounded fixpoint iteration.
+- Add `--fix`, `--fix --dry-run`, and `--fix --unsafe`.
+- Add explicit Gradle fix tasks; `check` stays read-only.
+- Ship safe fixes for a small set of local rules first:
+  - `UnnecessarySemicolon`;
+  - `TrailingWhitespace`;
+  - `UnusedImport` (after trivia handling);
+  - `UnnecessaryPublicModifier`;
+  - unambiguous spacing rules.
+- Add suggestion-only fixes for rules where semantics are context-dependent.
+
+Design: [`docs/AUTOFIX.md`](docs/AUTOFIX.md).
+
+Exit criteria:
+
+- A fixed file always reparses.
+- Safe fixes do not change comments, shebangs, or unrelated formatting.
+- Fix-then-lint reaches a fixed point or stops deterministically.
+- No rule writes files directly.
+- `check` never mutates source.
+
+### M4 — Project graph and ArchUnit-like rules (0.6, 4–6 weeks)
+
+Deliver the dependency graph and architecture rules. This also supplies facts
+for project plugins.
 
 Components:
 
@@ -205,20 +275,22 @@ Initial rule types:
 - `layers`: a higher layer may depend only on allowed lower layers.
 - `slices`: package/class slices may not create forbidden cycles.
 
+Design summary: section 5 below.
+
 Exit criteria:
 
 - Graph built once per project and reused.
 - A 10k-class synthetic project builds its graph in a reasonable time.
 - Rules report module/package/class violations with precise source locations.
 - Graph and rule output are deterministic under parallel parsing.
-- No false dependency edges from comments, strings, or imports that are never
-  used (unless a rule explicitly asks for imports).
+- No false dependency edges from comments, strings, or unused imports unless a
+  rule explicitly asks for imports.
 
-### M3 — CFG and nullness without annotations (0.5, 6–8 weeks)
+### M5 — CFG and nullness without annotations (0.7, 6–8 weeks)
 
 Implement the analysis core and a separate `Nullness` rule pack.
 
-Phase 3a: intraprocedural definite-null detection.
+Phase 5a: intraprocedural definite-null detection.
 
 - CFG for methods, scripts, closures, branches, loops, try/catch/finally,
   return/throw/break/continue.
@@ -230,7 +302,7 @@ Phase 3a: intraprocedural definite-null detection.
 - No false positives by default: unresolved external calls are `Unknown`, not
   `MaybeNull`.
 
-Phase 3b: interprocedural summaries.
+Phase 5b: interprocedural summaries.
 
 - Method return-nullness summaries from all return statements.
 - Parameter dereference requirements (a parameter dereferenced without a null
@@ -240,7 +312,7 @@ Phase 3b: interprocedural summaries.
 - Closure capture handling.
 - Strict mode: report possible-null findings and contract violations.
 
-Phase 3c: optional annotation/bytecode refinement.
+Phase 5c: optional annotation/bytecode refinement.
 
 - Honour `@Nullable`/`@NonNull` when present, but never require them.
 - Optionally read Java/Groovy class-file annotations for external APIs later.
@@ -255,7 +327,7 @@ Exit criteria:
 - The checker is opt-in until precision is demonstrated.
 - No crashes/timeouts on the benchmark corpora.
 
-### M4 — Custom-rule plugin mechanism (0.6, 3–4 weeks)
+### M6 — Custom-rule plugin mechanism (0.8, 3–4 weeks)
 
 Ship the architecture DSL first, then a process-based plugin protocol.
 
@@ -274,62 +346,13 @@ name = "acme-rules"
 command = ["acme-groovylint-plugin"]
 ```
 
-The host invokes the plugin once per project with a versioned JSON request:
+The host invokes the plugin once per project with a versioned JSON request. The
+request contains the project root, files, configuration, and normalized
+`FileFacts`/dependency facts (not a raw full AST at first). The plugin responds
+with diagnostics in the same schema as built-in rules. The host validates paths
+and spans, applies severity/suppression, and sorts results.
 
-```json
-{
-  "api_version": 1,
-  "project_root": "/repo",
-  "config": {"forbidden_import": "com.acme.legacy.."},
-  "files": [
-    {
-      "path": "src/main/groovy/Example.groovy",
-      "source": "package com.acme.web\n...",
-      "facts": {
-        "package": "com.acme.web",
-        "imports": ["com.acme.legacy.OldService"],
-        "classes": ["com.acme.web.Example"]
-      }
-    }
-  ]
-}
-```
-
-The plugin responds with diagnostics in the same schema as built-in rules:
-
-```json
-{
-  "api_version": 1,
-  "diagnostics": [
-    {
-      "rule": "acme/NoLegacyImports",
-      "severity": "warning",
-      "path": "src/main/groovy/Example.groovy",
-      "start": 87,
-      "end": 123,
-      "message": "Do not import com.acme.legacy.. from web code"
-    }
-  ]
-}
-```
-
-The host validates paths and spans, applies severity/suppression, and sorts
-results. The facts schema is versioned; plugins must reject an unsupported API
-version rather than guessing.
-
-Plugin rules use namespaced IDs, for example `acme/NoDirectRepositoryAccess`.
-Plugin configuration is explicit:
-
-```toml
-[[plugins]]
-name = "acme-rules"
-command = ["acme-groovylint-plugin"]
-api_version = 1
-```
-
-A WASM Component Model ABI can be added later behind the same conceptual
-protocol. Do not add it before the process protocol and facts schema have
-stabilized.
+Design summary: section 6 below.
 
 Exit criteria:
 
@@ -338,15 +361,19 @@ Exit criteria:
 - Plugin rules are opt-in; no automatic downloads or discovery.
 - API version mismatch is rejected cleanly.
 
-### M5 — Hardening and ecosystem (1.0, ongoing)
+### M7 — Formatter and hardening (post-1.0, ongoing)
 
-- Continue real-corpus differential testing.
+- Build `groovylint-format` as a separate crate depending only on
+  `groovylint-syntax`.
+- Add style configuration and a safe formatting CLI.
+- Require CST round-trip, comment preservation, and idempotence tests.
+- Continue real-corpus differential testing and performance tuning.
 - Add more CodeNarc positive/negative fixtures.
 - Tune architecture rule patterns and module source mapping.
 - Tune nullness precision and performance.
 - Add plugin examples and SDK documentation.
 - Revisit Windows/Intel macOS/Linux arm64 distribution.
-- Consider LSP/auto-fix only after the core contracts are stable.
+- Consider LSP/auto-fix UI integration only after the core contracts are stable.
 
 ## 5. ArchUnit-like DSL proposal
 
@@ -407,12 +434,12 @@ Design constraints:
 
 Two layers:
 
-1. **Declarative custom rules** (M2/M4):
+1. **Declarative custom rules** (M4/M6):
    - architecture rules;
    - simple forbidden/required pattern rules;
    - no code execution;
    - safest default for teams.
-2. **Process plugins** (M4):
+2. **Process plugins** (M6):
    - arbitrary logic in any language;
    - explicit configuration and trust;
    - versioned JSON protocol;
@@ -467,6 +494,21 @@ Every milestone adds:
 - a benchmark on the pinned corpora;
 - a regression budget for files/second and memory.
 
+Syntax-specific tests:
+
+- CST round-trip over parseable corpora;
+- comment/shebang preservation;
+- CRLF, Unicode, and byte-span tests;
+- parser panic fuzzing;
+- AST-only and CST benchmarks.
+
+Autofix-specific tests:
+
+- fix-then-parse and fix-then-lint;
+- idempotence and conflict rejection;
+- golden diffs;
+- corpus dry-run must never produce invalid source.
+
 Architecture-specific tests:
 
 - synthetic graphs with known edges;
@@ -483,12 +525,15 @@ Nullness-specific tests:
 ## 9. Non-goals and anti-goals
 
 - Do not implement Grails or Jenkins rules.
+- Do not make the semantic AST carry comments/trivia or formatting policy.
+- Do not make the CST the rule API.
+- Do not implement autofix by reprinting the whole file.
 - Do not chase 100% bytecode-level ArchUnit parity in the first graph release.
 - Do not make nullness sound for dynamic Groovy or external libraries.
 - Do not execute arbitrary Groovy in the analyzer process.
 - Do not expose unstable Rust ABIs.
 - Do not let plugin failures take down the main analysis.
-- Do not add auto-fix/LSP before the rule/analysis APIs stabilize.
+- Do not add LSP or formatter UI before the syntax and analysis APIs stabilize.
 - Do not optimize before the differential and benchmark suites exist.
 
 ## 10. Open decisions
@@ -500,5 +545,8 @@ Nullness-specific tests:
 4. Plugin protocol: JSON process first (current lean); WASM later.
 5. Nullness default for unannotated parameters/fields: `Unknown` (current lean)
    versus assumed non-null.
-6. Whether to read JDK/classpath bytecode annotations in M3c or defer to 1.x.
+6. Whether to read JDK/classpath bytecode annotations in M5c or defer to 1.x.
 7. Whether to remove Jenkins stubs entirely or keep them as `Excluded` metadata.
+8. CST implementation: `rowan` versus a small custom tree; decide after a
+   prototype and memory/performance benchmark.
+9. Autofix default: safe-only (current lean) versus opt-in unsafe-by-default.
