@@ -131,7 +131,7 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
     let reports = pool.install(|| {
         files
             .par_iter()
-            .map(|path| analyze_nullness_file(path, mode))
+            .map(|path| analyze_nullness_file(path, mode, args.contracts.as_deref()))
             .collect::<Result<Vec<_>>>()
     })?;
 
@@ -153,21 +153,27 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
 fn analyze_nullness_file(
     path: &Path,
     mode: groovylint_analysis::nullability::Mode,
+    contracts_path: Option<&Path>,
 ) -> Result<FileReport> {
     let text =
         fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))?;
     let source = SourceFile::new(path.to_path_buf(), text);
     let diagnostics = match parse(source.text()) {
-        Ok(parsed) => groovylint_analysis::nullcheck::analyze(&parsed.script, mode)
+        Ok(parsed) => {
+            let contracts = groovylint_analysis::contracts::registry(&parsed.script, contracts_path)
+                .map_err(anyhow::Error::msg)?;
+            groovylint_analysis::nullcheck::analyze_with_contracts(&parsed.script, mode, contracts)
             .into_iter()
             .map(|finding| {
-                let severity = match finding.code {
-                    "PossibleNullDereference" => Severity::Warning,
-                    _ => Severity::Error,
+                let severity = if finding.code.starts_with("Possible") {
+                    Severity::Warning
+                } else {
+                    Severity::Error
                 };
                 Diagnostic::new(finding.code, severity, finding.message, finding.span)
             })
-            .collect(),
+            .collect()
+        }
         Err(error) => vec![
             Diagnostic::new(
                 "ParseError",

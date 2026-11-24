@@ -26,20 +26,27 @@ public final class GroovyLintPlugin implements Plugin<Project> {
                 EXTENSION_NAME, GroovyLintExtension.class);
         extension.getThreads().convention(Math.max(1, Runtime.getRuntime().availableProcessors()));
         extension.getIgnoreFailures().convention(false);
+        extension.getNullcheckMode().convention("conservative");
         String nativeVersion = pluginVersion();
 
         TaskProvider<Task> aggregate = project.getTasks().register(AGGREGATE_TASK, task -> {
             task.setGroup("verification");
             task.setDescription("Runs groovylint on all source sets.");
         });
+        TaskProvider<Task> nullcheckAggregate = project.getTasks().register("groovylintNullcheck", task -> {
+            task.setGroup("verification");
+            task.setDescription("Runs nullcheck on all source sets.");
+        });
 
-        project.getPluginManager().withPlugin("java", appliedPlugin -> configureSourceSets(project, extension, aggregate, nativeVersion));
+        project.getPluginManager().withPlugin("java", appliedPlugin -> configureSourceSets(
+                project, extension, aggregate, nullcheckAggregate, nativeVersion));
     }
 
     private static void configureSourceSets(
             Project project,
             GroovyLintExtension extension,
             TaskProvider<Task> aggregate,
+            TaskProvider<Task> nullcheckAggregate,
             String nativeVersion) {
         SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
         sourceSets.all(sourceSet -> {
@@ -49,6 +56,8 @@ public final class GroovyLintPlugin implements Plugin<Project> {
                         lint.setGroup("verification");
                         lint.setDescription("Runs groovylint on the "
                                 + sourceSet.getName() + " source set.");
+                        lint.getCommand().set("check");
+                        lint.getNullcheckMode().set(extension.getNullcheckMode());
                         lint.getSourceDirectories().from(sourceSet.getAllSource().getSrcDirs());
                         lint.getConfigFile().set(extension.getConfigFile());
                         lint.getThreads().set(extension.getThreads());
@@ -62,6 +71,26 @@ public final class GroovyLintPlugin implements Plugin<Project> {
 
             aggregate.configure(aggregateTask -> aggregateTask.dependsOn(task));
             project.getTasks().named("check").configure(check -> check.dependsOn(task));
+
+            String nullcheckTaskName = "groovylintNullcheck" + capitalize(sourceSet.getName());
+            TaskProvider<GroovyLintTask> nullcheckTask = project.getTasks().register(
+                    nullcheckTaskName, GroovyLintTask.class, lint -> {
+                        lint.setGroup("verification");
+                        lint.setDescription("Runs nullcheck on the "
+                                + sourceSet.getName() + " source set.");
+                        lint.getCommand().set("nullcheck");
+                        lint.getNullcheckMode().set(extension.getNullcheckMode());
+                        lint.getNullcheckContracts().set(extension.getNullcheckContracts());
+                        lint.getSourceDirectories().from(sourceSet.getAllSource().getSrcDirs());
+                        lint.getThreads().set(extension.getThreads());
+                        lint.getIgnoreFailures().set(extension.getIgnoreFailures());
+                        lint.getNativeVersion().set(nativeVersion);
+                        lint.getExecutable().set(extension.getExecutable());
+                        lint.getWorkingDirectory().set(project.getLayout().getProjectDirectory());
+                        lint.getNativeCacheDirectory().set(
+                                new java.io.File(project.getGradle().getGradleUserHomeDir(), "caches/groovylint"));
+                    });
+            nullcheckAggregate.configure(aggregateTask -> aggregateTask.dependsOn(nullcheckTask));
         });
     }
 

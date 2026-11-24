@@ -290,10 +290,11 @@ Exit criteria:
 
 ### M5 — CFG and nullness without annotations (0.7, design review)
 
-**Status: in progress.** The annotation-free N1/N2 slice is implemented:
-CFG lowering, local/field access paths, guard refinement, conservative/inferred
-modes, and `groovylint nullcheck`. Annotation contracts and interprocedural
-parameter summaries remain pending. See [`docs/NULLCHECK.md`](docs/NULLCHECK.md).
+**Status: in progress.** The N1/N2 core and the unified contract layer are
+implemented: CFG/dataflow, guard/access-path refinement, annotation/DSL/built-in
+contracts, Map/List/Optional models, and `groovylint nullcheck`. Generic
+type-use annotations, package defaults, and full field-init diagnostics remain
+pending. See [`docs/NULLCHECK.md`](docs/NULLCHECK.md).
 
 Implement the analysis core and a separate `Nullness` rule pack.
 

@@ -13,5 +13,10 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
+serde.workspace = true
+toml.workspace = true
 groovylint-core = { path = "../groovylint-core" }
 groovylint-syntax = { path = "../groovylint-syntax" }
+
+[dev-dependencies]
+tempfile.workspace = true

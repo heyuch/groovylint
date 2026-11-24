@@ -30,6 +30,20 @@ public abstract class GroovyLintExtension {
     public abstract Property<Boolean> getIgnoreFailures();
 
     /**
+     * Nullcheck reporting mode: {@code conservative} or {@code inferred}.
+     *
+     * @return the nullcheck mode
+     */
+    public abstract Property<String> getNullcheckMode();
+
+    /**
+     * Optional TOML contract file for nullcheck.
+     *
+     * @return the optional contract file
+     */
+    public abstract RegularFileProperty getNullcheckContracts();
+
+    /**
      * Optional executable override, primarily for local development and tests.
      * When set, no embedded binary is extracted.
      *

@@ -77,6 +77,28 @@ class GroovyLintPluginTest {
     }
 
     @Test
+    void createsNullcheckTasks() throws IOException {
+        writeProject("0");
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+                plugins {
+                    groovy
+                    id("io.github.heyuch.groovylint")
+                }
+
+                groovylint {
+                    executable.set(layout.projectDirectory.file("fake-groovylint.sh"))
+                    nullcheckMode.set("inferred")
+                }
+                """);
+        BuildResult result = run("groovylintNullcheckMain");
+        assertEquals(TaskOutcome.SUCCESS, result.task(":groovylintNullcheckMain").getOutcome());
+        List<String> args = Files.readAllLines(projectDir.resolve("args.txt"));
+        assertTrue(args.contains("nullcheck"));
+        assertTrue(args.contains("--mode"));
+        assertTrue(args.contains("inferred"));
+    }
+
+    @Test
     void supportsConfigurationCache() throws IOException {
         writeProject("0");
 

@@ -1,7 +1,8 @@
 # Nullness analysis: design proposal
 
-Status: **design approved in principle; N1/N2 first slice implemented**
-(2026-11-25). Annotation contracts remain out of scope for this slice.
+Status: **in progress; annotation-free core plus annotations/contracts**
+(2026-11-25). The checker now has a unified contract domain for built-ins,
+annotations, and an external TOML DSL.
 
 This document proposes a nullness checker for Groovy based on first principles:
 control-flow graphs, abstract interpretation, access paths, and method summaries.
@@ -20,20 +21,55 @@ The central decision is:
 
 ## 0. Implementation status
 
-The first annotation-free slice is in `groovylint-analysis`:
+Current implementation in `groovylint-analysis`:
 
 - AST-to-CFG lowering for methods, branches, loops, switch, try/finally, and
   closures;
-- local/field access paths;
+- local/field access paths, unqualified field resolution, and guard refinement;
 - conservative and inferred modes;
-- `groovylint nullcheck [paths]` with `--mode conservative|inferred`;
-- strict-flow corpus checks (15 findings across the flow fixtures) and negative
-  guard checks;
-- local method return summaries for implicit calls.
+- `groovylint nullcheck [paths]` with `--mode conservative|inferred` and
+  `--contracts <file.toml>`;
+- local method return summaries, direct closure summaries, Map/List/Optional
+  models, and fluent assertion guards;
+- `@Nullable`, `@NonNull` declaration annotations, `@EnsuresNonNull`,
+  `@EnsuresNonNullIf`, `@Contract`, and `@NoReturn`;
+- a TOML contract DSL using the same `Contract` domain as annotations and
+  built-ins;
+- strict-flow, annotation, contract, and negative-guard corpus checks.
 
-Still pending: cross-method parameter summaries, full closure capture/summary,
-library models (Map/Optional), annotations/contracts, and field initialization
-diagnostics. The design below remains the target.
+Build-in contract sources:
+- `contracts::builtins()` for JDK/collection/Optional/guard methods;
+- `contracts::from_annotations()` for source annotations;
+- `ContractRegistry::load_toml()` for project/library DSL files.
+
+Still pending: full generic/type-use annotations, package-level defaults,
+full generic/type-use annotations, package-level defaults, `@MonotonicNonNull`
+semantics, cross-method parameter contracts, complete closure capture, field
+initialization diagnostics, and Kotlin-like default-non-null scopes. The design below remains
+the target.
+
+### Contract DSL
+
+```toml
+[[contracts]]
+method = "com.acme.Utils.maybe"
+arity = 0
+returns = "nullable"
+
+[[contracts]]
+method = "com.acme.Utils.require"
+arity = 1
+returns = "nonnull"
+ensures = ["#1"]
+
+[[contracts]]
+method = "Map.get"
+arity = 1
+returns = "nullable"
+```
+
+`#1` is a one-based parameter path. `this.field`, `this`, `returns`, and
+nullable/non-null values use the same domain for all three sources.
 
 ## 1. What the corpus says
 

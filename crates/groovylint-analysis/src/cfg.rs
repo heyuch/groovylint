@@ -4,7 +4,7 @@
 //! stored by value so a CFG can outlive the AST borrow; spans remain available
 //! for diagnostics.
 
-use groovylint_syntax::ast::{Block, Expr, Item, MethodDecl, Script, Stmt};
+use groovylint_syntax::ast::{Annotation, Block, Expr, Item, MethodDecl, Script, Stmt};
 
 /// A basic-block identifier.
 pub type BlockId = usize;
@@ -15,7 +15,12 @@ pub enum Instruction {
     /// Evaluate an expression for its effects and discard its value.
     Eval(Expr),
     /// Declare a local variable and assign its initializer.
-    Declare { name: String, init: Option<Expr> },
+    Declare {
+        name: String,
+        init: Option<Expr>,
+        annotations: Vec<Annotation>,
+        type_name: Option<String>,
+    },
     /// Evaluate an assertion condition and continue on the true path.
     Assert {
         condition: Expr,
@@ -236,6 +241,8 @@ impl Builder {
                 self.emit(Instruction::Declare {
                     name: decl.name.clone(),
                     init: decl.init.clone(),
+                    annotations: decl.annotation_details.clone(),
+                    type_name: decl.type_name.clone(),
                 });
             }
             Stmt::Expr(expr) => self.emit(Instruction::Eval(expr.clone())),
@@ -375,6 +382,8 @@ impl Builder {
                 self.emit(Instruction::Declare {
                     name: for_each.var_name.clone(),
                     init: None,
+                    annotations: Vec::new(),
+                    type_name: None,
                 });
                 self.break_targets.push(after_block);
                 self.continue_targets.push(condition_block);

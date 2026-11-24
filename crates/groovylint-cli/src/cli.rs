@@ -57,6 +57,10 @@ pub struct NullcheckArgs {
     #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
     pub format: OutputFormat,
 
+    /// Optional TOML contract file for project/library models.
+    #[arg(long, value_name = "FILE")]
+    pub contracts: Option<PathBuf>,
+
     /// Number of worker threads. Defaults to available parallelism.
     #[arg(long, value_name = "N")]
     pub threads: Option<usize>,

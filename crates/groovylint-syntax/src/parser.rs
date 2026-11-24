@@ -7,10 +7,10 @@
 use groovylint_core::Span;
 
 use crate::ast::{
-    AssertStmt, AssignOp, BinaryOp, Block, CatchClause, ClassDecl, ClassKind, DoWhileStmt, Expr,
-    ExprKind, FieldDecl, ForEachStmt, ForStmt, IfStmt, ImportDecl, InitializerDecl, Item, Literal,
-    MethodDecl, PackageDecl, Param, ReturnStmt, Script, Stmt, SwitchCase, SwitchStmt,
-    SynchronizedStmt, ThrowStmt, TryStmt, UnaryOp, VarDecl, WhileStmt,
+    Annotation, AssertStmt, AssignOp, BinaryOp, Block, CatchClause, ClassDecl, ClassKind,
+    DoWhileStmt, Expr, ExprKind, FieldDecl, ForEachStmt, ForStmt, IfStmt, ImportDecl,
+    InitializerDecl, Item, Literal, MethodDecl, PackageDecl, Param, ReturnStmt, Script, Stmt,
+    SwitchCase, SwitchStmt, SynchronizedStmt, ThrowStmt, TryStmt, UnaryOp, VarDecl, WhileStmt,
 };
 use crate::lexer::{LexError, lex};
 use crate::token::{Token, TokenKind};
@@ -284,6 +284,7 @@ impl<'a> Parser<'a> {
             extends: None,
             implements: Vec::new(),
             annotations: Vec::new(),
+            annotation_details: Vec::new(),
             suppressed_rules: Vec::new(),
             members: Vec::new(),
             span: Span::new(start, self.previous_span().end),
@@ -361,6 +362,7 @@ impl<'a> Parser<'a> {
             extends,
             implements,
             annotations: prefix.annotations,
+            annotation_details: prefix.annotation_details,
             suppressed_rules: prefix.suppressed_rules,
             members,
             span: Span::new(start, self.previous_span().end),
@@ -432,6 +434,7 @@ impl<'a> Parser<'a> {
                     name: token.text(self.source).to_string(),
                     type_name: None,
                     annotations: param_prefix.annotations,
+                    annotation_details: param_prefix.annotation_details,
                     span: token.span,
                 });
             } else {
@@ -446,6 +449,7 @@ impl<'a> Parser<'a> {
                     name: token.text(self.source).to_string(),
                     type_name,
                     annotations: param_prefix.annotations,
+                    annotation_details: param_prefix.annotation_details,
                     span: token.span,
                 });
             }
@@ -499,6 +503,7 @@ impl<'a> Parser<'a> {
             throws,
             params,
             annotations: prefix.annotations,
+            annotation_details: prefix.annotation_details,
             suppressed_rules: prefix.suppressed_rules,
             body,
             span: Span::new(start, self.previous_span().end),
@@ -528,6 +533,7 @@ impl<'a> Parser<'a> {
                     name: next_name,
                     type_name: type_name.map(ToString::to_string),
                     annotations: prefix.annotations.clone(),
+                    annotation_details: prefix.annotation_details.clone(),
                     suppressed_rules: prefix.suppressed_rules.clone(),
                     is_static: prefix.is_static,
                     is_final: prefix.is_final,
@@ -543,6 +549,8 @@ impl<'a> Parser<'a> {
                 Item::Statement(Stmt::VarDecl(VarDecl {
                     name: next_name,
                     type_name: type_name.map(ToString::to_string),
+                    annotations: prefix.annotations.clone(),
+                    annotation_details: prefix.annotation_details.clone(),
                     init,
                     span,
                 }))
@@ -601,7 +609,7 @@ impl<'a> Parser<'a> {
             _ => {}
         }
 
-        if self.at(TokenKind::At)
+        let leading_prefix = if self.at(TokenKind::At)
             || matches!(
                 self.current().kind,
                 TokenKind::Final
@@ -610,13 +618,13 @@ impl<'a> Parser<'a> {
                     | TokenKind::Public
                     | TokenKind::Private
                     | TokenKind::Protected
-            )
-        {
-            let _ = self.parse_prefix()?;
-        }
+            ) {
+            self.parse_prefix()?
+        } else {
+            PrefixInfo::default()
+        };
 
         if self.looks_like_local_declaration() {
-            let _ = self.parse_prefix()?;
             let start = self.current().span.start;
             let mut type_name = None;
             if !self.eat(TokenKind::Def) && !self.eat(TokenKind::Var) {
@@ -631,6 +639,8 @@ impl<'a> Parser<'a> {
             let mut declarations = vec![Stmt::VarDecl(VarDecl {
                 name,
                 type_name,
+                annotations: leading_prefix.annotations.clone(),
+                annotation_details: leading_prefix.annotation_details.clone(),
                 init,
                 span: Span::new(start, self.previous_span().end),
             })];
@@ -760,7 +770,7 @@ impl<'a> Parser<'a> {
     /// untyped `size = rows.size()` that follows a comma.
     fn parse_for_declaration(&mut self) -> Result<Stmt, ParseError> {
         let start = self.current().span.start;
-        let _ = self.parse_prefix()?;
+        let prefix = self.parse_prefix()?;
         let mut type_name = None;
         if self.eat(TokenKind::Def) || self.eat(TokenKind::Var) {
         } else if self.looks_like_local_declaration() {
@@ -776,6 +786,8 @@ impl<'a> Parser<'a> {
         Ok(Stmt::VarDecl(VarDecl {
             name,
             type_name,
+            annotations: prefix.annotations,
+            annotation_details: prefix.annotation_details,
             init,
             span: Span::new(start, self.previous_span().end),
         }))
@@ -1652,6 +1664,7 @@ impl<'a> Parser<'a> {
                         name,
                         type_name: None,
                         annotations: Vec::new(),
+                        annotation_details: Vec::new(),
                         span: token.span,
                     };
                     return self.parse_lambda_body(start, vec![param]);
@@ -1755,6 +1768,7 @@ impl<'a> Parser<'a> {
                 name: token.text(self.source).to_string(),
                 type_name,
                 annotations: prefix.annotations,
+                annotation_details: prefix.annotation_details,
                 span: token.span,
             });
             self.skip_newlines();
@@ -2104,6 +2118,7 @@ impl<'a> Parser<'a> {
                     name: token.text(self.source).to_string(),
                     type_name,
                     annotations: prefix.annotations,
+                    annotation_details: prefix.annotation_details,
                     span: token.span,
                 });
                 if self.eat(TokenKind::Assign) {
@@ -2353,9 +2368,15 @@ impl<'a> Parser<'a> {
                 let name = self.parse_qualified_name()?;
                 let simple = simple_name(&name);
                 prefix.annotations.push(simple.clone());
+                let mut raw_arguments = None;
                 if self.at(TokenKind::LeftParen) {
+                    let open = self.current().span.start;
                     let args_start = self.pos + 1;
                     self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen)?;
+                    let close = self.previous_span().start;
+                    if close > open + 1 {
+                        raw_arguments = Some(self.source[open + 1..close].trim().to_string());
+                    }
                     if simple == "SuppressWarnings" {
                         for token in &self.tokens[args_start..self.pos.saturating_sub(1)] {
                             if token.kind == TokenKind::String {
@@ -2370,6 +2391,10 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
+                prefix.annotation_details.push(Annotation {
+                    name: simple,
+                    raw_arguments,
+                });
             } else if self.at(TokenKind::Static) {
                 prefix.is_static = true;
                 self.advance();
@@ -2750,6 +2775,7 @@ fn is_property_name_keyword(kind: TokenKind) -> bool {
 #[allow(clippy::struct_excessive_bools)]
 struct PrefixInfo {
     annotations: Vec<String>,
+    annotation_details: Vec<Annotation>,
     suppressed_rules: Vec<String>,
     is_static: bool,
     is_abstract: bool,

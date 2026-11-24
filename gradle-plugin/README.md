@@ -22,6 +22,10 @@ groovylint {
 
     // Optional. Defaults to false: findings fail the task.
     ignoreFailures.set(false)
+
+    // Nullcheck is opt-in. conservative reports definite null only.
+    nullcheckMode.set("conservative") // or "inferred"
+    nullcheckContracts.set(layout.projectDirectory.file("config/nullness-contracts.toml"))
 }
 ```
 
@@ -29,8 +33,13 @@ Tasks:
 
 - `groovylintMain` — lint the `main` source set.
 - `groovylintTest` — lint the `test` source set.
-- `groovylint` — aggregate task for all source sets.
-- Each source-set task is attached to `check`.
+- `groovylintNullcheckMain` — run annotation-free/annotated nullness analysis on
+  the `main` source set (`nullcheckMode`, optional `nullcheckContracts`).
+- `groovylintNullcheckTest` — run nullness analysis on the `test` source set.
+- `groovylintNullcheck` — aggregate nullness task for all source sets.
+- `groovylint` — aggregate CodeNarc task for all source sets.
+- CodeNarc source-set tasks are attached to `check`; nullness tasks are opt-in
+  until its false-positive rate is measured.
 
 Run:
 

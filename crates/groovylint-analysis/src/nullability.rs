@@ -55,6 +55,8 @@ pub enum AccessPath {
     This,
     /// A field/property on another path.
     Field(Box<AccessPath>, String),
+    /// A lookup by a literal key (`map.get('k')` / `map['k']`).
+    Lookup(Box<AccessPath>, String),
 }
 
 impl AccessPath {
@@ -129,7 +131,9 @@ impl Store {
 
 fn is_field_rooted_at(path: &AccessPath, root: &AccessPath) -> bool {
     match path {
-        AccessPath::Field(base, _) => base.as_ref() == root || is_field_rooted_at(base, root),
+        AccessPath::Field(base, _) | AccessPath::Lookup(base, _) => {
+            base.as_ref() == root || is_field_rooted_at(base, root)
+        }
         AccessPath::Local(_) | AccessPath::This => false,
     }
 }

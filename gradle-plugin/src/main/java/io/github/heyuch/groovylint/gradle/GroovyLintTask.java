@@ -39,6 +39,13 @@ public abstract class GroovyLintTask extends DefaultTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileCollection getSourceDirectories();
 
+    /** Analyzer command: {@code check} or {@code nullcheck}.
+     *
+     * @return the command
+     */
+    @Input
+    public abstract Property<String> getCommand();
+
     /** Optional CodeNarc XML ruleset.
      *
      * @return the optional ruleset file
@@ -47,6 +54,22 @@ public abstract class GroovyLintTask extends DefaultTask {
     @Optional
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract RegularFileProperty getConfigFile();
+
+    /** Optional TOML nullness contract file.
+     *
+     * @return the optional contract file
+     */
+    @InputFile
+    @Optional
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract RegularFileProperty getNullcheckContracts();
+
+    /** Nullcheck reporting mode.
+     *
+     * @return the nullcheck mode
+     */
+    @Input
+    public abstract Property<String> getNullcheckMode();
 
     /** Number of analyzer worker threads.
      *
@@ -119,10 +142,17 @@ public abstract class GroovyLintTask extends DefaultTask {
         }
 
         List<String> arguments = new ArrayList<>();
-        arguments.add("check");
+        arguments.add(getCommand().get());
         arguments.add("--threads");
         arguments.add(Integer.toString(Math.max(1, getThreads().get())));
-        if (getConfigFile().isPresent()) {
+        if ("nullcheck".equals(getCommand().get())) {
+            arguments.add("--mode");
+            arguments.add(getNullcheckMode().get());
+            if (getNullcheckContracts().isPresent()) {
+                arguments.add("--contracts");
+                arguments.add(getNullcheckContracts().get().getAsFile().getAbsolutePath());
+            }
+        } else if (getConfigFile().isPresent()) {
             arguments.add("--config");
             arguments.add(getConfigFile().get().getAsFile().getAbsolutePath());
         }

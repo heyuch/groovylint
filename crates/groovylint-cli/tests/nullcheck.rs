@@ -61,3 +61,39 @@ fn inferred_mode_reports_possible_null_from_a_branch() {
         "PossibleNullDereference"
     );
 }
+
+#[test]
+fn loads_toml_contracts() {
+    let temp = TempDir::new().expect("tempdir");
+    let file = temp.path().join("Example.groovy");
+    let contracts = temp.path().join("contracts.toml");
+    fs::write(
+        &file,
+        "def maybe() { 'body is non-null' }\ndef run() { return maybe().length() }\n",
+    )
+    .expect("write fixture");
+    fs::write(
+        &contracts,
+        "[[contracts]]\nmethod = \"maybe\"\narity = 0\nreturns = \"nullable\"\n",
+    )
+    .expect("write contracts");
+
+    let output = binary()
+        .arg("nullcheck")
+        .arg("--format")
+        .arg("json")
+        .arg("--mode")
+        .arg("inferred")
+        .arg("--contracts")
+        .arg(&contracts)
+        .arg(&file)
+        .output()
+        .expect("run nullcheck");
+    assert_eq!(output.status.code(), Some(1));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("valid JSON output");
+    assert_eq!(
+        json["files"][0]["diagnostics"][0]["rule"],
+        "PossibleNullDereference"
+    );
+}

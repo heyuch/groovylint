@@ -8,6 +8,7 @@
 #![doc(html_root_url = "https://docs.rs/groovylint-analysis")]
 
 pub mod cfg;
+pub mod contracts;
 pub mod dataflow;
 pub mod nullability;
 pub mod nullcheck;

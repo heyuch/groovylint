@@ -6,6 +6,15 @@
 
 use groovylint_core::Span;
 
+/// An annotation attached to a declaration.
+#[derive(Clone, Debug)]
+pub struct Annotation {
+    /// Simple annotation name.
+    pub name: String,
+    /// Raw text inside the annotation parentheses, if any.
+    pub raw_arguments: Option<String>,
+}
+
 /// A parsed Groovy script, class file, or Gradle build file.
 #[derive(Clone, Debug)]
 pub struct Script {
@@ -97,6 +106,8 @@ pub struct ClassDecl {
     pub implements: Vec<String>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
+    /// Annotation names plus raw arguments.
+    pub annotation_details: Vec<Annotation>,
     /// Rules suppressed by `@SuppressWarnings` on this declaration.
     pub suppressed_rules: Vec<String>,
     /// Members.
@@ -133,6 +144,8 @@ pub struct MethodDecl {
     pub params: Vec<Param>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
+    /// Annotation names plus raw arguments.
+    pub annotation_details: Vec<Annotation>,
     /// Rules suppressed by `@SuppressWarnings` on this declaration.
     pub suppressed_rules: Vec<String>,
     /// Body, if present.
@@ -150,6 +163,8 @@ pub struct Param {
     pub type_name: Option<String>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
+    /// Annotation names plus raw arguments.
+    pub annotation_details: Vec<Annotation>,
     /// Source span.
     pub span: Span,
 }
@@ -175,6 +190,8 @@ pub struct FieldDecl {
     pub type_name: Option<String>,
     /// Annotation names, normalized to simple names.
     pub annotations: Vec<String>,
+    /// Annotation names plus raw arguments.
+    pub annotation_details: Vec<Annotation>,
     /// Rules suppressed by `@SuppressWarnings` on this field.
     pub suppressed_rules: Vec<String>,
     /// Whether the field is declared `static`.
@@ -252,6 +269,10 @@ pub struct VarDecl {
     pub name: String,
     /// Declared type, or `None` for `def`/`var`.
     pub type_name: Option<String>,
+    /// Annotation names.
+    pub annotations: Vec<String>,
+    /// Annotation names plus raw arguments.
+    pub annotation_details: Vec<Annotation>,
     /// Optional initializer.
     pub init: Option<Expr>,
     /// Source span.

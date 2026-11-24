@@ -17,12 +17,25 @@ use groovylint_syntax::ast::{
 use crate::cfg::{
     BasicBlock, BlockId, Cfg, Instruction, Terminator, build_closure, build_method, build_script,
 };
+use crate::contracts::{self, ContractPath, ContractRegistry};
 use crate::nullability::{AccessPath, Finding, Mode, Nullness, Store};
 
 /// Analyzes all executable units in a script.
 #[must_use]
 pub fn analyze(script: &Script, mode: Mode) -> Vec<Finding> {
-    let mut analyzer = Analyzer::new(mode);
+    let registry = contracts::registry(script, None).unwrap_or_default();
+    analyze_with_contracts(script, mode, registry)
+}
+
+/// Analyzes a script with contracts loaded from annotations, built-ins, and/or
+/// an external DSL registry.
+#[must_use]
+pub fn analyze_with_contracts(
+    script: &Script,
+    mode: Mode,
+    contracts: ContractRegistry,
+) -> Vec<Finding> {
+    let mut analyzer = Analyzer::new(mode, contracts);
     analyzer.analyze_script(script);
     analyzer.finish()
 }
@@ -32,12 +45,23 @@ struct Analyzer {
     findings: Vec<Finding>,
     seen: BTreeSet<(usize, usize, &'static str)>,
     summaries: std::collections::BTreeMap<(String, usize), Nullness>,
+    contracts: ContractRegistry,
+    return_expectation: Option<Nullness>,
+    param_requirements: std::collections::BTreeMap<(String, usize), Vec<usize>>,
+    collect_required: bool,
+    param_names: Vec<String>,
+    required_params: BTreeSet<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct State {
     store: Store,
     closures: std::collections::BTreeMap<AccessPath, Nullness>,
+    fields: BTreeSet<String>,
+    locals: BTreeSet<String>,
+    local_expectations: std::collections::BTreeMap<String, Nullness>,
+    local_types: std::collections::BTreeMap<String, String>,
+    unreachable: bool,
 }
 
 impl State {
@@ -47,21 +71,55 @@ impl State {
         Self {
             store,
             closures: std::collections::BTreeMap::new(),
+            fields: BTreeSet::new(),
+            locals: BTreeSet::new(),
+            local_expectations: std::collections::BTreeMap::new(),
+            local_types: std::collections::BTreeMap::new(),
+            unreachable: false,
         }
     }
 
     fn with_params(params: &[Param]) -> Self {
         let mut state = Self::new();
         for param in params {
+            let value = annotation_nullness(&param.annotations).unwrap_or(Nullness::Unknown);
+            state.locals.insert(param.name.clone());
+            if let Some(type_name) = &param.type_name {
+                state
+                    .local_types
+                    .insert(param.name.clone(), type_name.clone());
+            }
+            if let Some(expected) = annotation_nullness(&param.annotations) {
+                state
+                    .local_expectations
+                    .insert(param.name.clone(), expected);
+            }
             state
                 .store
-                .set(AccessPath::Local(param.name.clone()), Nullness::Unknown);
+                .set(AccessPath::Local(param.name.clone()), value);
+        }
+        state
+    }
+
+    fn with_params_nullable(params: &[Param]) -> Self {
+        let mut state = Self::new();
+        for param in params {
+            state.locals.insert(param.name.clone());
+            if let Some(type_name) = &param.type_name {
+                state
+                    .local_types
+                    .insert(param.name.clone(), type_name.clone());
+            }
+            state
+                .store
+                .set(AccessPath::Local(param.name.clone()), Nullness::MaybeNull);
         }
         state
     }
 
     fn with_fields(mut self, fields: &[(String, Nullness)]) -> Self {
         for (name, value) in fields {
+            self.fields.insert(name.clone());
             self.store
                 .set(AccessPath::field(AccessPath::This, name.clone()), *value);
         }
@@ -76,20 +134,49 @@ impl State {
                 .and_modify(|existing| *existing = existing.join(*value))
                 .or_insert(*value);
         }
+        let mut fields = self.fields.clone();
+        fields.extend(other.fields.iter().cloned());
+        let mut locals = self.locals.clone();
+        locals.extend(other.locals.iter().cloned());
+        let mut local_expectations = self.local_expectations.clone();
+        for (name, value) in &other.local_expectations {
+            local_expectations
+                .entry(name.clone())
+                .and_modify(|existing| *existing = existing.join(*value))
+                .or_insert(*value);
+        }
+        let mut local_types = self.local_types.clone();
+        local_types.extend(
+            other
+                .local_types
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
         Self {
             store: self.store.join(&other.store),
             closures,
+            fields,
+            locals,
+            local_expectations,
+            local_types,
+            unreachable: self.unreachable && other.unreachable,
         }
     }
 }
 
 impl Analyzer {
-    fn new(mode: Mode) -> Self {
+    fn new(mode: Mode, contracts: ContractRegistry) -> Self {
         Self {
             mode,
             findings: Vec::new(),
             seen: BTreeSet::new(),
             summaries: std::collections::BTreeMap::new(),
+            contracts,
+            return_expectation: None,
+            param_requirements: std::collections::BTreeMap::new(),
+            collect_required: false,
+            param_names: Vec::new(),
+            required_params: BTreeSet::new(),
         }
     }
 
@@ -130,6 +217,12 @@ impl Analyzer {
                             .and_modify(|existing| *existing = existing.join(value))
                             .or_insert(value);
                     }
+                    let required = self.summarize_parameters(method);
+                    if !required.is_empty() {
+                        self.param_requirements
+                            .entry((method.name.clone(), method.params.len()))
+                            .or_insert(required);
+                    }
                 }
                 Item::Group(items) => self.collect_summaries(items),
                 _ => {}
@@ -144,6 +237,14 @@ impl Analyzer {
             .is_some_and(|name| name == "void")
         {
             return None;
+        }
+        if let Some(value) = annotation_nullness(&method.annotations) {
+            return Some(value);
+        }
+        if let Some(contract) = self.contracts.find(&method.name, method.params.len())
+            && let Some(value) = contract.returns
+        {
+            return Some(value);
         }
         let body = method.body.as_ref()?;
         let mut values = Vec::new();
@@ -176,6 +277,33 @@ impl Analyzer {
             .into_iter()
             .reduce(Nullness::join)
             .unwrap_or(Nullness::Unknown)
+    }
+
+    fn summarize_parameters(&self, method: &MethodDecl) -> Vec<usize> {
+        let Some(cfg) = build_method(method) else {
+            return Vec::new();
+        };
+        let mut child = Analyzer::new(self.mode, self.contracts.clone());
+        child.collect_required = true;
+        child.param_names = method
+            .params
+            .iter()
+            .map(|param| param.name.clone())
+            .collect();
+        child.run_cfg(&cfg, State::with_params_nullable(&method.params));
+        child.required_params.into_iter().collect()
+    }
+
+    fn record_required(&mut self, receiver: &Expr, state: &State) {
+        if !self.collect_required {
+            return;
+        }
+        let Some(AccessPath::Local(name)) = path_of_in(receiver, state) else {
+            return;
+        };
+        if let Some(index) = self.param_names.iter().position(|param| param == &name) {
+            self.required_params.insert(index);
+        }
     }
 
     fn classify_expr(&self, expr: &Expr) -> Nullness {
@@ -256,10 +384,11 @@ impl Analyzer {
             let Item::Field(field) = member else {
                 continue;
             };
-            let value = field
-                .init
-                .as_ref()
-                .map_or(Nullness::Null, |init| self.eval(init, &mut state));
+            let value = if let Some(init) = &field.init {
+                self.eval(init, &mut state)
+            } else {
+                annotation_nullness(&field.annotations).unwrap_or(Nullness::Unknown)
+            };
             values.push((field.name.clone(), value));
             state.store.set(
                 AccessPath::field(AccessPath::This, field.name.clone()),
@@ -273,7 +402,14 @@ impl Analyzer {
         let Some(cfg) = build_method(method) else {
             return;
         };
+        let previous = self.return_expectation;
+        self.return_expectation = annotation_nullness(&method.annotations).or_else(|| {
+            self.contracts
+                .find(&method.name, method.params.len())
+                .and_then(|contract| contract.returns)
+        });
         self.run_cfg(&cfg, State::with_params(&method.params).with_fields(fields));
+        self.return_expectation = previous;
     }
 
     fn run_cfg(&mut self, cfg: &Cfg, initial: State) {
@@ -290,6 +426,12 @@ impl Analyzer {
             let mut state = start;
             for instruction in &block.instructions {
                 self.transfer_instruction(instruction, &mut state);
+                if state.unreachable {
+                    break;
+                }
+            }
+            if state.unreachable {
+                continue;
             }
             self.transfer_terminator(block, &state, cfg, &mut incoming, &mut queue);
             for successor in &block.extra_successors {
@@ -303,11 +445,37 @@ impl Analyzer {
             Instruction::Eval(expr) => {
                 self.eval(expr, state);
             }
-            Instruction::Declare { name, init } => {
+            Instruction::Declare {
+                name,
+                init,
+                annotations,
+                type_name,
+            } => {
                 let value = init
                     .as_ref()
                     .map_or(Nullness::Null, |init| self.eval(init, state));
+                state.locals.insert(name.clone());
+                if let Some(type_name) = type_name {
+                    state.local_types.insert(name.clone(), type_name.clone());
+                }
+                if let Some(expected) = annotation_detail_nullness(annotations) {
+                    state.local_expectations.insert(name.clone(), expected);
+                }
                 let path = AccessPath::Local(name.clone());
+                if annotation_detail_nullness(annotations) == Some(Nullness::NonNull)
+                    && value.is_nullish()
+                {
+                    self.report(
+                        init.as_ref()
+                            .map_or_else(|| Span::empty(0), |expr| expr.span),
+                        if value.is_null() {
+                            "NullAssignment"
+                        } else {
+                            "PossibleNullAssignment"
+                        },
+                        "A nullable value is assigned to a non-null local",
+                    );
+                }
                 state.store.set(path.clone(), value);
                 if let Some(Expr {
                     kind: ExprKind::Closure { body, .. },
@@ -352,7 +520,21 @@ impl Analyzer {
             Terminator::Return(value) => {
                 if let Some(value) = value {
                     let mut state = state.clone();
-                    self.eval(value, &mut state);
+                    let returned = self.eval(value, &mut state);
+                    if let Some(expected) = self.return_expectation
+                        && expected == Nullness::NonNull
+                        && returned.is_nullish()
+                    {
+                        self.report(
+                            value.span,
+                            if returned.is_null() {
+                                "NullReturn"
+                            } else {
+                                "PossibleNullReturn"
+                            },
+                            "A nullable value is returned from a non-null method",
+                        );
+                    }
                 }
             }
             Terminator::Throw(value) => {
@@ -388,6 +570,7 @@ impl Analyzer {
             } => {
                 let receiver_value = self.eval(receiver, state);
                 if receiver_value.is_nullish() && !safe {
+                    self.record_required(receiver, state);
                     self.report(
                         receiver.span,
                         if receiver_value.is_null() {
@@ -406,7 +589,7 @@ impl Analyzer {
                     Nullness::MaybeNull
                 } else {
                     let _ = name;
-                    path_of(expr).map_or(Nullness::Unknown, |path| state.store.get(&path))
+                    path_of_in(expr, state).map_or(Nullness::Unknown, |path| state.store.get(&path))
                 }
             }
             ExprKind::Call {
@@ -420,6 +603,7 @@ impl Analyzer {
                     && value.is_nullish()
                     && !safe
                 {
+                    self.record_required(receiver, state);
                     self.report(
                         receiver.span,
                         if value.is_null() {
@@ -435,72 +619,126 @@ impl Analyzer {
                     );
                 }
                 if let Some(receiver) = receiver {
-                    if let Some(path) = path_of(receiver) {
+                    if let Some(path) = path_of_in(receiver, state) {
                         state.store.invalidate_fields(&path);
                     }
                 } else {
                     state.store.invalidate_fields(&AccessPath::This);
                 }
-                let mut first_arg = None;
+                let mut arg_values = Vec::new();
                 for arg in args {
                     let value = self.eval(arg, state);
-                    first_arg.get_or_insert((arg, value));
+                    arg_values.push((arg, value));
                 }
-                if matches!(name.as_str(), "requireNonNull" | "checkNotNull") {
-                    if let Some((arg, value)) = first_arg {
-                        if value == Nullness::Null {
+                let contract = self.contracts.find(name, args.len()).cloned();
+                if let Some(contract) = contract {
+                    for index in &contract.required_params {
+                        if let Some((arg, value)) = arg_values.get(*index)
+                            && value.is_nullish()
+                        {
                             self.report(
                                 arg.span,
-                                "NullDereference",
-                                "A null value was passed to a non-null validator",
-                            );
-                        } else if value == Nullness::MaybeNull {
-                            self.report(
-                                arg.span,
-                                "PossibleNullDereference",
-                                "A possibly-null value was passed to a non-null validator",
+                                if value.is_null() {
+                                    "NullArgument"
+                                } else {
+                                    "PossibleNullArgument"
+                                },
+                                &format!("Argument #{} of {name} is declared non-null", index + 1),
                             );
                         }
-                        if let Some(path) = path_of(arg) {
-                            state.store.set(path, Nullness::NonNull);
-                        }
                     }
-                    Nullness::NonNull
-                } else if matches!(name.as_str(), "orElse") && !args.is_empty() {
-                    match first_arg {
-                        Some((_, Nullness::Null)) => Nullness::Null,
-                        Some((_, Nullness::NonNull)) => Nullness::NonNull,
-                        _ => Nullness::Unknown,
+                    for path in &contract.ensures {
+                        Self::apply_contract_path(path, state, &arg_values);
                     }
-                } else if matches!(name.as_str(), "assertNotNull") {
-                    if let Some((arg, value)) = first_arg {
-                        if value == Nullness::Null {
-                            self.report(
-                                arg.span,
-                                "NullDereference",
-                                "A null value was passed to assertNotNull",
-                            );
-                        }
-                        if let Some(path) = path_of(arg) {
-                            state.store.set(path, Nullness::NonNull);
-                        }
+                    if let Some(index) = contract.receiver_param
+                        && let Some(receiver) = receiver
+                        && let ExprKind::Call { args, .. } = &unparen(receiver).kind
+                        && let Some(arg) = args.get(index)
+                        && let Some(path) = path_of_in(arg, state)
+                    {
+                        state.store.set(path, Nullness::NonNull);
                     }
-                    Nullness::NonNull
-                } else if matches!(name.as_str(), "call" | "invoke")
-                    && let Some(receiver) = receiver
-                    && let Some(path) = path_of(receiver)
-                    && let Some(summary) = state.closures.get(&path)
-                {
-                    *summary
-                } else if *safe {
-                    Nullness::MaybeNull
-                } else if receiver.is_none() {
-                    self.summaries
-                        .get(&(name.clone(), args.len()))
-                        .copied()
-                        .unwrap_or(Nullness::Unknown)
+                    if let Some((index, expected)) = contract.condition_param
+                        && let Some((arg, _)) = arg_values.get(index)
+                    {
+                        let (then_state, else_state) = self.condition_states(arg, state);
+                        *state = if expected { then_state } else { else_state };
+                    }
+                    if contract.never_returns {
+                        state.unreachable = true;
+                    }
+                    let lookup = path_of_in(expr, state);
+                    let result = if let Some(path) = &lookup
+                        && state.store.values().contains_key(path)
+                    {
+                        state.store.get(path)
+                    } else if let Some(value) = contract.returns {
+                        value
+                    } else if let Some(index) = contract.returns_param {
+                        arg_values
+                            .get(index)
+                            .map_or(Nullness::Unknown, |(_, value)| *value)
+                    } else if let Some(index) = contract.return_nonnull_if_param {
+                        match arg_values.get(index).map(|(_, value)| *value) {
+                            Some(Nullness::NonNull) => Nullness::NonNull,
+                            Some(Nullness::Null) => Nullness::Null,
+                            _ => Nullness::Unknown,
+                        }
+                    } else if contract.ensures.is_empty() {
+                        self.fallback_call_result(
+                            name,
+                            args.len(),
+                            receiver.as_deref(),
+                            *safe,
+                            state,
+                        )
+                    } else {
+                        Nullness::Unknown
+                    };
+                    receiver
+                        .as_ref()
+                        .and_then(|receiver| local_type(receiver, state))
+                        .map_or(result, |type_name| {
+                            if (type_name.contains("Map")
+                                || type_name.contains("List")
+                                || type_name.contains("Collection")
+                                || type_name.contains("Set"))
+                                && matches!(name.as_str(), "get" | "find" | "max" | "min")
+                            {
+                                Nullness::MaybeNull
+                            } else if type_name.contains("Optional") && name == "get" {
+                                Nullness::NonNull
+                            } else {
+                                result
+                            }
+                        })
                 } else {
-                    Nullness::Unknown
+                    if receiver.is_none()
+                        && let Some(required) = self
+                            .param_requirements
+                            .get(&(name.clone(), args.len()))
+                            .cloned()
+                    {
+                        for index in &required {
+                            if let Some((arg, value)) = arg_values.get(*index)
+                                && value.is_nullish()
+                            {
+                                self.report(
+                                    arg.span,
+                                    if value.is_null() {
+                                        "NullArgument"
+                                    } else {
+                                        "PossibleNullArgument"
+                                    },
+                                    &format!(
+                                        "Argument #{} of {name} is required to be non-null by inferred control flow",
+                                        index + 1
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                    self.fallback_call_result(name, args.len(), receiver.as_deref(), *safe, state)
                 }
             }
             ExprKind::New { args, body, .. } => {
@@ -566,7 +804,21 @@ impl Analyzer {
             }
             ExprKind::Assign { target, value, .. } => {
                 let assigned = self.eval(value, state);
-                if let Some(path) = path_of(target) {
+                if let Some(path) = path_of_in(target, state) {
+                    if let AccessPath::Local(name) = &path
+                        && state.local_expectations.get(name) == Some(&Nullness::NonNull)
+                        && assigned.is_nullish()
+                    {
+                        self.report(
+                            value.span,
+                            if assigned.is_null() {
+                                "NullAssignment"
+                            } else {
+                                "PossibleNullAssignment"
+                            },
+                            "A nullable value is assigned to a non-null local",
+                        );
+                    }
                     state.store.set(path.clone(), assigned);
                     if let ExprKind::Closure { body, .. } = &unparen(value).kind {
                         let summary = self.summarize_block(body);
@@ -610,6 +862,7 @@ impl Analyzer {
                 let target_value = self.eval(target, state);
                 self.eval(index, state);
                 if target_value.is_nullish() && !safe {
+                    self.record_required(target, state);
                     self.report(
                         target.span,
                         if target_value.is_null() {
@@ -624,7 +877,18 @@ impl Analyzer {
                         },
                     );
                 }
-                if *safe {
+                if let Some(path) = path_of_in(expr, state)
+                    && state.store.values().contains_key(&path)
+                {
+                    return state.store.get(&path);
+                }
+                if *safe
+                    || local_type(target, state).is_some_and(|type_name| {
+                        type_name.contains("Map")
+                            || type_name.contains("List")
+                            || type_name.contains("Collection")
+                    })
+                {
                     Nullness::MaybeNull
                 } else {
                     Nullness::Unknown
@@ -671,6 +935,64 @@ impl Analyzer {
 
     fn condition_states(&mut self, expr: &Expr, state: &State) -> (State, State) {
         let expr = unparen(expr);
+        if let ExprKind::Call {
+            receiver,
+            name,
+            args,
+            ..
+        } = &expr.kind
+            && matches!(name.as_str(), "containsKey" | "nonNull" | "isNull")
+        {
+            let mut evaluated = state.clone();
+            self.eval(expr, &mut evaluated);
+            let mut then_state = evaluated.clone();
+            let mut else_state = evaluated;
+            if let Some(arg) = args.first() {
+                if name == "nonNull" {
+                    if let Some(path) = path_of_in(arg, &then_state) {
+                        then_state.store.set(path, Nullness::NonNull);
+                    }
+                } else if name == "isNull" {
+                    if let Some(path) = path_of_in(arg, &else_state) {
+                        else_state.store.set(path, Nullness::NonNull);
+                    }
+                } else if name == "containsKey"
+                    && let Some(receiver) = receiver
+                    && let Some(base) = path_of_in(receiver, &then_state)
+                    && let Some(key) = literal_key(arg)
+                {
+                    then_state
+                        .store
+                        .set(AccessPath::Lookup(Box::new(base), key), Nullness::NonNull);
+                }
+            }
+            return (then_state, else_state);
+        }
+        if let ExprKind::Call { name, args, .. } = &expr.kind
+            && let Some(contract) = self.contracts.find(name, args.len()).cloned()
+            && !contract.ensures_if.is_empty()
+        {
+            let mut evaluated = state.clone();
+            self.eval(expr, &mut evaluated);
+            let mut arg_values = Vec::new();
+            for arg in args {
+                let value = self.eval(arg, &mut evaluated);
+                arg_values.push((arg, value));
+            }
+            let mut then_state = evaluated.clone();
+            let mut else_state = evaluated;
+            for conditional in &contract.ensures_if {
+                let target = if conditional.result {
+                    &mut then_state
+                } else {
+                    &mut else_state
+                };
+                for path in &conditional.paths {
+                    Self::apply_contract_path(path, target, &arg_values);
+                }
+            }
+            return (then_state, else_state);
+        }
         match &expr.kind {
             ExprKind::Binary {
                 op: BinaryOp::And,
@@ -698,26 +1020,49 @@ impl Analyzer {
                 let mut evaluated = state.clone();
                 self.eval(left, &mut evaluated);
                 self.eval(right, &mut evaluated);
-                let path = if is_null_literal(left) {
-                    path_of(right)
+                let null_side = if is_null_literal(left) {
+                    Some(right)
                 } else if is_null_literal(right) {
-                    path_of(left)
+                    Some(left)
                 } else {
                     None
                 };
-                let Some(path) = path else {
-                    return (evaluated.clone(), evaluated);
-                };
-                let mut then_state = evaluated.clone();
-                let mut else_state = evaluated;
-                if matches!(op, BinaryOp::Eq) {
-                    then_state.store.set(path.clone(), Nullness::Null);
-                    else_state.store.set(path, Nullness::NonNull);
-                } else {
-                    then_state.store.set(path.clone(), Nullness::NonNull);
-                    else_state.store.set(path, Nullness::Null);
+                if let Some(other) = null_side {
+                    if let Some(path) = safe_base_path(other, &evaluated) {
+                        let mut then_state = evaluated.clone();
+                        let mut else_state = evaluated;
+                        if matches!(op, BinaryOp::NotEq) {
+                            then_state.store.set(path, Nullness::NonNull);
+                        } else {
+                            else_state.store.set(path, Nullness::NonNull);
+                        }
+                        return (then_state, else_state);
+                    }
+                    let Some(path) = path_of_in(other, &evaluated) else {
+                        return (evaluated.clone(), evaluated);
+                    };
+                    let mut then_state = evaluated.clone();
+                    let mut else_state = evaluated;
+                    if matches!(op, BinaryOp::Eq) {
+                        then_state.store.set(path.clone(), Nullness::Null);
+                        else_state.store.set(path, Nullness::NonNull);
+                    } else {
+                        then_state.store.set(path.clone(), Nullness::NonNull);
+                        else_state.store.set(path, Nullness::Null);
+                    }
+                    return (then_state, else_state);
                 }
-                (then_state, else_state)
+                if let Some(path) = safe_base_path(left, &evaluated) {
+                    let mut then_state = evaluated.clone();
+                    let mut else_state = evaluated;
+                    if matches!(op, BinaryOp::Eq) {
+                        then_state.store.set(path, Nullness::NonNull);
+                    } else {
+                        else_state.store.set(path, Nullness::NonNull);
+                    }
+                    return (then_state, else_state);
+                }
+                (evaluated.clone(), evaluated)
             }
             ExprKind::Binary {
                 op: BinaryOp::InstanceOf,
@@ -726,7 +1071,7 @@ impl Analyzer {
             } => {
                 let mut then_state = state.clone();
                 self.eval(left, &mut then_state);
-                if let Some(path) = path_of(left) {
+                if let Some(path) = path_of_in(left, &then_state) {
                     then_state.store.set(path, Nullness::NonNull);
                 }
                 (then_state, state.clone())
@@ -742,12 +1087,57 @@ impl Analyzer {
                 let mut evaluated = state.clone();
                 self.eval(expr, &mut evaluated);
                 let mut then_state = evaluated.clone();
-                if let Some(path) = path_of(expr) {
+                if let Some(path) = path_of_in(expr, &then_state) {
                     then_state.store.set(path, Nullness::NonNull);
                 }
                 (then_state, evaluated)
             }
         }
+    }
+
+    fn apply_contract_path(path: &ContractPath, state: &mut State, args: &[(&Expr, Nullness)]) {
+        match path {
+            ContractPath::Param(index) => {
+                if let Some((arg, _)) = args.get(*index)
+                    && let Some(path) = path_of_in(arg, state)
+                {
+                    state.store.set(path, Nullness::NonNull);
+                }
+            }
+            ContractPath::This => state.store.set(AccessPath::This, Nullness::NonNull),
+            ContractPath::Field(name) => state.store.set(
+                AccessPath::field(AccessPath::This, name.clone()),
+                Nullness::NonNull,
+            ),
+        }
+    }
+
+    fn fallback_call_result(
+        &self,
+        name: &str,
+        arity: usize,
+        receiver: Option<&Expr>,
+        safe: bool,
+        state: &State,
+    ) -> Nullness {
+        if matches!(name, "call" | "invoke")
+            && let Some(receiver) = receiver
+            && let Some(path) = path_of_in(receiver, state)
+            && let Some(summary) = state.closures.get(&path)
+        {
+            return *summary;
+        }
+        if safe {
+            return Nullness::MaybeNull;
+        }
+        if receiver.is_none() {
+            return self
+                .summaries
+                .get(&(name.to_string(), arity))
+                .copied()
+                .unwrap_or(Nullness::Unknown);
+        }
+        Nullness::Unknown
     }
 
     fn report(&mut self, span: Span, code: &'static str, message: &str) {
@@ -766,12 +1156,41 @@ impl Analyzer {
     }
 }
 
+fn annotation_detail_nullness(
+    annotations: &[groovylint_syntax::ast::Annotation],
+) -> Option<Nullness> {
+    let names: Vec<String> = annotations
+        .iter()
+        .map(|annotation| annotation.name.clone())
+        .collect();
+    annotation_nullness(&names)
+}
+
+fn annotation_nullness(annotations: &[String]) -> Option<Nullness> {
+    if annotations
+        .iter()
+        .any(|annotation| annotation == "Nullable" || annotation.ends_with(".Nullable"))
+    {
+        Some(Nullness::MaybeNull)
+    } else if annotations
+        .iter()
+        .any(|annotation| annotation == "NonNull" || annotation.ends_with(".NonNull"))
+    {
+        Some(Nullness::NonNull)
+    } else {
+        None
+    }
+}
+
 fn merge_state(
     block: BlockId,
     state: &State,
     incoming: &mut [Option<State>],
     queue: &mut VecDeque<BlockId>,
 ) {
+    if state.unreachable {
+        return;
+    }
     match &incoming[block] {
         None => {
             incoming[block] = Some(state.clone());
@@ -798,15 +1217,77 @@ fn is_null_literal(expr: &Expr) -> bool {
     matches!(&unparen(expr).kind, ExprKind::Literal(Literal::Null))
 }
 
-fn path_of(expr: &Expr) -> Option<AccessPath> {
+fn safe_base_path(expr: &Expr, state: &State) -> Option<AccessPath> {
     match &unparen(expr).kind {
-        ExprKind::Variable(name) => Some(AccessPath::Local(name.clone())),
+        ExprKind::Property {
+            receiver,
+            safe: true,
+            ..
+        }
+        | ExprKind::Call {
+            receiver: Some(receiver),
+            safe: true,
+            ..
+        } => path_of_in(receiver, state).or_else(|| safe_base_path(receiver, state)),
+        ExprKind::Property {
+            receiver,
+            safe: false,
+            ..
+        } => safe_base_path(receiver, state),
+        _ => None,
+    }
+}
+
+fn local_type<'a>(expr: &Expr, state: &'a State) -> Option<&'a str> {
+    let ExprKind::Variable(name) = &unparen(expr).kind else {
+        return None;
+    };
+    state.local_types.get(name).map(String::as_str)
+}
+
+fn literal_key(expr: &Expr) -> Option<String> {
+    match &unparen(expr).kind {
+        ExprKind::Literal(Literal::String(value) | Literal::Number(value)) => {
+            Some(value.trim_matches('"').trim_matches('\'').to_string())
+        }
+        _ => None,
+    }
+}
+
+fn path_of_in(expr: &Expr, state: &State) -> Option<AccessPath> {
+    match &unparen(expr).kind {
+        ExprKind::Variable(name) => {
+            if state.locals.contains(name) {
+                Some(AccessPath::Local(name.clone()))
+            } else if state.fields.contains(name) {
+                Some(AccessPath::field(AccessPath::This, name.clone()))
+            } else {
+                Some(AccessPath::Local(name.clone()))
+            }
+        }
         ExprKind::This => Some(AccessPath::This),
+        ExprKind::Call {
+            receiver: Some(receiver),
+            name,
+            args,
+            ..
+        } if name == "get" && args.len() == 1 => {
+            let key = literal_key(&args[0])?;
+            path_of_in(receiver, state).map(|base| AccessPath::Lookup(Box::new(base), key))
+        }
+        ExprKind::Index {
+            target,
+            index,
+            safe: false,
+        } => {
+            let key = literal_key(index)?;
+            path_of_in(target, state).map(|base| AccessPath::Lookup(Box::new(base), key))
+        }
         ExprKind::Property {
             receiver,
             name,
             safe: false,
-        } => path_of(receiver).map(|base| AccessPath::field(base, name.clone())),
+        } => path_of_in(receiver, state).map(|base| AccessPath::field(base, name.clone())),
         _ => None,
     }
 }
@@ -970,7 +1451,7 @@ mod more_tests {
     fn field_guard_and_call_invalidation() {
         let source = r"
 class Example {
-    String value
+    @Nullable String value
     int guarded() {
         if (this.value != null) { return this.value.length() }
         return 0
@@ -1035,5 +1516,61 @@ def run() {
         let findings = lint(source, Mode::Conservative);
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].code, "NullDereference");
+    }
+}
+
+#[cfg(test)]
+mod contract_tests {
+    use super::{Mode, analyze, analyze_with_contracts};
+    use crate::contracts::ContractRegistry;
+    use groovylint_syntax::parser::parse;
+
+    #[test]
+    fn nullable_annotations_and_contracts_are_applied() {
+        let source = r"
+class Example {
+    @Nullable String maybe() { return null }
+    @NonNull String bad() { return null }
+    int deref(@Nullable String value) { return value.length() }
+    void take(@NonNull String value) { value.length() }
+    void caller() { take(null) }
+}
+";
+        let parsed = parse(source).expect("source parses");
+        let findings = analyze(&parsed.script, Mode::Inferred);
+        let codes: Vec<_> = findings.iter().map(|finding| finding.code).collect();
+        assert!(codes.contains(&"NullReturn"));
+        assert!(codes.contains(&"NullArgument"));
+        assert!(codes.contains(&"PossibleNullDereference"));
+    }
+
+    #[test]
+    fn toml_contracts_use_the_same_domain() {
+        let directory = tempfile::TempDir::new().expect("tempdir");
+        let path = directory.path().join("contracts.toml");
+        std::fs::write(
+            &path,
+            r#"
+[[contracts]]
+method = "maybe"
+arity = 0
+returns = "nullable"
+origin = "test"
+"#,
+        )
+        .expect("write contracts");
+        let source = r"
+def maybe() { 'not null in the body' }
+def run() { return maybe().length() }
+";
+        let parsed = parse(source).expect("source parses");
+        let mut registry = ContractRegistry::new();
+        registry.extend(ContractRegistry::load_toml(&path).expect("load contracts"));
+        let findings = analyze_with_contracts(&parsed.script, Mode::Inferred, registry);
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.code == "PossibleNullDereference")
+        );
     }
 }
