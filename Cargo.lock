@@ -348,6 +348,7 @@ dependencies = [
  "anyhow",
  "clap",
  "criterion",
+ "groovylint-analysis",
  "groovylint-config",
  "groovylint-core",
  "groovylint-rules",
@@ -361,6 +362,10 @@ dependencies = [
 [[package]]
 name = "groovylint-analysis"
 version = "0.1.0"
+dependencies = [
+ "groovylint-core",
+ "groovylint-syntax",
+]
 
 [[package]]
 name = "groovylint-config"

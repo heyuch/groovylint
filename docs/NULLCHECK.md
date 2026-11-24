@@ -1,6 +1,7 @@
 # Nullness analysis: design proposal
 
-Status: **proposal for review; no implementation yet** (2026-11-25).
+Status: **design approved in principle; N1/N2 first slice implemented**
+(2026-11-25). Annotation contracts remain out of scope for this slice.
 
 This document proposes a nullness checker for Groovy based on first principles:
 control-flow graphs, abstract interpretation, access paths, and method summaries.
@@ -16,6 +17,23 @@ The central decision is:
 > migration mode, but the target model is default-non-null. The checker must be
 > explicit about where inference stops and where dynamic Groovy/external code
 > makes soundness impossible.
+
+## 0. Implementation status
+
+The first annotation-free slice is in `groovylint-analysis`:
+
+- AST-to-CFG lowering for methods, branches, loops, switch, try/finally, and
+  closures;
+- local/field access paths;
+- conservative and inferred modes;
+- `groovylint nullcheck [paths]` with `--mode conservative|inferred`;
+- strict-flow corpus checks (15 findings across the flow fixtures) and negative
+  guard checks;
+- local method return summaries for implicit calls.
+
+Still pending: cross-method parameter summaries, full closure capture/summary,
+library models (Map/Optional), annotations/contracts, and field initialization
+diagnostics. The design below remains the target.
 
 ## 1. What the corpus says
 

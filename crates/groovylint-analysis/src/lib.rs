@@ -1,20 +1,14 @@
-//! Semantic analysis foundation.
+//! Semantic analysis.
 //!
-//! This crate is intentionally a skeleton. It will host control-flow graphs,
-//! data-flow frameworks, type inference, and nullability analysis once the
-//! front end and compatibility scope are settled.
-//!
-//! Planned responsibilities:
-//!
-//! - lowering syntax into an analysis-friendly representation;
-//! - control-flow graph construction;
-//! - forward/backward data-flow solvers;
-//! - type and nullability lattices;
-//! - checker-framework-inspired nullness checks.
+//! The first implementation is an annotation-free nullness analysis:
+//! AST-to-CFG lowering, a nullness lattice/store, guard refinement, and an
+//! intraprocedural worklist solver. Cross-method summaries and annotation
+//! contracts are planned next; see `docs/NULLCHECK.md`.
 
 #![doc(html_root_url = "https://docs.rs/groovylint-analysis")]
 
 pub mod cfg;
 pub mod dataflow;
 pub mod nullability;
+pub mod nullcheck;
 pub mod types;

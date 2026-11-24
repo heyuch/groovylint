@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remaining 22 are the unsupported Grails/Jenkins/Spock classes.
 
 ### Added
+- Annotation-free nullness analysis (`groovylint nullcheck`) with a CFG/dataflow
+  core, local/field access paths, guard refinement, and conservative/inferred
+  modes. Corpus-backed strict-flow tests cover the first slice.
+
 
 - Initial Cargo workspace with `core`, `syntax`, `analysis`, `config`, `rules`,
   and `cli` crates.

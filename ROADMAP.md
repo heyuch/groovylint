@@ -290,9 +290,10 @@ Exit criteria:
 
 ### M5 — CFG and nullness without annotations (0.7, design review)
 
-**Status: design under review.** Do not implement until the proposal is
-approved. See [`docs/NULLCHECK.md`](docs/NULLCHECK.md) for the architecture,
-corpus split, defaults, and phased plan.
+**Status: in progress.** The annotation-free N1/N2 slice is implemented:
+CFG lowering, local/field access paths, guard refinement, conservative/inferred
+modes, and `groovylint nullcheck`. Annotation contracts and interprocedural
+parameter summaries remain pending. See [`docs/NULLCHECK.md`](docs/NULLCHECK.md).
 
 Implement the analysis core and a separate `Nullness` rule pack.
 

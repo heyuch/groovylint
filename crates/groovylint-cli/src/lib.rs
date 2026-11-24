@@ -35,6 +35,7 @@ pub fn run() -> ExitCode {
 fn try_run(cli: cli::Cli) -> Result<ExitCode> {
     match cli.command {
         cli::Command::Check(args) => run_check(&args),
+        cli::Command::Nullcheck(args) => run_nullcheck(&args),
     }
 }
 
@@ -104,6 +105,85 @@ fn run_check(args: &cli::CheckArgs) -> Result<ExitCode> {
     } else {
         Ok(ExitCode::SUCCESS)
     }
+}
+
+fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
+    let files = discovery::collect_files(&args.paths)?;
+    if files.is_empty() {
+        eprintln!("no Groovy source files found");
+        return Ok(ExitCode::SUCCESS);
+    }
+
+    let threads = args
+        .threads
+        .unwrap_or_else(|| available_parallelism().map_or(1, std::num::NonZeroUsize::get));
+    if threads == 0 {
+        bail!("--threads must be greater than zero");
+    }
+    let pool = ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .context("failed to create worker thread pool")?;
+    let mode = match args.mode {
+        cli::NullnessModeArg::Conservative => groovylint_analysis::nullability::Mode::Conservative,
+        cli::NullnessModeArg::Inferred => groovylint_analysis::nullability::Mode::Inferred,
+    };
+    let reports = pool.install(|| {
+        files
+            .par_iter()
+            .map(|path| analyze_nullness_file(path, mode))
+            .collect::<Result<Vec<_>>>()
+    })?;
+
+    let summary = summarize(&reports);
+    match args.format {
+        cli::OutputFormat::Text => {
+            write_text(&reports);
+            eprintln!("{}", summary_line(summary));
+        }
+        cli::OutputFormat::Json => print!("{}", write_json(&reports, summary)?),
+    }
+    if summary.total() > 0 {
+        Ok(ExitCode::from(1))
+    } else {
+        Ok(ExitCode::SUCCESS)
+    }
+}
+
+fn analyze_nullness_file(
+    path: &Path,
+    mode: groovylint_analysis::nullability::Mode,
+) -> Result<FileReport> {
+    let text =
+        fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let source = SourceFile::new(path.to_path_buf(), text);
+    let diagnostics = match parse(source.text()) {
+        Ok(parsed) => groovylint_analysis::nullcheck::analyze(&parsed.script, mode)
+            .into_iter()
+            .map(|finding| {
+                let severity = match finding.code {
+                    "PossibleNullDereference" => Severity::Warning,
+                    _ => Severity::Error,
+                };
+                Diagnostic::new(finding.code, severity, finding.message, finding.span)
+            })
+            .collect(),
+        Err(error) => vec![
+            Diagnostic::new(
+                "ParseError",
+                Severity::Error,
+                format!("failed to parse Groovy source: {}", error.message),
+                error.span,
+            )
+            .with_help(
+                "The parser currently supports a subset of Groovy; report this file if it is valid Groovy.",
+            ),
+        ],
+    };
+    Ok(FileReport {
+        source,
+        diagnostics,
+    })
 }
 
 fn analyze_file(engine: &Engine, path: &Path) -> Result<FileReport> {

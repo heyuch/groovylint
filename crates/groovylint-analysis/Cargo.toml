@@ -11,3 +11,7 @@ categories.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+groovylint-core = { path = "../groovylint-core" }
+groovylint-syntax = { path = "../groovylint-syntax" }

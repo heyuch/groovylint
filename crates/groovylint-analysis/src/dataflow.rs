@@ -1,4 +1,6 @@
-//! Reusable data-flow analysis framework.
+//! Data-flow analysis support.
 //!
-//! No solver is implemented yet. A future solver will support forward and
-//! backward analyses with configurable lattices and transfer functions.
+//! The initial forward worklist is implemented in [`crate::nullcheck`]. A
+//! generic lattice/transfer abstraction will be extracted once a second
+//! analysis needs it; premature abstraction would obscure the nullness-specific
+//! then/else store handling.

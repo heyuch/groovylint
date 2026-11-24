@@ -20,6 +20,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+groovylint-analysis = { path = "../groovylint-analysis" }
 groovylint-config = { path = "../groovylint-config" }
 groovylint-core = { path = "../groovylint-core" }
 groovylint-rules = { path = "../groovylint-rules" }
