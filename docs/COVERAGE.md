@@ -12,7 +12,7 @@ Current registry:
 | Jenkins rules (registered, excluded from target) | 7 |
 | Spock rules (excluded from target) | 3 |
 | Non-framework/non-Spock missing | 66 |
-| Non-framework registered stubs/partial | 8 |
+| Non-framework/non-Spock registered stubs/partial | 8 |
 | In-scope CodeNarc target | 384 |
 
 The registry currently has 328 entries but 327 unique classes:

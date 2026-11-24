@@ -10,7 +10,7 @@ not to build.
 
 ### In scope
 
-- CodeNarc 4.0.0 behavior for all non-framework rules.
+- CodeNarc 4.0.0 behavior for all non-Grails, non-Jenkins, non-Spock rules.
 - A lossless syntax layer that keeps the semantic AST and a future formatter
   independent.
 - Safe autofix with explicit suggestions and text edits.
@@ -23,6 +23,8 @@ not to build.
 - A declarative architecture DSL, with a Gradle DSL facade.
 - A custom-rule plugin mechanism.
 - Flow-sensitive nullness analysis without requiring `@Nullable`.
+- Incremental analysis and persistent caching after the semantic features are
+  stable.
 - Performance and differential testing as first-class gates.
 
 ### Explicitly out of scope
@@ -54,7 +56,7 @@ The current registry contains:
 | Jenkins classes registered but excluded from the target | 7 |
 | Spock classes excluded from the target | 3 |
 | Non-framework/non-Spock missing rules | 66 |
-| Non-framework registered rules that are stubs/partial | 8 |
+| Non-framework/non-Spock registered stubs/partial | 8 |
 | In-scope target | 384 |
 
 There is one duplicate registry entry:
@@ -97,6 +99,7 @@ source
   -> CFG per method
   -> data-flow / nullness
   -> FixEngine (text edits)                  (autofix)
+  -> per-rule/file-facts/project caches      (incremental mode)
 ```
 
 New core concepts:
@@ -112,6 +115,8 @@ New core concepts:
 - `FixEngine`: selection, conflict handling, application, reparse, re-lint.
 - `RuleStatus`: `Implemented`, `Partial`, `Stub`, `Excluded`, `Missing`.
 - `Fixability`: `None`, `Suggestion`, `Safe`, `Unsafe`.
+- Cache keys and incremental invalidation for per-file results, file facts, and
+  project graphs.
 
 The CLI must be able to run in two modes:
 
@@ -361,7 +366,33 @@ Exit criteria:
 - Plugin rules are opt-in; no automatic downloads or discovery.
 - API version mismatch is rejected cleanly.
 
-### M7 — Formatter and hardening (post-1.0, ongoing)
+### M7 — Incremental analysis and caching (0.9, 3–5 weeks)
+
+Add correctness-first incremental analysis and persistent caches after the rule,
+syntax, architecture, and nullness semantics are stable.
+
+- Per-rule file-result cache keyed by content, rule properties, parser version,
+  analyzer version, and plugin versions.
+- File-facts cache for project rules.
+- Project-graph rebuild from cached facts; then graph-delta optimization.
+- CLI `--cache-dir`, `--no-cache`, `--cache-stats`, and `--changed-files`.
+- Gradle report outputs, `@CacheableTask` where safe, and `InputChanges`-based
+  incremental execution.
+- Nullness summary invalidation via the reverse call graph (after M5).
+- Cache corruption, eviction, and concurrency tests.
+- Cold/warm/one-file-change/100-file-change benchmarks.
+
+Design: [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
+
+Exit criteria:
+
+- Cached and uncached results are identical.
+- One-file change does not re-lint the whole project.
+- A ruleset/analyzer/parser change invalidates the right entries.
+- No measurable regression on cold full scans.
+- Cache stats are visible and actionable.
+
+### M8 — Formatter and hardening (post-1.0, ongoing)
 
 - Build `groovylint-format` as a separate crate depending only on
   `groovylint-syntax`.
@@ -509,6 +540,14 @@ Autofix-specific tests:
 - golden diffs;
 - corpus dry-run must never produce invalid source.
 
+Incremental/cache tests:
+
+- cache-key invalidation for source, rule properties, ruleset, analyzer, parser,
+  and plugin changes;
+- deleted/renamed files and project-graph updates;
+- corrupted entries and concurrent writers;
+- cached versus uncached result equality.
+
 Architecture-specific tests:
 
 - synthetic graphs with known edges;
@@ -535,6 +574,7 @@ Nullness-specific tests:
 - Do not let plugin failures take down the main analysis.
 - Do not add LSP or formatter UI before the syntax and analysis APIs stabilize.
 - Do not optimize before the differential and benchmark suites exist.
+- Do not add remote/distributed caching before local cache correctness is proven.
 
 ## 10. Open decisions
 
@@ -550,3 +590,7 @@ Nullness-specific tests:
 8. CST implementation: `rowan` versus a small custom tree; decide after a
    prototype and memory/performance benchmark.
 9. Autofix default: safe-only (current lean) versus opt-in unsafe-by-default.
+10. Cache storage: sharded files first (current lean) versus SQLite after a
+    benchmark.
+11. Whether to cache serialized AST/CST, or only diagnostics/facts, after
+    profiling parse cost.

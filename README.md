@@ -181,6 +181,7 @@ cargo doc-all
 - [Roadmap](ROADMAP.md)
 - [Syntax front-end design](docs/SYNTAX.md)
 - [Autofix design](docs/AUTOFIX.md)
+- [Incremental analysis and caching](docs/PERFORMANCE.md)
 - [CodeNarc rule coverage](docs/COVERAGE.md)
 - [Gradle plugin](gradle-plugin/README.md)
 - [Benchmark methodology](benchmarks/README.md) and [local results](benchmarks/RESULTS.md)
