@@ -10,14 +10,15 @@ Current registry:
 | Missing from CodeNarc 4.0.0 | 79 |
 | Grails rules (explicitly excluded) | 12 |
 | Jenkins rules (registered, excluded from target) | 7 |
-| Non-framework missing | 67 |
+| Spock rules (excluded from target) | 3 |
+| Non-framework/non-Spock missing | 66 |
 | Non-framework registered stubs/partial | 8 |
-| In-scope CodeNarc target | 387 |
+| In-scope CodeNarc target | 384 |
 
 The registry currently has 328 entries but 327 unique classes:
 `ThrowExceptionFromFinallyBlock` is registered twice.
 
-## Non-framework rules still missing (67)
+## Non-framework, non-Spock rules still missing (66)
 
 ### `groovyism` (33)
 
@@ -101,12 +102,11 @@ The registry currently has 328 entries but 327 unique classes:
 - `LineLength`
 - `SpaceAroundMapEntryColon`
 
-### Remaining singles (6)
+### Remaining singles (5)
 
 - `concurrency`: `SynchronizedOnThis`
 - `exceptions`: `CatchThrowable`
 - `imports`: `MisorderedStaticImports`
-- `junit`: `SpockUseVerifyEach`
 - `naming`: `FactoryMethodName`
 - `security`: `JavaIoPackageAccess`
 
@@ -139,6 +139,12 @@ These load and accept configuration, but do not currently provide full behavior:
 - `GrailsPublicControllerMethod`
 - `GrailsServletContextReference`
 - `GrailsStatelessService`
+
+### Spock (3, excluded)
+
+- `SpockIgnoreRestUsed` (registered, excluded)
+- `SpockMissingAssert` (registered, excluded)
+- `SpockUseVerifyEach` (not registered, excluded)
 
 ### Jenkins (7, registered but excluded)
 

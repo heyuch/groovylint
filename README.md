@@ -8,7 +8,7 @@ analysis.
 > **Status: CodeNarc coverage expansion and semantic-analysis design.** The
 > project has a layered rule engine, CodeNarc XML/property loading, parallel file
 > processing, a Gradle plugin, and **327 unique CodeNarc 4.0.0 rule classes**
-> registered. Grails and Jenkins rules are explicitly out of scope. Architecture
+> registered. Grails, Jenkins, and Spock rules are explicitly out of scope. Architecture
 > dependency rules, a custom-rule plugin mechanism, and unannotated nullness
 > analysis are planned in [`ROADMAP.md`](ROADMAP.md); detailed gaps are tracked in
 > [`docs/COVERAGE.md`](docs/COVERAGE.md).

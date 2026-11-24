@@ -11,7 +11,6 @@ not to build.
 ### In scope
 
 - CodeNarc 4.0.0 behavior for all non-framework rules.
-- Spock-related rules (the project still uses Spock-style tests).
 - A lossless syntax layer that keeps the semantic AST and a future formatter
   independent.
 - Safe autofix with explicit suggestions and text edits.
@@ -30,6 +29,7 @@ not to build.
 
 - Grails rules: all 12 Grails rule classes.
 - Jenkins rules: all 7 Jenkins rule classes.
+- Spock rules: all 3 Spock rule classes.
 - Windows and Intel macOS distribution for now.
 - A full Groovy compiler, bytecode generator, or complete nominal type system.
 - Exact ArchUnit bytecode-level semantics in the first architecture release.
@@ -52,9 +52,10 @@ The current registry contains:
 | CodeNarc 4.0.0 classes not registered | 79 |
 | Grails classes not registered (excluded) | 12 |
 | Jenkins classes registered but excluded from the target | 7 |
-| Non-framework missing rules | 67 |
+| Spock classes excluded from the target | 3 |
+| Non-framework/non-Spock missing rules | 66 |
 | Non-framework registered rules that are stubs/partial | 8 |
-| In-scope target | 387 |
+| In-scope target | 384 |
 
 There is one duplicate registry entry:
 `ThrowExceptionFromFinallyBlock` is registered from both `finally.rs` and
@@ -126,11 +127,11 @@ parser regressions.
 ### M0 — Coverage accounting and cleanup (0.2, 2–3 days)
 
 - Add `RuleStatus` to metadata and a `groovylint rules --coverage` command.
-- Mark the 7 Jenkins classes as `Excluded`; do not report them as missing.
+- Mark the 7 Jenkins and 3 Spock classes as `Excluded`; do not report them as missing.
 - Keep the 12 Grails classes as `Excluded`.
 - Remove the duplicate `ThrowExceptionFromFinallyBlock` registration.
 - Add `Fixability` metadata (the edit engine itself lands in M3).
-- Add a generated coverage test so the expected 387-rule target cannot silently
+- Add a generated coverage test so the expected 384-rule target cannot silently
   regress.
 - Add negative fixtures for every currently implemented rule.
 - Correct the stale 327/323 counts in existing documentation.
@@ -142,9 +143,9 @@ Exit criteria:
 - CI fails if a rule is added/removed without updating the expected manifest.
 - No duplicate CodeNarc classes.
 
-### M1 — Complete non-framework CodeNarc behavior (0.3, 3–4 weeks)
+### M1 — Complete non-framework, non-Spock CodeNarc behavior (0.3, 3–4 weeks)
 
-Implement the 67 missing non-framework rules and replace the 8 stubs.
+Implement the 66 missing non-framework/non-Spock rules and replace the 8 stubs.
 
 Suggested batches:
 
@@ -156,12 +157,11 @@ Suggested batches:
    - `formatting` 2;
    - `convention` 5;
    - `design` 5.
-3. **Metrics and remaining singles (13 rules)**
+3. **Metrics and remaining singles (12 rules)**
    - `size` 7;
    - `SynchronizedOnThis`;
    - `CatchThrowable`;
    - `MisorderedStaticImports`;
-   - `SpockUseVerifyEach`;
    - `FactoryMethodName`;
    - `JavaIoPackageAccess`.
 4. **Stubs (8 rules)**
@@ -180,7 +180,7 @@ mark the rule `Partial` until its differential coverage is acceptable.
 
 Exit criteria:
 
-- 387/387 in-scope classes have a non-stub implementation.
+- 384/384 in-scope classes have a non-stub implementation.
 - Differential tests pass for all rule fixtures.
 - On the benchmark corpus, no unexplained CodeNarc-only findings.
 - No performance regression beyond the agreed budget.
@@ -524,7 +524,7 @@ Nullness-specific tests:
 
 ## 9. Non-goals and anti-goals
 
-- Do not implement Grails or Jenkins rules.
+- Do not implement Grails, Jenkins, or Spock rules.
 - Do not make the semantic AST carry comments/trivia or formatting policy.
 - Do not make the CST the rule API.
 - Do not implement autofix by reprinting the whole file.
