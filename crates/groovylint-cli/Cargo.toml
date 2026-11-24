@@ -29,7 +29,7 @@ rayon.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
-criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 tempfile.workspace = true
 
 [[bench]]
