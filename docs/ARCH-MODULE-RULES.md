@@ -303,8 +303,7 @@ id = "module-composition"
 parent   = ["module", "nested-module"]
 children = ["adapter", "application", "domain", "infrastructure", "infra",
             "client", "models", "model", "shared-models"]
-counts   = { adapter = "<=1", application = "<=1", domain = ">=1",
-             client = "<=1", models = "<=1", shared-models = "<=1" }
+counts   = { adapter = "<=1", application = "<=1", domain = ">=1", client = "<=1", models = "<=1", "shared-models" = "<=1" }
 except   = ["component-*"]          # the 9 single-module libraries declare no children
 
 # 2. Inside one module.
@@ -485,8 +484,248 @@ the sub-modules the way the conventions say", which is half of the original requ
 8. **Legacy sub-modules**: are `-metadata-context`, `-dsl`, `-model`, `-mgmt`,
    `-core`, `-kit`, `-common` declared as kinds (allowed by the composition rule) or
    accepted as 22 baseline entries?
+9. **Acyclicity authority** (§11.1 C18): the observed module graph has one SCC with
+   22 of 32 top-level modules. Is the rule applied to the *declared* Gradle graph
+   (`build.gradle` + `--no-api`), or to the observed one with a cycle baseline? No
+   other decision in this design changes the day-0 result by that much.
 
-## 10. Design checklist
+
+## 11. Appendix: `02-architecture.md` expressed in config
+
+The real constraint set is `.agents/rules/02-architecture.md`. Its structural
+constraints (module composition + dependency direction) reduce to 17 checkable
+statements; naming, model placement, transaction/permission and call-graph
+constraints belong to other rule families and are marked out of scope below.
+
+### 11.1 Constraint → config → day-0
+
+"Day-0" = main sources of the 24k-file corpus, imports resolved through the
+derived node map (type-reference extraction will move the numbers, not the
+ranking).
+
+| # | 02 constraint (quoted or paraphrased) | DSL | Day-0 | Verdict |
+|---|---|---|---:|---|
+| C1 | 模块组合：`xxx-adapter/application/domain/infrastructure/client` + `models` / `shared-models` | `composition` `children` | 22 sub-modules outside the list (`-metadata-context` 11, `-dsl` 4, `-model` 2, `-mgmt` 2, `-core`/`-kit`/`-common`) | ✅ needs the 4 extra kinds declared or a baseline |
+| C2 | `xxx-shared-models`、`xxx-models` 存在与否按模块需要 | `counts = { … = "<=1" }`, no `required` | 0 | ✅ |
+| C3 | 新业务模块不得创建/扩散 `xxx-models` | `composition` with `models` allowed only for the 17 legacy nodes | 17 legacy nodes as `except`/baseline | ✅ baseline carries the legacy list |
+| C4 | `xxx-adapter → xxx-application`（Adapter 只调用 Application 用例） | `from = "adapter"`, `allowSelf = ["application", "models"]` | `adapter → infrastructure` 21, `→ domain` 20, `→ client` 3 | ✅ real debt |
+| C5 | `xxx-application → xxx-domain` | `from = "application"`, `allowSelf = ["domain", "models", "client"]` | `application → infrastructure` 254 | ✅ real debt (D8) |
+| C6 | 本模块 Client 实现在 `xxx-application`（application → 自己的 client） | same rule, `client` in `allowSelf` | `application → client` 185 — *allowed by design*, not a violation | ✅ the rule must list it, or 185 false positives |
+| C7 | `xxx-infrastructure → xxx-domain`（实现 gateway/Repository 接口） | `from = "infrastructure"`, `allowSelf = ["domain", "models"]` | `infrastructure → client` 1 | ✅ |
+| C8 | `xxx-domain → xxx-shared-models` | `from = "domain"`, `allowSelf = ["models", "domain"]` | — | ✅ |
+| C9 | `xxx-client → xxx-shared-models`（按需） | `from = "client"`, `allowSelf = ["models"]` | cross-module `client → models` 280 → allowed by C15 | ✅ |
+| C10 | 存量 `xxx-models` 在原边界内使用 → 各层可读 | `models` in every `allowSelf` | `→ models` ≈ 2.6k/2.0k/1.2k/0.5k/0.3k by layer | ✅ |
+| C11 | Domain 不负责 Web、MyBatis、Repository 实现 | `deny = ["spring-web", "persistence"]` on `domain` | to measure | ✅ external kinds |
+| C12 | Client 不负责 Application/Domain/Infrastructure 实现 | `from = "client"`, `allowSelf = []` | 0 | ✅ |
+| C13 | `shared-models` 不得依赖 Application/Repository/PO/Mapper/Web/事务 | `from = "shared-models"`, `allowSelf = []`, `deny = ["spring-web", "persistence", "spring-tx"]` | 0 | ✅ |
+| C14 | Infrastructure 不得依赖对外 Client 协议 | `from = "infrastructure"`, no `client` in `allowSelf` | 1 | ✅ |
+| C15 | 模块外调用方只能依赖提供方 `xxx-client`（不得依赖其 `shared-models`/application/domain/infrastructure） | `from = ["adapter","application","domain","infrastructure","models","client"]`, `allowOther = ["client"]` + public model / base lib node patterns | `domain → domain` 229, `application → domain` 161, `models → domain` 81, cross-module reads of a business module's `-models` ≈ 759 (app/domain) | ✅ real debt, needs a baseline |
+| C16 | 调用方 Application 或 Domain 才可以调用 Client | `allowOther = ["client"]` only on those two kinds; `adapter`/`infrastructure`/`models` get `allowOther = []` (plus public/base) | `infrastructure → client` 79 (cross) | ✅ |
+| C17 | 模型模块只依赖公共基础能力和**更基础的**稳定模型 | needs `tier` (§11.2) | `models → models` 1,019 | ⚠️ **DSL addition required** |
+| C18 | 模块依赖…无环 | needs `acyclic` check (§11.2) | **2 SCCs**, one spanning 22 top-level modules | ⚠️ **DSL addition required** |
+| C19 | 依赖必须在 `build.gradle` 显式声明，且不得通过传递依赖取得类型 | `check = "declared-dependency"` (phase 5, needs a Gradle reader) | to measure | ⚠️ needs the Gradle reader |
+| C20 | 新增业务模块间依赖用 `implementation project`，不得新增 `api project` | same check, option `forbidApiProject = true` | to measure | ⚠️ needs the Gradle reader |
+
+Out of scope for this family (different rule families, already planned as phases A
+and C of [`ARCHITECTURE-RULES.md`](./ARCHITECTURE-RULES.md)): 授权/事务/编排职责
+（"Application 负责授权、事务边界"）. 领域状态判断写在 Domain Service、写操作经过 Domain
+Service、Repository 方法命名与返回形态、`Converter`/`Assembler`/`Builder` 的职责限制、
+Release Version 流程、包结构（"同一包内类属于同一业务子域"）、模型归属（DO/PO/DTO 放在哪一层）。
+
+Two of those are close enough to be worth naming explicitly: "PO 绝不跨模块" and "Domain
+和 Application 都不能感知 GatewayImpl、Mapper 或 PO" are already covered at *module*
+granularity by C5/C8/C15 — a PO lives in `xxx-infrastructure`, so any reference to it is
+a reference to the infrastructure sub-module. The class-level refinement (a PO accidentally
+placed in `-models`) is the `agreement` rule / phase 2.
+
+### 11.2 The two additions this constraint set forces
+
+**`tier` — an order among siblings.** "模型模块只依赖公共基础能力和更基础的稳定模型" is a
+partial order, which kinds cannot express. Add an integer attribute:
+
+```toml
+[kinds.models]
+name = "*-models"
+tiers = { "global-support:global-support-models" = 0, "*" = 10 }   # lower = more basic
+```
+
+and let a rule state the direction:
+
+```toml
+[[rule]]
+id = "models-depend-downward-only"
+from = "models"
+allowSelf = []                                     # no same-module models target
+allow = ["base", "public-model"]
+allowHigherTier = false                            # may only reach a lower tier
+```
+
+Without it, the honest alternative is a 1,019-edge baseline.
+
+**`acyclic` — a graph property, not an edge rule.** Every rule so far is local
+(source kind × target kind); "无环" is global:
+
+```toml
+[[rule]]
+id = "module-graph-is-acyclic"
+check = "acyclic"
+scope = "module"          # fold observed edges to the module graph first
+ignore = [{ from = "models", to = "client" }]   # a declared-but-harmless cycle
+because = "02: 模块依赖必须单向、显式且无环"
+```
+
+The check folds edges to the node graph, runs Tarjan, and reports each cycle once
+with its member list and the shortest participating edge. It runs on observed
+edges by default and on declared edges with `source = "declared"`.
+
+Measured today: the observed module graph has **2 strongly connected components**,
+one of them containing 22 of the 32 top-level modules. That is the single most
+important finding of this appendix: constraint C18 is violated at scale, so the
+rule must start in baseline mode, or the graph must be *declared* to be the
+authority (C19) rather than the observed one.
+
+### 11.3 The config for `saas-service`
+
+```toml
+version = 1
+sourceSets = ["main"]
+
+# ---- kinds: narrowest first; first match wins, an ambiguous match is an error ----
+[kinds]
+entry            = { path = ["insmate-main", "api-gateway"] }
+public-model     = { path = ["global-support:global-support-models",
+                            "global-support:global-support-shared-models"] }
+base             = { path = ["component-utils", "component-consts", "component-i18n",
+                            "component-exception", "component-cache", "component-queue",
+                            "component-mutexlock", "component-test", "component-doris",
+                            "component-security", "buildSrc"] }
+module           = { path = "{module}" }
+nested-module    = { path = "{tree}:{module}" }
+shared-models    = { name = ["*-shared-models", "*-share-models"] }
+models           = { name = "*-models", tiers = { "*" = 10 } }
+legacy-model     = { name = "*-model", tiers = { "*" = 10 } }
+metadata-context = { name = "*-metadata-context" }
+adapter          = { name = "*-adapter" }
+application      = { name = "*-application" }
+domain           = { name = "*-domain" }
+infrastructure   = { name = ["*-infrastructure", "*-infra"] }
+client           = { name = "*-client" }
+spring-web       = { external = "org.springframework.web.**" }
+persistence      = { external = ["org.apache.ibatis.**", "javax.persistence.**",
+                                 "jakarta.persistence.**", "org.springframework.jdbc.**"] }
+spring-tx        = { external = "org.springframework.transaction.**" }
+
+# ---- C1/C2: what a module may contain ----
+[[rule]]
+id = "module-composition"
+parent   = ["module", "nested-module"]
+children = ["adapter", "application", "domain", "infrastructure", "client",
+            "models", "shared-models", "metadata-context"]
+counts   = { adapter = "<=1", application = "<=1", domain = "<=1", infrastructure = "<=1", client = "<=1", models = "<=1", "shared-models" = "<=1", "metadata-context" = "<=1" }
+because = "02 模块组合"
+
+# ---- C4..C14: inside one module ----
+[[rule]]
+id = "adapter-intra"
+from = "adapter"
+allowSelf = ["application", "models", "shared-models"]
+allow = ["base", "public-model"]
+because = "02: Adapter 只调用 Application 用例"
+
+[[rule]]
+id = "application-intra"
+from = "application"
+allowSelf = ["domain", "models", "shared-models", "client"]   # client = 本模块 Client 实现
+allow = ["base", "public-model"]
+deny = []
+because = "02: Application → Domain；不得直接依赖 Infrastructure/PO/Mapper"
+
+[[rule]]
+id = "infrastructure-intra"
+from = "infrastructure"
+allowSelf = ["domain", "models", "shared-models"]
+allow = ["base", "public-model"]
+because = "02: Infrastructure 实现 Domain 定义的 gateway/Repository，不含对外 Client 协议"
+
+[[rule]]
+id = "domain-intra"
+from = "domain"
+allowSelf = ["models", "shared-models", "domain"]
+allow = ["base", "public-model"]
+deny = ["spring-web", "persistence"]
+because = "02: Domain 不负责 Web、MyBatis 和 Repository 实现"
+
+[[rule]]
+id = "client-intra"
+from = "client"
+allowSelf = ["shared-models"]
+allow = ["base", "public-model"]
+because = "02: Client 只暴露稳定契约，不依赖本模块实现层"
+
+[[rule]]
+id = "shared-models-content"
+from = "shared-models"
+allowSelf = []
+allow = ["base", "public-model"]
+deny = ["spring-web", "persistence", "spring-tx"]
+because = "02: shared-models 只放稳定跨层模型"
+
+[[rule]]
+id = "models-legacy"
+from = "models"
+allowSelf = ["models", "shared-models"]
+allow = ["base", "public-model"]
+tierOf = "models"                 # §11.2: 只依赖更基础的稳定模型
+because = "02: 存量 models 只依赖公共基础能力和更基础的稳定模型"
+
+[[rule]]
+id = "metadata-context"
+from = "metadata-context"
+allowSelf = ["models", "shared-models", "domain"]
+allow = ["base", "public-model"]
+because = "未在 02 规定，按现行用法收敛；新用法需评审后加入"
+
+# ---- C15/C16: across modules ----
+[[rule]]
+id = "cross-module-application-domain"
+from = ["application", "domain"]
+allowOther = ["client"]
+allow = ["base", "public-model"]
+because = "02: 模块外调用方只能显式依赖提供方 xxx-client；Application/Domain 可以调用 Client"
+
+[[rule]]
+id = "cross-module-nobody-else"
+from = ["adapter", "infrastructure", "client", "models", "shared-models", "metadata-context"]
+allowOther = []
+allow = ["base", "public-model"]
+because = "02: 跨模块能力只能通过 Client 调用"
+
+[[rule]]
+id = "entry-unconstrained"
+from = "entry"
+allow = ["*"]
+because = "组装/网关模块需要看到所有子模块"
+
+# ---- C18: graph property ----
+[[rule]]
+id = "module-graph-is-acyclic"
+check = "acyclic"
+scope = "module"
+because = "02: 模块依赖必须单向、显式且无环"
+
+# ---- C19/C20: declared dependencies ----
+[[rule]]
+id = "declared-dependency-matches-observed"
+check = "declared-dependency"
+forbidApiProject = true
+because = "02: 必须在 build.gradle 显式声明 implementation project，不得通过传递依赖取得类型"
+```
+
+Rules with `allowSelf = []` and no `allowOther` are intentional: under the
+allow-list semantics an empty list means "nothing is reachable", which is what the
+convention says for `client`/`shared-models` inside a module.
+
+## 12. Design checklist
 
 - **SRP**: `NodeTree` (locations, kinds, containment, matching), `ProjectIndex`
   (facts + edges), `ArchEvaluator` (rule kinds), `Baseline` (debt). Matching never
