@@ -2207,6 +2207,18 @@ impl<'a> Parser<'a> {
         if !self.starts_argument() {
             return Ok(expr);
         }
+        // Inside parentheses a line break is insignificant, so the parser may
+        // already have consumed it. A command argument must still start on the
+        // line of the callee: otherwise the next statement's first token would
+        // be read as an argument (`check(a, b)` followed by `Foo x = ..`).
+        let between = expr.span.end..self.current().span.start;
+        if self
+            .source
+            .get(between)
+            .is_some_and(|text| text.contains('\n'))
+        {
+            return Ok(expr);
+        }
 
         let mut command_args = Vec::new();
         loop {
@@ -2752,6 +2764,22 @@ fn continues_expression(kind: TokenKind) -> bool {
 
 /// Keeps a single `for` declarator as is, and groups several into a block.
 fn combine_declarations(mut declarations: Vec<Stmt>) -> Stmt {
+    // One declaration shares its written type between the declarators:
+    // `int i = 0, size = rows.size()` declares both as `int`.
+    let shared_type = match declarations.first() {
+        Some(Stmt::VarDecl(first)) => first.type_name.clone(),
+        _ => None,
+    };
+    if let Some(type_name) = shared_type {
+        for declaration in &mut declarations {
+            if let Stmt::VarDecl(declaration) = declaration {
+                if declaration.type_name.is_none() {
+                    declaration.type_name = Some(type_name.clone());
+                }
+            }
+        }
+    }
+
     if declarations.len() == 1
         && let Some(declaration) = declarations.pop()
     {
@@ -2872,6 +2900,41 @@ mod tests {
             panic!("expected method");
         };
         method
+    }
+
+    #[test]
+    fn keeps_statements_apart_inside_call_parentheses() {
+        // A line break inside parentheses is insignificant for operators, but it
+        // still ends a statement: `Foo scope = ..` must not become another
+        // argument of `check(..)`.
+        let script = script(
+            "class Example {\n \
+                 void run() {\n \
+                     svc.exec(1, {\n \
+                         Check.check(a, b)\n \
+                         Foo scope = Foo.restore()\n \
+                     })\n \
+                 }\n \
+             }\n",
+        );
+        let method = first_method(&script);
+        let statements = &method.body.as_ref().expect("body").statements;
+        assert_eq!(statements.len(), 1, "{statements:?}");
+        let Stmt::Expr(exec) = &statements[0] else {
+            panic!("expected a call");
+        };
+        let ExprKind::Call { args, .. } = &exec.kind else {
+            panic!("expected a call");
+        };
+        let ExprKind::Closure { body, .. } = &args[1].kind else {
+            panic!("expected a closure");
+        };
+        assert_eq!(body.statements.len(), 2, "{:?}", body.statements);
+        assert!(
+            matches!(body.statements[1], Stmt::VarDecl(_)),
+            "{:?}",
+            body.statements[1]
+        );
     }
 
     #[test]

@@ -20,6 +20,15 @@ struct NameCollector<'a> {
 
 impl AstVisitor for NameCollector<'_> {
     fn enter(&mut self, node: NodeRef<'_>) {
+        // An annotation argument refers to names like any other expression,
+        // but the parser keeps it as raw text: `@MessageResource(LEVEL_CODE)`.
+        let arguments = annotation_arguments(node);
+        if !arguments.is_empty() {
+            for name in identifier_words(&strip_quoted(&arguments)) {
+                self.names.insert(name);
+            }
+        }
+
         let NodeRef::Expr(expr) = node else {
             return;
         };
@@ -33,7 +42,7 @@ impl AstVisitor for NameCollector<'_> {
             // our findings a superset of CodeNarc's.
             ExprKind::Property { receiver, name, .. } => {
                 if self.reaches_this(receiver) {
-                    self.names.insert(name.clone());
+                    self.names.insert(member_name(name).to_string());
                 }
             }
             ExprKind::Call { receiver, name, .. } => {
@@ -42,7 +51,7 @@ impl AstVisitor for NameCollector<'_> {
                     Some(receiver) => self.reaches_this(receiver),
                 };
                 if reaches {
-                    self.names.insert(name.trim_start_matches('&').to_string());
+                    self.names.insert(member_name(name).to_string());
                 } else {
                     // A property access on another instance still counts as a
                     // getter call: `x.value` uses `getValue`.
@@ -75,6 +84,49 @@ impl NameCollector<'_> {
             _ => false,
         }
     }
+}
+
+/// The annotation arguments written on a declaration node.
+fn annotation_arguments(node: NodeRef<'_>) -> String {
+    let details = match node {
+        NodeRef::Class(class) => &class.annotation_details,
+        NodeRef::Method(method) => &method.annotation_details,
+        NodeRef::Field(field) => &field.annotation_details,
+        NodeRef::Stmt(Stmt::VarDecl(declaration)) => &declaration.annotation_details,
+        _ => return String::new(),
+    };
+    let mut arguments = String::new();
+    for annotation in details {
+        if let Some(raw) = &annotation.raw_arguments {
+            arguments.push(' ');
+            arguments.push_str(raw);
+        }
+    }
+    arguments
+}
+
+/// Drops string literal bodies: they are values, not references.
+fn strip_quoted(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut quote = None;
+    for ch in text.chars() {
+        match quote {
+            Some(active) if ch == active => {
+                quote = None;
+                out.push(' ');
+            }
+            Some(_) => {}
+            None if ch == '\'' || ch == '"' => quote = Some(ch),
+            None => out.push(ch),
+        }
+    }
+    out
+}
+
+/// Strips the operator that turns a name into a member reference: `&name`,
+/// `::name`.
+fn member_name(name: &str) -> &str {
+    name.trim_start_matches('&').trim_start_matches("::")
 }
 
 /// Splits identifier words out of a string literal. Interpolated expressions
