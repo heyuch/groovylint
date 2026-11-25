@@ -49,11 +49,11 @@ With source analysis we can do better, but only if the dependency extraction
 records *declared* types even when the call itself is dynamic. That is a
 deliberate, documented behaviour difference.
 
-The module-structure and dependency subset — the project model, the four rule
+The module-structure and dependency subset — the node/kind model, the four rule
 kinds and the executor behind them — is designed in
-[`ARCH-MODULE-RULES.md`](./ARCH-MODULE-RULES.md), grounded in the measured shape of
-the target project (41 modules, 208 sub-modules, 19,465 classes whose role is
-derived from the Gradle path).
+[`ARCH-MODULE-RULES.md`](./ARCH-MODULE-RULES.md). It replaces the role vocabulary
+in §3 below with **user-declared node kinds matched by pattern**, so neither the
+module names nor the layer names of a project are known to the tool.
 
 ## 3. Rule model
 

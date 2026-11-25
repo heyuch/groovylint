@@ -1,368 +1,397 @@
-# Module structure & dependency rules: design
+# Module structure & dependency rules: design v2
 
-Status: **design for review** (nothing implemented).
+Status: **design for review** (nothing implemented). Supersedes the
+role-vocabulary model of v1.
 
-Scope: the first family of the architecture catalog — **which sub-modules a module
-may contain** and **which dependencies may run between them**. Annotation
-presence, type shape and call-graph rules are phase A/C of
-[`ARCHITECTURE-RULES.md`](./ARCHITECTURE-RULES.md); this document only fixes the
-project model, the rule kinds and the executor they need.
+v1 hard-coded the vocabulary (`domain`/`application`/… as fixed roles). The v2
+model below replaces it with **named node kinds declared by the user**: groovylint
+matches locations by pattern, the user names them, and rules only ever talk about
+those names. That is both more general and smaller, and it answers the original
+question — groovylint does not care what a module is called; it cares whether the
+graph matches the declared rules.
 
-The model is derived from what `saas-service` actually is, because a design that
-does not fit 41 modules × 208 sub-modules is useless there.
+## 1. Review of the proposed model
 
-## 1. Measured shape of the target project
+The proposal (declared name patterns, names reusable as variables in rules) is
+right, and better than v1's fixed vocabulary, for three reasons:
+
+1. **It removes the last business assumption.** With kinds declared in config, a
+   project that does not use DDD layers (frontend/backend, app/core/data) is
+   expressible without touching the engine. v1's role table would have needed an
+   alias for every such project.
+2. **Patterns are the natural matcher.** The target project's role *is* already in
+   the name (`file-processor-domain`), and 19,464 of 19,465 main-source files agree
+   between name and package root. A pattern over names is therefore an accurate
+   description, not an approximation.
+3. **One config, no per-module repetition.** 208 sub-modules × 2–3 assertions is
+   today's status quo in hand-written ArchUnit tests; a kind table collapses it.
+
+Three things the proposal leaves under-specified, and which must be decided or the
+rules silently weaken:
+
+| Gap | Why it matters | Decision in §4 |
+|---|---|---|
+| **Instance identity** — a pattern `{\w+}-domain` matches the domain of *every* module, so `depend_on: [domain]` cannot express "my own domain yes, another module's domain no". The conventions require exactly that distinction, and the corpus has 229 cross-module `domain→domain` edges. | This is the difference between a rule that catches boundary violations and one that forbids all layering. | Instance = the **containing module node**, not the regex capture. Rules say `allowSelf` / `allowOther` / `allow` explicitly (§4.3). |
+| **Pattern semantics** — precedence, anchoring, and what happens when two kinds match one node (`x-shared-models` matches both `*-models` and `*-shared-models`). | Ambiguity here changes results between runs. | Anchored full match, `{slot}` = one path segment, declaration order wins, ambiguity reported by `arch lint-config` (§4.2). |
+| **Validation** — a typo in a rule's kind name (`depend_on: [domian]`) must not silently disable the rule. | A weak rule is worse than a missing rule: it looks enforced. | Config load fails on unknown kind names; unused kinds and unconstrained kinds are warnings (§5.4). |
+
+Also worth stating: `depend_on` is an *allow* list, so it needs a documented
+meaning for kinds that are not listed (forbidden), for itself, for test sources,
+and for imports. Those are §6.
+
+## 2. Measured shape of the target project
 
 | Fact | Value |
 |---|---:|
-| Top-level Gradle modules (`include 'x'`) | 41 |
-| Nested sub-modules (`include 'x:y'`) | 208 |
-| Module depth | 1 or 2 (`gi-policy:gi-policy-object-mgmt:…`) |
-| Sources: `main` files whose sub-module role and package root agree | 19,464 |
-| … disagree | 1 |
-| Existing per-sub-module ArchUnit tests | 11 files, each re-stating the same 2–3 dependency assertions |
+| Top-level Gradle modules | 41 |
+| — with sub-modules | 32 |
+| — single modules, no sub-module (`component-*`, `insmate-main`, `api-gateway`) | 12 |
+| Sub-modules | 208, at depth 2 or 3 (`object-mgmt:shared-object-mgmt:shared-object-mgmt-domain`: 6 cases) |
+| Role suffixes in sub-module names | `domain` 30, `infrastructure` 29, `application` 29, `client` 28, `adapter` 28, `models` 17, `metadata-context` 10, `shared-models` 7, `dsl` 3, `model`/`core`/`kit`/`common`/`share-models` 1 each |
+| Main-source files whose name-derived role matches the package root | 19,464 |
+| … mismatch | 1 |
+| Hand-written ArchUnit tests re-stating 2–3 dependency assertions each | 11 files |
 
-Role vocabulary found in sub-module names (last dash segment):
+Cross-module edges by (from suffix → to suffix), main sources:
 
-| Role | Count | Role | Count |
+| Pair | Edges | Pair | Edges |
 |---|---:|---|---:|
-| `domain` | 30 | `models` | 17 |
-| `infrastructure` | 29 | `metadata-context` | 10 |
-| `application` | 29 | `shared-models` | 7 |
-| `client` | 28 | `dsl` | 3 |
-| `adapter` | 28 | `model`, `core`, `kit`, `common`, `share-models` | 1 each |
+| `domain → models` | 2,628 | `adapter → models` | 543 |
+| `application → models` | 2,024 | `domain → client` | 478 |
+| `infrastructure → models` | 1,189 | `client → models` | 280 |
+| `models → models` | 1,075 | **`domain → domain`** | **229** |
+| `application → client` | 1,047 | **`application → domain`** | **161** |
+| | | Edges into an internal sub-module of another business module | **506** |
 
-Three consequences drive the design:
+Consequences for the design: patterns must be depth-agnostic, single modules must
+be expressible without sub-modules, and a baseline is mandatory at adoption.
 
-1. **The role is a property of the sub-module name, not of the package.** The 11
-   ArchUnit tests hard-code `com.bytesforce.domain.fileprocessor..`; the same fact
-   is already in the path (`file-processor/file-processor-domain`). Everything can
-   be derived from the Gradle path, so no per-module configuration is needed.
-2. **Role derivation cannot be "strip the module prefix".** `tenant-mgmt:tenant-adapter`
-   has module `tenant-mgmt` and stem `tenant`; the role is the last dash segment.
-   `metadata-context` and `share-models` show that the vocabulary is not closed, so
-   unknown roles must be a first-class outcome (and a rule).
-3. **The rules repeat.** 208 sub-modules × 2–3 assertions, hand-copied per module,
-   is the status quo. One lattice declaration replaces all of it — that is the
-   value proposition, not a nicer syntax.
-
-## 2. Project model
+## 3. Model
 
 ```
-Project
-├── Module            Gradle path minus the last segment   file-processor
-│   ├── Submodule     last segment of the Gradle path      file-processor-domain
-│   │   │             → role = last dash segment           domain
-│   │   └── Class     one .groovy file                     GiPolicyLimitDed
-│   └── …
-└── …
+Node        a location: a Gradle project path, a package, or an external package
+  ├── kind      the user-declared name used by rules          "domain"
+  ├── instance  the nearest enclosing node of a declared kind  file-processor
+  └── files     classes whose file lives under the node
+Edge        (from node, to symbol, kind)
+  ├── kind      TypeReference | Import | DeclaredDependency
+  └── resolved  the target node, or None for external/unresolved symbols
 ```
 
-Five entities and two edge kinds:
+- A **node** carries no business meaning of its own. Two nodes with the same kind in
+  different modules are different nodes; that is what `self`/`other` talk about.
+- **Containment is structural**: the parent of a node is the Gradle path minus its
+  last segment — not the pattern capture. `tenant-mgmt:tenant-adapter` has parent
+  `tenant-mgmt` although its name captures `tenant`; identity must not depend on a
+  regex group.
+- **External nodes** exist for packages nobody in the project declares
+  (`org.springframework.web.**`). They have no files, no instance, and only ever
+  participate as targets of `deny` lists — that is how "domain must not touch Web,
+  MyBatis or Servlet" is expressed without a second rule mechanism.
 
-| Entity | Identity | Comes from |
-|---|---|---|
-| `Project` | root dir | CLI argument |
-| `Module` | `moduleDepth` segments of the Gradle path, or a dir path | `settings.gradle`, else directory scan |
-| `Submodule` | full Gradle path | same |
-| `Role` | vocabulary entry, or `unknown` | last dash segment + `roleAliases` |
-| `Class` | fully-qualified name | parsed source |
-| `Edge` | `(from class, to symbol, kind)` | declared types, `extends`/`implements`, `new`, static access, annotations, and **separately** the Gradle `project(':x')` dependency |
+## 4. The DSL
 
-Two edge kinds keep two different questions apart:
-
-- **observed** edges come from source references. They answer "does this module
-  reach into that one", which is what the architecture rules forbid.
-- **declared** edges come from `build.gradle` `project('…')` lines. They answer
-  "did the build file agree", a different rule that catches the two failure modes
-  the conventions call out: a type used without a declared dependency (comes in
-  through a transitive one) and a declared dependency nobody uses.
-
-## 3. Deriving the structure
+### 4.1 Nodes and kinds
 
 ```toml
+version = 1
+
 [project]
-moduleDepth = -1                  # -1 = parent path of the include, 1 = first segment
-moduleNames = "settings.gradle"   # fallback: directory scan of */ and */*/
 sourceSets = ["main"]
-sharedModules = ["component-*", "buildSrc", "api-gateway", "insmate-main"]
+unknownKind = "warn"          # warn | error       (what to do with unmatched locations)
 
-[roles]                            # vocabulary + aliases
-domain = ["domain"]
-application = ["application"]
-adapter = ["adapter"]
-infrastructure = ["infrastructure", "infra"]
-client = ["client"]
-models = ["models", "model", "share-models", "shared-models", "metadata-context"]
-dsl = ["dsl"]
+# One kind per location shape. `path` matches the Gradle path, `name` matches its
+# last segment, `external` matches a package that the project does not declare.
+[kinds.module]
+path = "{module}"
+
+[kinds.nested-module]
+path = "{tree}:{module}"
+
+[kinds.adapter]
+name = "*-adapter"
+
+[kinds.application]
+name = "*-application"
+
+[kinds.domain]
+name = "*-domain"
+
+[kinds.infrastructure]
+name = "*-infrastructure"
+
+[kinds.client]
+name = "*-client"
+
+[kinds.models]
+name = "*-models"
+nameAliases = ["*-model", "*-shared-models", "*-share-models", "*-metadata-context"]
+
+[kinds.shared]                 # libraries every module may use
+path = "component-*"
+pathAliases = ["buildSrc", "insmate-main", "api-gateway"]
+
+[kinds.spring-web]
+external = "org.springframework.web.**"
+
+[kinds.persistence]
+external = ["org.apache.ibatis.**", "javax.persistence.**", "jakarta.persistence.**"]
 ```
 
-- Unknown sub-module role → `Role::Unknown`, and the `composition` rule reports it.
-  That is the "模块里能有哪些子模块" check, enforced instead of documented.
-- `sharedModules` are exempt from cross-module rules (they are libraries by design);
-  the pattern is a glob over the Gradle path.
-- `roleAliases` are data, not code: a new sub-module suffix is a one-line config
-  change, which is the extension point that keeps the engine closed for
-  modification.
+Rules of the matcher (§4.2 has the precise grammar):
 
-## 4. What the index stores per class
+- a location matches a kind when **all** of its given selectors match;
+- kinds are tried in declaration order, **first match wins**;
+- a location matched by two kinds is reported by `arch lint-config` as ambiguous,
+  so `*-models` vs `*-shared-models` is a visible decision, not a coin flip;
+- a location matched by no kind is `unknown`, reported per §5.4.
 
-Only what structural rules need; everything else stays in the AST:
+### 4.2 Pattern grammar
 
-```
-ClassFact {
-    fqn, module, submodule, role, sourceSet, file, line
-    package, supertypes, annotations
-    references: Vec<SymbolRef>          # resolved → ClassFact, or symbolic (external)
-}
-SymbolRef { name, kind, line, origin: Own | Import | Declared | External }
-```
+| Token | Matches |
+|---|---|
+| `*` | any run of characters except `:` |
+| `**` | any run of characters, including `:` |
+| `{slot}` | one run of characters except `:`; usable for diagnostics and for rules that need the captured text |
+| literal | itself |
 
-`origin` is what makes the import question answerable per rule instead of globally
-(see §6): a reference that only exists as an unused import can be excluded without
-re-parsing.
+Patterns are anchored (full match). `name` and `path` follow the same grammar; a
+`name` pattern never sees a `:`. Optional escape hatch for projects with hostile
+naming: `regex = "..."` on a kind, with the same anchoring rule.
 
-Resolution is **project-local by construction**: a symbol is resolved if its
-fully-qualified form appears in the index (we know every class we parsed) or can be
-derived from an import plus a known package. Anything else stays symbolic — a JDK
-or third-party type has no module, so it only matters to package-pattern rules
-(§5c), never to module rules.
-
-## 5. Rule kinds (v1)
-
-Four kinds cover the whole structural family. Each is a config record, not code:
-
-### a. `composition` — what a module may contain
+### 4.3 Dependency rules
 
 ```toml
-[[rules]]
-id = "modules-use-known-roles-only"
-kind = "composition"
-modules = "*"
-allowedRoles = ["adapter", "application", "domain", "infrastructure", "client", "models", "dsl"]
-because = "02: 模块组合只有 adapter/application/domain/infrastructure/client/models"
+[[rule]]
+id = "layer-lattice"
+from = "domain"
+because = "02: domain 不依赖 application/adapter/infrastructure，也不依赖其他模块的 domain"
 
-[[rules]]
-id = "an-adapter-needs-an-application"
-kind = "composition"
-modules = "*"
-roleImplies = { adapter = ["application"], adapter_shared = ["application"] }
+# `allow`       any instance (external nodes, shared libraries, the module itself)
+# `allowSelf`   same instance only   (`domain` of my own module)
+# `allowOther`  another instance     (`client` of the module that provides it)
+# `deny`        checked first, always wins
+allow      = ["models", "shared"]
+allowSelf  = ["domain"]
+allowOther = ["client"]
+deny       = ["spring-web", "persistence"]
+```
+
+`allow*`/`deny` lists are the *complete* statement about that source kind: a target
+kind that appears in none of them is forbidden. That is what makes the lattice
+closed — a newly declared kind cannot start depending on `domain` without a config
+change.
+
+Four more rules reproduce the conventions, all with the same shape:
+
+```toml
+[[rule]]
+id = "adapter-only-reaches-application"
+from = "adapter"
+allow      = ["models", "shared"]
+allowSelf  = ["application"]
 because = "02: adapter 只调用 application"
-```
 
-Also `requiredRoles`, `forbidRoles`, and `except = ["module-pattern"]`.
-This is the only kind that reasons about *presence*, so it is also where "legacy
-module has no `-client`" style exemptions live.
-
-### b. `dependency`, scope `intra-module` — the layer lattice inside one module
-
-```toml
-[[rules]]
-id = "module-layering"
-kind = "dependency"
-scope = "intra-module"
-mode = "allow"
-from = { role = "adapter" }
-allow = [{ role = "application" }, { role = "models" }]
-because = "02: adapter → application → domain；adapter 不碰 domain/infrastructure"
-```
-
-One rule per source role, five rules in total for the whole project (today: ~30
-hand-written ArchUnit methods). `mode = "deny"` mirrors the catalog's
-`noClasses()…dependOnClassesThat(forbidden)` phrasing for reviewers who prefer it;
-`allow` is the default because "everything not listed is forbidden" is what makes
-the lattice complete — a *new* role cannot sneak in silently.
-
-### c. `dependency`, scope `cross-module` — boundaries between modules
-
-```toml
-[[rules]]
+[[rule]]
 id = "cross-module-only-through-client"
-kind = "dependency"
-scope = "cross-module"
-mode = "allow"
-from = { role = "*" }
-allow = [{ role = "client" }]
+from = ["adapter", "application", "domain", "infrastructure", "models"]
+allowOther = ["client", "models"]
 because = "02: 模块外调用方只能显式依赖提供方 xxx-client"
 
-[[rules]]
-id = "domain-never-crosses-modules"
-kind = "dependency"
-scope = "cross-module"
-mode = "deny"
-from = { role = "domain" }
-to = { role = "domain" }
-because = "02: domain 不能依赖其他业务模块的 domain"
+[[rule]]
+id = "no-internal-exposure"
+from = "*"
+allowOther = ["client", "models", "shared"]
+because = "02: 不得依赖其他模块的 application/domain/infrastructure"
 ```
 
-`scope` values: `intra-module` (same module), `cross-module` (different modules),
-`any`, and `same-role-tree` for nested modules
-(`object-mgmt:shared-object-mgmt` being a *sub-tree* of `object-mgmt` — the
-measured data has 506 such edges, so this needs an explicit answer, not a default).
+### 4.4 Containment rules — "which sub-modules may a module have"
 
-### d. `packagePolicy` — technology leaks, same edge engine
-
-The dependency rules above need roles; the catalog's "domain must not depend on
-Web/MyBatis/Servlet" and "client contracts must not depend on Spring" are the same
-extraction with a package matcher instead of a module matcher:
+The sketch's `root { submodule* }` becomes a rule over containment:
 
 ```toml
-[[rules]]
-id = "domain-stays-out-of-frameworks"
-kind = "packagePolicy"
-from = { role = "domain" }
-denyPackages = ["org.springframework.web..", "org.apache.ibatis..", "jakarta.servlet.."]
+[[rule]]
+id = "module-composition"
+parent = ["module", "nested-module"]
+children = ["adapter", "application", "domain", "infrastructure", "client", "models"]
+counts   = { adapter = "<=1", client = "<=1", domain = ">=1" }
+required = { adapter = ["application"] }      # an adapter implies an application
+because = "02: 模块组合只有 adapter/application/domain/infrastructure/client/models"
 ```
 
-### e. `agreement` — structure against reality (optional, cheap)
+`children` is an allow list too: a sub-module whose kind is not listed (including
+`unknown`) is a violation, which is the "模块里能有哪些子模块" check enforced rather
+than documented. `counts` covers `*` (zero or more), `+` (one or more) and `<=n`.
+
+### 4.5 Agreement rules (cheap, optional)
 
 ```toml
-[[rules]]
-id = "submodule-role-matches-package-root"
-kind = "agreement"
-check = "role-vs-package"        # or "declared-vs-observed"
-because = "02: 包结构表达分层，类不能落在角色不符的子模块里"
+[[rule]]
+id = "kind-matches-package-root"
+check = "package-root"        # the class's package root must expose the node's kind
+because = "02: 包结构表达分层，类不能落在名实不符的子模块里"
+
+[[rule]]
+id = "declared-dependency-matches-observed"
+check = "declared-dependency" # build.gradle `project('…')` vs type references
+because = "02: 模块依赖必须在 build.gradle 显式声明，不得通过传递依赖取得类型"
 ```
 
-Measured today: 1 violation. Worth having because it is the rule that catches the
-next `ClientImpl` dropped into a `-domain` sub-module, and because it costs one
-comparison over facts we already hold.
+Measured today: 1 violation for `package-root`; `declared-dependency` needs a
+Gradle reader and is phase 5.
 
-## 6. Rule semantics that must be decided explicitly
+### 4.6 The proposal's block syntax as a facade
+
+The Groovy-looking blocks in the proposal are a good *surface* for the Gradle
+plugin; they must not become a second parser. The facade lowers to the same kind
+table and the same rule records:
+
+```groovy
+arch {
+  kinds {
+    domain { name '*-domain'; dependsOn models: any, client: other, domain: self }
+    adapter { name '*-adapter'; dependsOn application: self, models: any }
+  }
+}
+```
+
+`groovylint arch --print-config` prints the TOML a facade produced, so the two
+surfaces cannot drift.
+
+## 5. Executor
+
+```
+groovylint arch --config architecture.toml [paths]
+    [--baseline arch-baseline.txt] [--format text|json|sarif]
+    [--print-layout] [--print-graph] [--verbose]
+groovylint arch lint-config --config architecture.toml     # static check only
+```
+
+1. **Locate** — read `settings.gradle` (else scan directories) → the node tree:
+   every Gradle path, its parent, its kind, its files.
+2. **Parse** — existing parser, parallel; `check` and `arch` share discovery and
+   parsing, `arch` reuses the ASTs instead of re-reading them.
+3. **Classify** — attach `(node, kind, instance, sourceSet)` to every class.
+4. **Extract edges** — declared types, `extends`/`implements`, `new`, casts, static
+   access, annotations; imports recorded with `EdgeKind::Import`; unresolved symbols
+   kept symbolic and matched against `external` kinds.
+5. **Evaluate** — kind-level rules fold the edge set into
+   `(from kind, from node, to kind, to node)` counts; containment and agreement rules
+   read facts only.
+6. **Report** — existing `Diagnostic` shape with `rule = <id>`, `because` appended to
+   the message, one diagnostic per violating pair plus the first location and an
+   `occurrences` count (`--verbose` expands to per-edge); sorted by
+   `(file, line, rule, id)` for determinism; baseline filtering; exit code 1 on
+   violations at or above the configured severity.
+
+### 5.1 Validation (`arch lint-config`)
+
+Fails or warns without parsing the project:
+
+| Check | Severity |
+|---|---|
+| rule references an undeclared kind | error |
+| `parent`/`children`/`allow*` contain a kind that can never be a child/target of that direction | error |
+| two kinds match the same location | error, listing location and kinds |
+| kind matched by no location (dead pattern, likely a typo) | warn |
+| kind with no rule constraining it | warn |
+| cycle in the kind-level allow graph | warn (may be intentional) |
+| external kind that is also declared by the project | warn |
+
+### 5.2 Folding and noise
+
+2,628 `domain → models` edges must not become 2,628 diagnostics. One diagnostic per
+`(rule, from node, to node)` keeps the report readable; the message carries the
+count and the pattern names, `--verbose` prints every edge with file and line.
+
+### 5.3 Baseline
+
+`arch-baseline.txt`, one line per accepted violation:
+`<rule-id>\t<from node>\t<to node>\t<target kind>`. `--update-baseline` rewrites it;
+entries that no longer violate are pruned with a warning, so debt cannot be frozen
+silently forever. A committed baseline is what allows adoption on a repo whose
+day-0 state has hundreds of violations (§2).
+
+### 5.4 Determinism and performance
+
+Discovery from a sorted list; edges as a set; diagnostics sorted; the same output
+under `--threads 1` and `--threads 8`. `check` parses 24,345 files in 3.7 s;
+`arch` adds one index pass and a fold over distinct node pairs, so it should stay
+in the same order of magnitude. Unknown kinds and unmatched nodes are reported
+once per location, not per rule.
+
+## 6. Semantics that must be decided explicitly
 
 | Question | Proposal | Why |
 |---|---|---|
-| Do imports count as dependencies? | Edges come from **type references**; imports are recorded with `origin = Import` and rules may set `includeImports = true`. Default: excluded. | An unused import (`import` nothing references) would otherwise report a boundary violation that the compiler never creates. The catalog wants imports counted in `*MustNotDependOnMyBatis`; that is one flag, not a different engine. |
-| Are test sources checked? | `sourceSets = ["main"]` by default, `["main", "test"]` per rule. | Architecture rules are about production code; test code legitimately reaches into other modules' internals. |
-| Unresolved (external) symbols | Kept symbolic; participate in `denyPackages` only. | A JDK type has no module and cannot violate a module rule. |
-| Does a nested module inherit its parent? | `gi-policy-object-mgmt` is its own module; `parent` is available as an extra matcher (`{ moduleTree = "gi-policy" }`). | 506 measured edges cross exactly this boundary; both readings must be expressible. |
-| Self-edges, duplicates | Collapsed to a set of `(from module, from role, to module, to role)`; **one diagnostic per distinct pair plus the first file/line**, with `occurrences = n` in the message. | 2,628 `domain→models` edges would otherwise bury the report. A per-edge report is available via `--verbose`. |
-| Where do exemptions live? | `except` (name patterns) in config, plus a `baseline` file for "current debt, frozen". | Baseline is what allows adoption on a 24k-file repo without a big-bang cleanup; `except` is for intentional, permanent exceptions. |
+| Do imports count as dependencies? | Edges from **type references**; imports recorded separately with `imports = true` per rule. Default: excluded. | An unused import would otherwise create a boundary violation the compiler never produces. |
+| Test sources | `sourceSets = ["main"]` default; per rule override. | Test code legitimately reaches into other modules' internals. |
+| Transitive edges | Not followed in v1; documented. | Transitive closure over 24k files is expensive and the conventions forbid relying on it anyway. |
+| Unresolved symbols | Kept symbolic; matched only against `external` kinds. | A JDK type has no node. |
+| Self-node edges (class → class in the same node) | Dropped before evaluation. | Always allowed by construction. |
+| Nested module trees (`object-mgmt:shared-object-mgmt`) | Instance = nearest enclosing node of a `parent` kind; the tree is reachable through the parent chain, so "same tree" rules are expressible later without a new concept. | 506 edges cross this boundary; the model must not guess. |
+| Kinds for classes/packages inside a sub-module (`*Repository`, `*Application`) | Out of v1; the selector already allows it later. | Call it a second phase of the same engine rather than a second engine. |
 
-## 7. Executor
+## 7. Testing
 
-New subcommand, separate from `check`:
+1. **Fixture project** `tests/fixtures/arch/project-a`: 5 modules (one nested, one
+   single, one shared library), all kinds, one violation per rule kind, one
+   ambiguous location, one unknown location, an unused import, a test source.
+   Asserts exact diagnostics — this fixture *is* the DSL specification.
+2. **Corpus golden**: the §2 counts as a snapshot, so extraction changes that alter
+   edge semantics fail loudly.
+3. **ArchUnit parity**: the 11 existing `*ArchTest` dependency assertions rewritten
+   as one config, both tools run, `(file, line, rule)` diffed — the method used for
+   the CodeNarc comparison.
+4. **Determinism**: identical output at 1 and 8 threads.
 
-```
-groovylint arch --config architecture.toml [paths] [--baseline arch-baseline.txt] [--format text|json|sarif]
-```
-
-`check` stays per-file and fast; `arch` is the only command that needs the whole
-project. Pipeline:
-
-1. **Discover** — read `settings.gradle` (or scan) → modules, sub-modules, roles;
-   read each `build.gradle` → declared edges. Missing `build.gradle` is not an
-   error (not every layout is Gradle).
-2. **Parse** — existing parser, parallel over files, same discovery code as `check`.
-3. **Classify** — attach `ClassFact` (module, role, source set).
-4. **Extract edges** — declared types, `extends`/`implements`, `new`, casts, static
-   access, annotations, and imports as a separate origin. Unresolved stays symbolic.
-5. **Evaluate** — `composition`, `packagePolicy`, `agreement` need facts only;
-   `dependency` rules fold the edge set into pairs and compare against the lattice.
-6. **Report** — existing `Diagnostic` shape, `rule = <id>`, `because` in the
-   message tail; baseline filtering; deterministic order `(file, line, rule, id)`.
-
-Reuse, not re-implementation: discovery, parser, `Diagnostic`, formatters and the
-rayon pool are shared with `check`. New code is `ProjectIndex`, the layout
-classifier and the rule evaluator.
-
-Performance: `check` parses 24,345 files in 3.7 s; `arch` does one extra pass over
-the same ASTs (no re-parse) plus a set-based fold, so the target is the same order
-of magnitude. The edge set is O(distinct module/role pairs), not O(edges), which
-keeps both memory and the fold trivial.
-
-## 8. Day-0 state of `saas-service`
-
-Measured with declared types + imports resolved through the derived module map
-(main sources only):
-
-| Cross-module role pair | Edges |
-|---|---:|
-| `domain → models` | 2,628 |
-| `application → models` | 2,024 |
-| `infrastructure → models` | 1,189 |
-| `models → models` | 1,075 |
-| `application → client` | 1,047 |
-| `adapter → models` | 543 |
-| `domain → client` | 478 |
-| `client → models` | 280 |
-| **`domain → domain`** | **229** |
-| **`application → domain`** | **161** |
-| **`models → domain`** | **81** |
-| Edges into an internal role of another business module | **506** |
-
-So the lattice rules are violated hundreds of times today; the client rule
-(`cross-module-only-through-client`) a few hundred more. **Adoption therefore
-requires the baseline on day 0**, and the first useful deliverable is not "zero
-violations" but "no new violations", which is exactly what the CI gate needs.
-
-## 9. Testing
-
-1. **Synthetic fixture project** (`tests/fixtures/arch/project-a`): 5 modules,
-   roles per module, one violation per rule kind, including a nested module, a
-   shared module, an unknown role, an unused import and a test source. Asserts
-   exact diagnostics — this is the specification of the DSL.
-2. **Corpus golden**: the counts in §8 as a snapshot test, so extraction changes
-   that silently alter edge semantics fail loudly.
-3. **ArchUnit parity**: re-implement the 11 existing `*ArchTest` dependency
-   assertions as one config, run both, diff `(file, line, rule)` — the same method
-   used for the CodeNarc comparison.
-4. **Determinism**: same output with `--threads 1` and `--threads 8`.
-
-## 10. Phasing
+## 8. Phasing
 
 | Step | Content | Effort |
 |---|---|---|
-| 1 | `ProjectLayout` (settings.gradle/scan, `moduleDepth`, roles, aliases, shared modules) + `arch --print-layout` | 1 d |
-| 2 | `ProjectIndex` + edge extraction + `--print-edges` (debuggable without rules) | 1 d |
-| 3 | `composition` + `agreement` rules | 0.5 d |
-| 4 | `dependency` (intra/cross, allow/deny, `includeImports`, pair folding) + baseline | 1 d |
-| 5 | `packagePolicy`, fixtures, corpus golden, ArchUnit parity run | 1 d |
-| 6 | Gradle facade task (`archCheck`) mapping config to a task input | 0.5 d |
+| 1 | Nodes + kinds + matcher + `--print-layout` (shows each Gradle path, its kind, its instance, unknown/ambiguous locations) | 1 d |
+| 2 | `ProjectIndex` + edge extraction + `--print-graph` (kind-pair counts, debuggable without rules) | 1 d |
+| 3 | Dependency rules (`allow`/`allowSelf`/`allowOther`/`deny`) + folding + `lint-config` | 1 d |
+| 4 | Containment rules (`children`, `counts`, `required`) + agreement rule | 0.5 d |
+| 5 | Baseline, fixtures, corpus golden, ArchUnit parity | 1 d |
+| 6 | Gradle facade lowering to the same model + `declared-dependency` check | 1 d |
 
-Steps 1–2 are useful on their own: `--print-layout` already answers "did we name
-and nest the sub-modules the way the conventions say", which is half of what the
-user asked for.
+Steps 1–2 are useful on their own: `--print-layout` answers "did we name and nest
+the sub-modules the way the conventions say", which is half of the original request.
 
-## 11. Decisions needed before implementation
+## 9. Open questions
 
-1. **`moduleDepth` default.** `-1` (parent of the include: `object-mgmt:shared-object-mgmt`
-   is one module) or `1` (`object-mgmt` owns both)? The 506 measured edges make
-   this the difference between a clean rule and an exemption list.
-2. **Are `models` / `shared-models` / `metadata-context` one role or three?**
-   They alias to `models` in §3; keeping them apart costs nothing in the engine and
-   buys sharper rules (`models` may not reach `domain` is true; whether
-   `metadata-context` may reach `client` is a separate question).
-3. **Should `cross-module-only-through-client` be one allow rule, or a deny rule
-   per target role?** Allow is complete (new roles are forbidden by default) but
-   the diagnostic for a newly added role is unhelpful; deny gives better messages.
-   Proposal: allow, with the violation message naming the allowed target set.
-4. **Baseline format and ownership.** Proposal: a sorted text file
-   `rule-id<TAB>from-fqn<TAB>to-symbol`, regenerated with `--update-baseline`;
-   entries that no longer violate are removed automatically with a warning. Is a
-   committed baseline acceptable in the repo, or should it be generated in CI?
-5. **Declared-vs-observed Gradle rule now or later?** Reading `build.gradle`
-   `project('…')` lines is cheap and catches the "type came in through a transitive
-   dependency" failure the conventions explicitly forbid. It also means the engine
-   needs a Gradle-file reader. Proposal: phase 5, behind `[[rules]] kind = "agreement"`.
-6. **One config per project, or per module?** 208 sub-modules × a config each would
-   recreate the problem. Proposal: one project config; per-module variation only
-   through `modules = "glob"` selectors, and the Gradle facade passes `--slice`
-   for incremental runs.
+1. **Pattern dialect**: `{slot}`/`*`/`**` as above, with `regex` as an escape
+   hatch — or raw regex everywhere? Globs keep the common case readable and
+   reviewable; regex is available where needed.
+2. **Rule shape**: separate `allow`/`allowSelf`/`allowOther`/`deny` keys (proposed,
+   explicit) versus `"kind:instance"` strings (`allow = ["domain:self"]`, shorter
+   but easy to misread). Which reads better to the people who will maintain it?
+3. **Instance boundary**: nearest enclosing `module`/`nested-module` node (proposed)
+   — is there a rule that must reach further, e.g. "same top-level tree"
+   (`gi-policy` vs `object-mgmt`)?
+4. **Strictness at adoption**: `unknownKind = "warn"` on day 0 (12 single modules +
+   6 nested modules must be declared, and a missed pattern would otherwise fail the
+   build) — or `"error"` from the start with the full kind table committed?
+5. **Scope of v1 kinds**: Gradle sub-modules + external packages only, or also
+   in-project packages/classes (`*Repository`)? The latter would let the same engine
+   cover "client contracts must not depend on Spring" at package granularity.
+6. **Facade**: is the Groovy block syntax the Gradle-plugin surface (lowering to
+   TOML), or should TOML be the only supported format?
 
-## 12. Design checklist
+## 10. Design checklist
 
-- **SRP**: `ProjectLayout` (naming/layout facts), `ProjectIndex` (facts + edges),
-  `ArchEvaluator` (rule kinds), `Baseline` (debt file). Notation is not mixed into
-  the evaluator; the evaluator never parses.
-- **GRASP Information Expert**: the index answers "who is this class and what does
-  it reach"; rules never re-walk the AST. **Protected Variations**: the role
-  vocabulary and the shared-module list are config data — the extension point that
-  makes a new layout a config change instead of a code change.
-- **Pattern usage — five questions**: a strategy trait per rule kind would add a
-  vtable and a registry to serve four variants; instead one `enum RuleKind` plus a
-  match. It simplifies the config-to-check mapping and keeps the diagnostic path
-  single; it complicates nothing (no object lifetimes, no registry). Verdict: **no
-  pattern**, extension is a new enum variant + config validation.
-- **Reuse**: parser, discovery, diagnostics, formatting, thread pool — shared with
-  `check`. New: two modules of code (`layout`, `index`) plus one evaluator.
+- **SRP**: `NodeTree` (locations, kinds, containment, matching), `ProjectIndex`
+  (facts + edges), `ArchEvaluator` (rule kinds), `Baseline` (debt). Matching never
+  appears in the evaluator and evaluation never parses.
+- **GRASP Information Expert**: the tree answers "which node and kind is this file";
+  the index answers "what does this class reach"; rules only read those two.
+  **Protected Variations**: the kind table is config data — a new layout, a renamed
+  module or a new sub-module suffix is a config change, not a code change.
+- **Pattern usage — five questions**: four rule kinds over one node/edge model do
+  not justify a trait per kind plus a registry; one `enum RuleKind` and a match keep
+  parsing, validation and diagnostics on a single path. It simplifies the config
+  mapping, complicates nothing (no object lifetimes, no registry), and the extension
+  point (a new kind of check) stays an explicit enum variant with config validation.
+- **Reuse**: discovery, parser, `Diagnostic`, formatters and the thread pool are
+  shared with `check`; new code is the node tree, the index and the evaluator.
