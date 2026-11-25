@@ -1,0 +1,7 @@
+
+            class Invalid {
+                boolean invalid() {
+                    ! ""
+                }
+            }
+        

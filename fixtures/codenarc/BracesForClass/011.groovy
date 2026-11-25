@@ -1,0 +1,6 @@
+
+            class MyClass
+                        extends File {
+
+            }
+        

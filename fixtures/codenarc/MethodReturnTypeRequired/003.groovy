@@ -1,0 +1,6 @@
+
+            class ValidClass {
+                def beforeUpdate() {
+                }
+            }
+        

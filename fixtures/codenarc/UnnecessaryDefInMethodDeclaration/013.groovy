@@ -1,0 +1,3 @@
+
+            def strictfp method() { }
+        

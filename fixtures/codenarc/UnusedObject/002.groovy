@@ -1,0 +1,3 @@
+
+            def closure = { new Date() }
+        

@@ -1,0 +1,3 @@
+
+            def synchronized method() { }
+        

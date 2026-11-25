@@ -1,0 +1,4 @@
+
+            class SameAsFilename {}
+            enum NotSameAsFilename {}
+        

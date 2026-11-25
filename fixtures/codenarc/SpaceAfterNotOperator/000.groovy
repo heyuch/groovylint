@@ -1,0 +1,7 @@
+
+            class Valid {
+                boolean valid() {
+                    !""
+                }
+            }
+        

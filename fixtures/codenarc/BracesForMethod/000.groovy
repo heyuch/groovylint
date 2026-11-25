@@ -1,0 +1,5 @@
+
+            interface MyInterface {
+                def method()
+            }
+        

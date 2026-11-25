@@ -1,0 +1,5 @@
+
+            def method(closure = {
+
+            }) { }
+        

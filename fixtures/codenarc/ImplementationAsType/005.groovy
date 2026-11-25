@@ -1,0 +1,1 @@
+def closure = { $badType parm ->  }

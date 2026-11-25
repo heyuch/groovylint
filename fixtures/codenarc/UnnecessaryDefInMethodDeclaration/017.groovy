@@ -1,0 +1,4 @@
+
+            static def
+            String method() { }
+        

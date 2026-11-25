@@ -1,0 +1,3 @@
+
+            def Object method() { null }
+        

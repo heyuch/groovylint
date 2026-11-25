@@ -1,0 +1,3 @@
+
+            interface MyError extends Error { }
+        

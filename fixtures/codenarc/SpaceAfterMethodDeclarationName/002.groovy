@@ -1,0 +1,6 @@
+
+            class Invalid {
+                void invalid () {
+                }
+            }
+        

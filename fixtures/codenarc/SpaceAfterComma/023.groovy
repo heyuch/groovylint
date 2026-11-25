@@ -1,0 +1,3 @@
+
+            shouldFail(Exception,{ dao.read() })
+        

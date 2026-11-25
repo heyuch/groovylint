@@ -1,0 +1,1 @@
+class A { @Delegate Foo annotatedField }

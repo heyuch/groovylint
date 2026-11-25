@@ -1,0 +1,5 @@
+
+            /** @author Joe */
+            class MyClass {
+            }
+        

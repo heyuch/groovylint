@@ -1,0 +1,8 @@
+
+            /**
+             * Javadoc
+             */
+
+            class TestClass {
+            }
+        

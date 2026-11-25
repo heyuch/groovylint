@@ -1,0 +1,5 @@
+
+            class MyServiceHelper {
+                BigDecimal depositAmount
+            }
+        

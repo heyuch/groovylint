@@ -1,0 +1,3 @@
+
+            def ready = (value = true)
+        

@@ -1,0 +1,6 @@
+
+            class ValueClass {
+                ValueClass clone() {
+                }
+            }
+        

@@ -1,0 +1,5 @@
+
+            if (isReady) {
+                println 'ready'
+            }
+        

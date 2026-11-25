@@ -1,0 +1,3 @@
+
+            def allPaths = resultsMap.keySet()
+        

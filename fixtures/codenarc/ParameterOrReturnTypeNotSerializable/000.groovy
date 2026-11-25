@@ -1,0 +1,7 @@
+
+            class SomeClass implements Serializable {
+                void method() {}
+                SomeClass otherMethod(SomeClass s, ArrayList l) {}
+                boolean primitives(int i, double d, boolean b) {}
+            }
+        

@@ -1,0 +1,5 @@
+
+            class MyTest {
+                void testMethod() { }
+            }
+        

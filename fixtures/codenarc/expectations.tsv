@@ -1,0 +1,2986 @@
+AbcMetric	AbcMetric/000.groovy		-	
+AbcMetric	AbcMetric/001.groovy		-	maxClassAverageMethodAbcScore=2,maxMethodAbcScore=2
+AbcMetric	AbcMetric/002.groovy		3	maxMethodAbcScore=2
+AbcMetric	AbcMetric/003.groovy		3	maxMethodAbcScore=1
+AbcMetric	AbcMetric/004.groovy		3,9	maxMethodAbcScore=2
+AbcMetric	AbcMetric/005.groovy		2	maxClassAverageMethodAbcScore=5
+AbcMetric	AbcMetric/006.groovy		-	maxClassAverageMethodAbcScore=0
+AbcMetric	AbcMetric/007.groovy		2,8	maxClassAbcScore=6.0,maxClassAverageMethodAbcScore=1.9,maxMethodAbcScore=4.5
+AbcMetric	AbcMetric/008.groovy		3	ignoreMethodNames=otherMethod,maxMethodAbcScore=1
+AbcMetric	AbcMetric/009.groovy		6	ignoreMethodNames=myM*d*,otherC??su*,maxMethodAbcScore=1
+AbcMetric	AbcMetric/010.groovy		2	maxClassAverageMethodAbcScore=1,maxMethodAbcScore=1
+AbcMetric	AbcMetric/011.groovy			maxClassAverageMethodAbcScore=1,maxMethodAbcScore=1
+AbstractClassName	AbstractClassName/000.groovy		-	
+AbstractClassName	AbstractClassName/001.groovy		-	regex=/[A-Z].*/
+AbstractClassName	AbstractClassName/002.groovy		1	regex=/z.*/
+AbstractClassName	AbstractClassName/003.groovy		-	regex=/z.*/
+AbstractClassName	AbstractClassName/004.groovy		-	regex=/[A-Z].*/
+AbstractClassName	AbstractClassName/005.groovy		-	regex=/[A-Z].*/
+AbstractClassName	AbstractClassName/006.groovy		-	regex=/[A-Z].*/
+AbstractClassWithPublicConstructor	AbstractClassWithPublicConstructor/000.groovy		-	
+AbstractClassWithPublicConstructor	AbstractClassWithPublicConstructor/001.groovy		3	
+AbstractClassWithPublicConstructor	AbstractClassWithPublicConstructor/002.groovy		4	
+AbstractClassWithoutAbstractMethod	AbstractClassWithoutAbstractMethod/000.groovy		-	
+AbstractClassWithoutAbstractMethod	AbstractClassWithoutAbstractMethod/001.groovy		2	
+AbstractClassWithoutAbstractMethod	AbstractClassWithoutAbstractMethod/002.groovy		5	enhancedMode=false
+AbstractClassWithoutAbstractMethod	AbstractClassWithoutAbstractMethod/003.groovy		-	
+AddEmptyString	AddEmptyString/000.groovy		-	
+AddEmptyString	AddEmptyString/001.groovy		2	
+AddEmptyString	AddEmptyString/002.groovy		2	
+AddEmptyString	AddEmptyString/003.groovy		4	
+AssertWithinFinallyBlock	AssertWithinFinallyBlock/000.groovy		8	
+AssertWithinFinallyBlock	AssertWithinFinallyBlock/001.groovy		9,13	
+AssertWithinFinallyBlock	AssertWithinFinallyBlock/002.groovy		-	
+AssertWithinFinallyBlock	AssertWithinFinallyBlock/003.groovy		-	
+AssertWithinFinallyBlock	AssertWithinFinallyBlock/004.groovy		-	
+AssertWithinFinallyBlock	AssertWithinFinallyBlock/005.groovy		-	
+AssignCollectionSort	AssignCollectionSort/000.groovy		-	
+AssignCollectionSort	AssignCollectionSort/001.groovy		2	
+AssignCollectionSort	AssignCollectionSort/002.groovy		2	
+AssignCollectionSort	AssignCollectionSort/003.groovy		2	
+AssignCollectionSort	AssignCollectionSort/004.groovy		2	
+AssignCollectionSort	AssignCollectionSort/005.groovy		-	
+AssignCollectionSort	AssignCollectionSort/006.groovy		2	
+AssignCollectionSort	AssignCollectionSort/007.groovy		-	
+AssignCollectionSort	AssignCollectionSort/008.groovy		2	
+AssignCollectionSort	AssignCollectionSort/009.groovy		-	
+AssignCollectionSort	AssignCollectionSort/010.groovy		2	
+AssignCollectionUnique	AssignCollectionUnique/000.groovy		-	
+AssignCollectionUnique	AssignCollectionUnique/001.groovy		-	
+AssignCollectionUnique	AssignCollectionUnique/002.groovy		2	
+AssignCollectionUnique	AssignCollectionUnique/003.groovy		2,3	
+AssignCollectionUnique	AssignCollectionUnique/004.groovy		3	
+AssignCollectionUnique	AssignCollectionUnique/005.groovy		-	
+AssignCollectionUnique	AssignCollectionUnique/006.groovy		2	
+AssignCollectionUnique	AssignCollectionUnique/007.groovy		3,4	
+AssignCollectionUnique	AssignCollectionUnique/008.groovy		-	
+AssignCollectionUnique	AssignCollectionUnique/009.groovy		2,3	
+AssignmentInConditional	AssignmentInConditional/000.groovy		-	
+AssignmentInConditional	AssignmentInConditional/001.groovy		2	
+AssignmentInConditional	AssignmentInConditional/002.groovy		2,3,4	
+AssignmentInConditional	AssignmentInConditional/003.groovy		-	
+AssignmentInConditional	AssignmentInConditional/004.groovy		2	
+AssignmentInConditional	AssignmentInConditional/005.groovy		-	
+AssignmentInConditional	AssignmentInConditional/006.groovy		2	
+AssignmentInConditional	AssignmentInConditional/007.groovy		2	
+AssignmentToStaticFieldFromInstanceMethod	AssignmentToStaticFieldFromInstanceMethod/000.groovy		-	
+AssignmentToStaticFieldFromInstanceMethod	AssignmentToStaticFieldFromInstanceMethod/001.groovy		-	
+AssignmentToStaticFieldFromInstanceMethod	AssignmentToStaticFieldFromInstanceMethod/002.groovy		9,10,11,12	
+AssignmentToStaticFieldFromInstanceMethod	AssignmentToStaticFieldFromInstanceMethod/003.groovy		-	
+AssignmentToStaticFieldFromInstanceMethod	AssignmentToStaticFieldFromInstanceMethod/004.groovy		-	
+BigDecimalInstantiation	BigDecimalInstantiation/000.groovy		3,4,5	
+BigDecimalInstantiation	BigDecimalInstantiation/001.groovy		4	
+BigDecimalInstantiation	BigDecimalInstantiation/002.groovy		2,5	
+BigDecimalInstantiation	BigDecimalInstantiation/003.groovy		-	
+BigDecimalInstantiation	BigDecimalInstantiation/004.groovy		-	
+BigDecimalInstantiation	BigDecimalInstantiation/005.groovy		-	
+BigDecimalInstantiation	BigDecimalInstantiation/006.groovy		-	
+BigDecimalInstantiation	BigDecimalInstantiation/007.groovy		-	
+BigDecimalInstantiation	BigDecimalInstantiation/008.groovy		-	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/000.groovy		-	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/001.groovy		-	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/002.groovy		-	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/003.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/004.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/005.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/006.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/007.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/008.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/009.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/010.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/011.groovy		-	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/012.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/013.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/014.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/015.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/016.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/017.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/018.groovy		4	
+BitwiseOperatorInConditional	BitwiseOperatorInConditional/019.groovy		4	
+BlankLineBeforePackage	BlankLineBeforePackage/000.groovy		-	
+BlankLineBeforePackage	BlankLineBeforePackage/001.groovy		-	
+BlankLineBeforePackage	BlankLineBeforePackage/002.groovy		1	
+BlankLineBeforePackage	BlankLineBeforePackage/003.groovy		1	
+BlankLineBeforePackage	BlankLineBeforePackage/004.groovy		1	
+BlankLineBeforePackage	BlankLineBeforePackage/005.groovy		-	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/000.groovy		-	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/001.groovy		-	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/002.groovy		5	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/003.groovy		6	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/004.groovy		6,9	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/005.groovy		6	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/006.groovy		11,14,17,19,21,23,25,27,32,34,36	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/007.groovy		4,8	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/008.groovy		7,10,13,17,21,25,30	
+BlockEndsWithBlankLine	BlockEndsWithBlankLine/009.groovy		7,15	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/000.groovy		-	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/001.groovy		-	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/002.groovy		4	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/003.groovy		5	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/004.groovy		5,8	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/005.groovy		5	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/006.groovy		6,11	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/007.groovy		4,6,8,10,12,14,16,19,22,30,32	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/008.groovy		4,8	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/009.groovy		4,10	
+BlockStartsWithBlankLine	BlockStartsWithBlankLine/010.groovy		-	
+BooleanGetBoolean	BooleanGetBoolean/000.groovy		-	
+BooleanGetBoolean	BooleanGetBoolean/001.groovy		2	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/000.groovy		-	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/001.groovy		6	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/002.groovy		3,6	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/003.groovy		7	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/004.groovy		7	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/005.groovy		6	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/006.groovy		6	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/007.groovy		6	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/008.groovy		-	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/009.groovy		6	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/010.groovy		-	
+BooleanMethodReturnsNull	BooleanMethodReturnsNull/011.groovy		-	
+BracesForClass	BracesForClass/000.groovy		-	
+BracesForClass	BracesForClass/001.groovy		-	
+BracesForClass	BracesForClass/002.groovy		4	
+BracesForClass	BracesForClass/003.groovy		-	sameLine=false
+BracesForClass	BracesForClass/004.groovy		3	sameLine=false
+BracesForClass	BracesForClass/005.groovy		-	sameLine=false
+BracesForClass	BracesForClass/006.groovy		-	sameLine=true
+BracesForClass	BracesForClass/007.groovy		3	sameLine=true
+BracesForClass	BracesForClass/008.groovy		-	sameLine=false
+BracesForClass	BracesForClass/009.groovy		2	sameLine=false
+BracesForClass	BracesForClass/010.groovy		2	sameLine=false
+BracesForClass	BracesForClass/011.groovy		6,18,64,70	
+BracesForClass	BracesForClass/012.groovy		6,14,44,49	sameLine=false
+BracesForClass	BracesForClass/013.groovy		-	
+BracesForForLoop	BracesForForLoop/000.groovy		-	
+BracesForForLoop	BracesForForLoop/001.groovy		-	sameLine=false
+BracesForForLoop	BracesForForLoop/002.groovy		-	
+BracesForForLoop	BracesForForLoop/003.groovy		33	
+BracesForForLoop	BracesForForLoop/004.groovy		23	sameLine=false
+BracesForForLoop	BracesForForLoop/005.groovy		-	sameLine=false
+BracesForForLoop	BracesForForLoop/006.groovy		-	
+BracesForForLoop	BracesForForLoop/007.groovy		-	
+BracesForIfElse	BracesForIfElse/000.groovy		-	
+BracesForIfElse	BracesForIfElse/001.groovy		-	
+BracesForIfElse	BracesForIfElse/002.groovy		-	
+BracesForIfElse	BracesForIfElse/003.groovy		2	
+BracesForIfElse	BracesForIfElse/004.groovy		40,43,47	
+BracesForIfElse	BracesForIfElse/005.groovy		28,29,30	sameLine=false
+BracesForIfElse	BracesForIfElse/006.groovy		-	validateElse=true
+BracesForMethod	BracesForMethod/000.groovy		-	
+BracesForMethod	BracesForMethod/001.groovy		-	
+BracesForMethod	BracesForMethod/002.groovy		-	
+BracesForMethod	BracesForMethod/003.groovy		2,7,13	
+BracesForMethod	BracesForMethod/004.groovy		-	sameLine=false
+BracesForMethod	BracesForMethod/005.groovy		2,6,11	sameLine=false
+BracesForMethod	BracesForMethod/006.groovy		-	sameLine=false
+BracesForMethod	BracesForMethod/007.groovy		-	
+BracesForMethod	BracesForMethod/008.groovy		-	
+BracesForMethod	BracesForMethod/009.groovy		-	
+BracesForMethod	BracesForMethod/010.groovy		-	
+BracesForMethod	BracesForMethod/011.groovy		-	
+BracesForMethod	BracesForMethod/012.groovy		-	
+BracesForMethod	BracesForMethod/013.groovy		-	
+BracesForMethod	BracesForMethod/014.groovy		-	
+BracesForMethod	BracesForMethod/015.groovy		-	
+BracesForMethod	BracesForMethod/016.groovy		2	
+BracesForMethod	BracesForMethod/017.groovy		-	sameLine=false
+BracesForMethod	BracesForMethod/018.groovy		-	sameLine=false
+BracesForMethod	BracesForMethod/019.groovy		2	sameLine=false
+BracesForMethod	BracesForMethod/020.groovy		9,12,19,38,71	
+BracesForMethod	BracesForMethod/021.groovy		9,11,15,27,50	sameLine=false
+BracesForMethod	BracesForMethod/022.groovy		-	
+BracesForMethod	BracesForMethod/023.groovy		-	sameLine=false
+BracesForMethod	BracesForMethod/024.groovy		-	
+BracesForMethod	BracesForMethod/025.groovy		-	sameLine=false
+BracesForMethod	BracesForMethod/026.groovy		3	
+BracesForMethod	BracesForMethod/027.groovy		-	
+BracesForMethod	BracesForMethod/028.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
+BracesForMethod	BracesForMethod/029.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
+BracesForMethod	BracesForMethod/030.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
+BracesForMethod	BracesForMethod/031.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
+BracesForMethod	BracesForMethod/032.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
+BracesForMethod	BracesForMethod/033.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
+BracesForTryCatchFinally	BracesForTryCatchFinally/000.groovy		21,26,29	
+BracesForTryCatchFinally	BracesForTryCatchFinally/001.groovy		-	sameLine=false
+BracesForTryCatchFinally	BracesForTryCatchFinally/002.groovy		16,19,20	sameLine=false
+BracesForTryCatchFinally	BracesForTryCatchFinally/003.groovy		9,12	sameLine=false
+BracesForTryCatchFinally	BracesForTryCatchFinally/004.groovy		-	
+BracesForTryCatchFinally	BracesForTryCatchFinally/005.groovy		-	
+BracesForTryCatchFinally	BracesForTryCatchFinally/006.groovy		-	catchOnSameLineAsClosingBrace=false,validateCatch=true,validateFinally=true
+BrokenNullCheck	BrokenNullCheck/000.groovy		-	
+BrokenNullCheck	BrokenNullCheck/001.groovy		-	
+BrokenNullCheck	BrokenNullCheck/002.groovy		2,3,4,5,6,7	
+BrokenNullCheck	BrokenNullCheck/003.groovy		4,5,6,7	
+BrokenOddnessCheck	BrokenOddnessCheck/000.groovy		-	
+BrokenOddnessCheck	BrokenOddnessCheck/001.groovy		2	
+BrokenOddnessCheck	BrokenOddnessCheck/002.groovy		2	
+BrokenOddnessCheck	BrokenOddnessCheck/003.groovy		2	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/000.groovy		-	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/001.groovy		3	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/002.groovy		3	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/003.groovy		3	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/004.groovy		3	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/005.groovy		3	
+BuilderMethodWithSideEffects	BuilderMethodWithSideEffects/006.groovy		3	
+BusyWait	BusyWait/000.groovy		-	
+BusyWait	BusyWait/001.groovy		3	
+BusyWait	BusyWait/002.groovy		3	
+BusyWait	BusyWait/003.groovy		3	
+CatchArrayIndexOutOfBoundsException	CatchArrayIndexOutOfBoundsException/000.groovy		5	
+CatchArrayIndexOutOfBoundsException	CatchArrayIndexOutOfBoundsException/001.groovy		1	
+CatchArrayIndexOutOfBoundsException	CatchArrayIndexOutOfBoundsException/002.groovy		-	
+CatchError	CatchError/000.groovy		7	
+CatchError	CatchError/001.groovy		1	
+CatchError	CatchError/002.groovy		-	
+CatchException	CatchException/000.groovy		5	
+CatchException	CatchException/001.groovy		1	
+CatchException	CatchException/002.groovy		-	
+CatchIllegalMonitorStateException	CatchIllegalMonitorStateException/000.groovy		5	
+CatchIllegalMonitorStateException	CatchIllegalMonitorStateException/001.groovy		1	
+CatchIllegalMonitorStateException	CatchIllegalMonitorStateException/002.groovy		-	
+CatchIndexOutOfBoundsException	CatchIndexOutOfBoundsException/000.groovy		5	
+CatchIndexOutOfBoundsException	CatchIndexOutOfBoundsException/001.groovy		1	
+CatchIndexOutOfBoundsException	CatchIndexOutOfBoundsException/002.groovy		-	
+CatchNullPointerException	CatchNullPointerException/000.groovy		5	
+CatchNullPointerException	CatchNullPointerException/001.groovy		1	
+CatchNullPointerException	CatchNullPointerException/002.groovy		-	
+CatchRuntimeException	CatchRuntimeException/000.groovy		5	
+CatchRuntimeException	CatchRuntimeException/001.groovy		1	
+CatchRuntimeException	CatchRuntimeException/002.groovy		-	
+CatchThrowable	CatchThrowable/000.groovy		5	
+CatchThrowable	CatchThrowable/001.groovy		1	
+CatchThrowable	CatchThrowable/002.groovy		-	
+ChainedTest	ChainedTest/000.groovy		-	
+ChainedTest	ChainedTest/001.groovy		4	
+ChainedTest	ChainedTest/002.groovy		4	
+ChainedTest	ChainedTest/003.groovy		5,6	
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/000.groovy		-	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/001.groovy		-	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/002.groovy		8	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/003.groovy		6	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/004.groovy		7	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/005.groovy		5	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/006.groovy		-	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/007.groovy		-	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/008.groovy		8,15	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/009.groovy		7,14	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/010.groovy		-	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/011.groovy		-	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/012.groovy		13,15	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/013.groovy		13,14	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/014.groovy		-	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/015.groovy		-	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/016.groovy		13,14	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/017.groovy		14,16	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/018.groovy		-	blankLineRequired=true,ignoreSingleLineClasses=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/019.groovy		3,5,6	blankLineRequired=true,ignoreSingleLineClasses=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/020.groovy		-	blankLineRequired=false,ignoreSingleLineClasses=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/021.groovy		-	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/022.groovy		-	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/023.groovy		9	blankLineRequired=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/024.groovy		10	blankLineRequired=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/025.groovy		-	
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/026.groovy		-	
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/027.groovy		-	
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/028.groovy		-	ignoreInnerClasses=true
+ClassForName	ClassForName/000.groovy		-	
+ClassForName	ClassForName/001.groovy		2,3	
+ClassJavadoc	ClassJavadoc/000.groovy		-	
+ClassJavadoc	ClassJavadoc/001.groovy		-	
+ClassJavadoc	ClassJavadoc/002.groovy		-	
+ClassJavadoc	ClassJavadoc/003.groovy		-	
+ClassJavadoc	ClassJavadoc/004.groovy		-	
+ClassJavadoc	ClassJavadoc/005.groovy		-	
+ClassJavadoc	ClassJavadoc/006.groovy		-	
+ClassJavadoc	ClassJavadoc/007.groovy		-	
+ClassJavadoc	ClassJavadoc/008.groovy		5	
+ClassJavadoc	ClassJavadoc/009.groovy		4,8	applyToNonMainClasses=true
+ClassName	ClassName/000.groovy		1	
+ClassName	ClassName/001.groovy		1	
+ClassName	ClassName/002.groovy		2	
+ClassName	ClassName/003.groovy		-	
+ClassName	ClassName/004.groovy		-	
+ClassName	ClassName/005.groovy		1	regex=/z.*/
+ClassName	ClassName/006.groovy		-	regex=/z.*/
+ClassName	ClassName/007.groovy		-	regex=/z.*/
+ClassName	ClassName/008.groovy		-	
+ClassName	ClassName/009.groovy		-	
+ClassNameSameAsFilename	ClassNameSameAsFilename/000.groovy		-	
+ClassNameSameAsFilename	ClassNameSameAsFilename/001.groovy		-	
+ClassNameSameAsFilename	ClassNameSameAsFilename/002.groovy		-	
+ClassNameSameAsFilename	ClassNameSameAsFilename/003.groovy		-	
+ClassNameSameAsFilename	ClassNameSameAsFilename/004.groovy		2	
+ClassNameSameAsFilename	ClassNameSameAsFilename/005.groovy		2	
+ClassNameSameAsFilename	ClassNameSameAsFilename/006.groovy		2	
+ClassNameSameAsFilename	ClassNameSameAsFilename/007.groovy		2	
+ClassNameSameAsSuperclass	ClassNameSameAsSuperclass/000.groovy		-	
+ClassNameSameAsSuperclass	ClassNameSameAsSuperclass/001.groovy		-	
+ClassNameSameAsSuperclass	ClassNameSameAsSuperclass/002.groovy		1	
+ClassNameSameAsSuperclass	ClassNameSameAsSuperclass/003.groovy		1	
+ClassNameSameAsSuperclass	ClassNameSameAsSuperclass/004.groovy		3	
+ClassNotSerializable	ClassNotSerializable/000.groovy		-	
+ClassNotSerializable	ClassNotSerializable/001.groovy		-	
+ClassNotSerializable	ClassNotSerializable/002.groovy		-	
+ClassNotSerializable	ClassNotSerializable/003.groovy		2,4,6,8	
+ClassSize	ClassSize/000.groovy		2	
+ClassSize	ClassSize/001.groovy		4	maxLines=4
+ClassSize	ClassSize/002.groovy		-	maxLines=1
+ClassSize	ClassSize/003.groovy		-	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/000.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/001.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/002.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/003.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/004.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/005.groovy		3	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/006.groovy		3	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/007.groovy		3	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/008.groovy		3	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/009.groovy		3	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/010.groovy		-	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/011.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/012.groovy		3,9	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/013.groovy		3,10	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/014.groovy		-	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/015.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/016.groovy		3,8	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/017.groovy		3,9	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/018.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/019.groovy		-	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/020.groovy		3,9	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/021.groovy		9	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/022.groovy		-	blankLineRequired=true,ignoreSingleLineClasses=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/023.groovy		3,5,6	blankLineRequired=true,ignoreSingleLineClasses=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/024.groovy		-	blankLineRequired=false,ignoreSingleLineClasses=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/025.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/026.groovy		-	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/027.groovy		5	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/028.groovy		4	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/029.groovy		-	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/030.groovy		-	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/031.groovy		-	ignoreInnerClasses=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/032.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/033.groovy		4	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/034.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/035.groovy		4	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/036.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/037.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/038.groovy		-	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/039.groovy		3	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/040.groovy		3	blankLineRequired=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/041.groovy		-	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/042.groovy		-	blankLineRequired=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/043.groovy		6	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/044.groovy		-	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/045.groovy		-	
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/046.groovy		-	
+CloneWithoutCloneable	CloneWithoutCloneable/000.groovy		-	
+CloneWithoutCloneable	CloneWithoutCloneable/001.groovy		-	
+CloneWithoutCloneable	CloneWithoutCloneable/002.groovy		-	
+CloneWithoutCloneable	CloneWithoutCloneable/003.groovy		3	
+CloneWithoutCloneable	CloneWithoutCloneable/004.groovy		3,9,15	
+CloneableWithoutClone	CloneableWithoutClone/000.groovy		-	
+CloneableWithoutClone	CloneableWithoutClone/001.groovy		-	
+CloneableWithoutClone	CloneableWithoutClone/002.groovy		2	
+CloneableWithoutClone	CloneableWithoutClone/003.groovy		2	
+CloneableWithoutClone	CloneableWithoutClone/004.groovy		2	
+CloneableWithoutClone	CloneableWithoutClone/005.groovy		2	
+CloseWithoutCloseable	CloseWithoutCloseable/000.groovy		-	
+CloseWithoutCloseable	CloseWithoutCloseable/001.groovy		3	
+CloseWithoutCloseable	CloseWithoutCloseable/002.groovy		3	
+CloseWithoutCloseable	CloseWithoutCloseable/003.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/000.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/001.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/002.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/003.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/004.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/005.groovy		2	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/006.groovy		2	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/007.groovy		2	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/008.groovy		2	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/009.groovy		2	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/010.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/011.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/012.groovy		28	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/013.groovy		3	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/014.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/015.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/016.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/017.groovy		-	
+ClosureAsLastMethodParameter	ClosureAsLastMethodParameter/018.groovy		-	ignoreCallsToMethodNames=otherMethod, each
+ClosureInGString	ClosureInGString/000.groovy		-	
+ClosureInGString	ClosureInGString/001.groovy		-	
+ClosureInGString	ClosureInGString/002.groovy		-	
+ClosureInGString	ClosureInGString/003.groovy		3,4	
+ClosureStatementOnOpeningLineOfMultipleLineClosure	ClosureStatementOnOpeningLineOfMultipleLineClosure/000.groovy		-	
+ClosureStatementOnOpeningLineOfMultipleLineClosure	ClosureStatementOnOpeningLineOfMultipleLineClosure/001.groovy		-	
+ClosureStatementOnOpeningLineOfMultipleLineClosure	ClosureStatementOnOpeningLineOfMultipleLineClosure/002.groovy		-	
+ClosureStatementOnOpeningLineOfMultipleLineClosure	ClosureStatementOnOpeningLineOfMultipleLineClosure/003.groovy		-	
+ClosureStatementOnOpeningLineOfMultipleLineClosure	ClosureStatementOnOpeningLineOfMultipleLineClosure/004.groovy		-	
+ClosureStatementOnOpeningLineOfMultipleLineClosure	ClosureStatementOnOpeningLineOfMultipleLineClosure/005.groovy		-	
+CollectAllIsDeprecated	CollectAllIsDeprecated/000.groovy		-	
+CollectAllIsDeprecated	CollectAllIsDeprecated/001.groovy		3	
+CollectAllIsDeprecated	CollectAllIsDeprecated/002.groovy		3,4	
+CompareToWithoutComparable	CompareToWithoutComparable/000.groovy		-	
+CompareToWithoutComparable	CompareToWithoutComparable/001.groovy		2	
+CompareToWithoutComparable	CompareToWithoutComparable/002.groovy		2	
+CompareToWithoutComparable	CompareToWithoutComparable/003.groovy		-	
+ComparisonOfTwoConstants	ComparisonOfTwoConstants/000.groovy		-	
+ComparisonOfTwoConstants	ComparisonOfTwoConstants/001.groovy		-	
+ComparisonOfTwoConstants	ComparisonOfTwoConstants/002.groovy		-	
+ComparisonOfTwoConstants	ComparisonOfTwoConstants/003.groovy		2,3,4,5,6,7,8	
+ComparisonOfTwoConstants	ComparisonOfTwoConstants/004.groovy		2,3	
+ComparisonOfTwoConstants	ComparisonOfTwoConstants/005.groovy		2,3	
+ComparisonWithSelf	ComparisonWithSelf/000.groovy		-	
+ComparisonWithSelf	ComparisonWithSelf/001.groovy		-	
+ComparisonWithSelf	ComparisonWithSelf/002.groovy		-	
+ComparisonWithSelf	ComparisonWithSelf/003.groovy		2,3,4,5,6,7,8	
+ComparisonWithSelf	ComparisonWithSelf/004.groovy		2	
+ComparisonWithSelf	ComparisonWithSelf/005.groovy		2	
+CompileStatic	CompileStatic/000.groovy			
+CompileStatic	CompileStatic/001.groovy		-	
+CompileStatic	CompileStatic/002.groovy		-	
+CompileStatic	CompileStatic/003.groovy		-	
+CompileStatic	CompileStatic/004.groovy		-	
+CompileStatic	CompileStatic/005.groovy		-	
+CompileStatic	CompileStatic/006.groovy			
+CompileStatic	CompileStatic/007.groovy		-	
+CompileStatic	CompileStatic/008.groovy			
+CompileStatic	CompileStatic/009.groovy		-	
+ConfusingClassNamedException	ConfusingClassNamedException/000.groovy		-	
+ConfusingClassNamedException	ConfusingClassNamedException/001.groovy		2	
+ConfusingClassNamedException	ConfusingClassNamedException/002.groovy		2	
+ConfusingClassNamedException	ConfusingClassNamedException/003.groovy		3	
+ConfusingMethodName	ConfusingMethodName/000.groovy		-	
+ConfusingMethodName	ConfusingMethodName/001.groovy		4,5	
+ConfusingMethodName	ConfusingMethodName/002.groovy		-	
+ConfusingMethodName	ConfusingMethodName/003.groovy		4,5	
+ConfusingMethodName	ConfusingMethodName/004.groovy		5,6	
+ConfusingMethodName	ConfusingMethodName/005.groovy		4,7	
+ConfusingMethodName	ConfusingMethodName/006.groovy		12,13	
+ConfusingMethodName	ConfusingMethodName/007.groovy		4	
+ConfusingMethodName	ConfusingMethodName/008.groovy		4,5	
+ConfusingMultipleReturns	ConfusingMultipleReturns/000.groovy		-	
+ConfusingMultipleReturns	ConfusingMultipleReturns/001.groovy		6	
+ConfusingMultipleReturns	ConfusingMultipleReturns/002.groovy		2,3	
+ConfusingTernary	ConfusingTernary/000.groovy		-	
+ConfusingTernary	ConfusingTernary/001.groovy		2	
+ConfusingTernary	ConfusingTernary/002.groovy		2	
+ConsecutiveBlankLines	ConsecutiveBlankLines/000.groovy		-	
+ConsecutiveBlankLines	ConsecutiveBlankLines/001.groovy		3	
+ConsecutiveBlankLines	ConsecutiveBlankLines/002.groovy		1	
+ConsecutiveBlankLines	ConsecutiveBlankLines/003.groovy		4,7	
+ConsecutiveBlankLines	ConsecutiveBlankLines/004.groovy		4,5	
+ConsecutiveLiteralAppends	ConsecutiveLiteralAppends/000.groovy		-	
+ConsecutiveLiteralAppends	ConsecutiveLiteralAppends/001.groovy		2	
+ConsecutiveLiteralAppends	ConsecutiveLiteralAppends/002.groovy		2	
+ConsecutiveLiteralAppends	ConsecutiveLiteralAppends/003.groovy		2	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/000.groovy		-	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/001.groovy		2	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/002.groovy		2	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/003.groovy		2	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/004.groovy		2	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/005.groovy		2	
+ConsecutiveStringConcatenation	ConsecutiveStringConcatenation/006.groovy		4	
+ConstantAssertExpression	ConstantAssertExpression/000.groovy		2,3	
+ConstantAssertExpression	ConstantAssertExpression/001.groovy		2,3	
+ConstantAssertExpression	ConstantAssertExpression/002.groovy		2	
+ConstantAssertExpression	ConstantAssertExpression/003.groovy		2,3	
+ConstantAssertExpression	ConstantAssertExpression/004.groovy		4,5	
+ConstantAssertExpression	ConstantAssertExpression/005.groovy		2,3	
+ConstantAssertExpression	ConstantAssertExpression/006.groovy		2,3	
+ConstantAssertExpression	ConstantAssertExpression/007.groovy		-	
+ConstantIfExpression	ConstantIfExpression/000.groovy		2,3	
+ConstantIfExpression	ConstantIfExpression/001.groovy		2,3	
+ConstantIfExpression	ConstantIfExpression/002.groovy		2	
+ConstantIfExpression	ConstantIfExpression/003.groovy		2,3	
+ConstantIfExpression	ConstantIfExpression/004.groovy		2,3	
+ConstantIfExpression	ConstantIfExpression/005.groovy		2,3	
+ConstantIfExpression	ConstantIfExpression/006.groovy		2,3	
+ConstantIfExpression	ConstantIfExpression/007.groovy		-	
+ConstantTernaryExpression	ConstantTernaryExpression/000.groovy		2,4	
+ConstantTernaryExpression	ConstantTernaryExpression/001.groovy		2,4	
+ConstantTernaryExpression	ConstantTernaryExpression/002.groovy		2	
+ConstantTernaryExpression	ConstantTernaryExpression/003.groovy		2,3	
+ConstantTernaryExpression	ConstantTernaryExpression/004.groovy		2,3	
+ConstantTernaryExpression	ConstantTernaryExpression/005.groovy		2,3	
+ConstantTernaryExpression	ConstantTernaryExpression/006.groovy		2,3	
+ConstantTernaryExpression	ConstantTernaryExpression/007.groovy		-	
+ConstantsOnlyInterface	ConstantsOnlyInterface/000.groovy		-	
+ConstantsOnlyInterface	ConstantsOnlyInterface/001.groovy		-	
+ConstantsOnlyInterface	ConstantsOnlyInterface/002.groovy		2	
+CouldBeElvis	CouldBeElvis/000.groovy		-	
+CouldBeElvis	CouldBeElvis/001.groovy		-	
+CouldBeElvis	CouldBeElvis/002.groovy		4	
+CouldBeElvis	CouldBeElvis/003.groovy		4	
+CouldBeElvis	CouldBeElvis/004.groovy		4	
+CouldBeElvis	CouldBeElvis/005.groovy		3	
+CouldBeElvis	CouldBeElvis/006.groovy		2	
+CouldBeElvis	CouldBeElvis/007.groovy		-	
+CouldBeElvis	CouldBeElvis/008.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/000.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/001.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/002.groovy		2	
+CouldBeSwitchStatement	CouldBeSwitchStatement/003.groovy		2	
+CouldBeSwitchStatement	CouldBeSwitchStatement/004.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/005.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/006.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/007.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/008.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/009.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/010.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/011.groovy		2,12,23	
+CouldBeSwitchStatement	CouldBeSwitchStatement/012.groovy		2	
+CouldBeSwitchStatement	CouldBeSwitchStatement/013.groovy		-	
+CouldBeSwitchStatement	CouldBeSwitchStatement/014.groovy		-	
+CoupledTestCase	CoupledTestCase/000.groovy		-	
+CoupledTestCase	CoupledTestCase/001.groovy		5	
+CoupledTestCase	CoupledTestCase/002.groovy		5	
+CoupledTestCase	CoupledTestCase/003.groovy		-	
+CoupledTestCase	CoupledTestCase/004.groovy		-	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/000.groovy		-	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/001.groovy		-	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/002.groovy		7,8,21,22	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/003.groovy		7,20,21,22	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/004.groovy		-	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/005.groovy		4,5	
+CpsCallFromNonCpsMethod	CpsCallFromNonCpsMethod/006.groovy		-	
+CrapMetric	CrapMetric/000.groovy		-	coberturaXmlFile=DoesNotExist.xml
+CrapMetric	CrapMetric/001.groovy		-	
+CrapMetric	CrapMetric/002.groovy		4	maxMethodCrapScore=5.0
+CrapMetric	CrapMetric/003.groovy		-	maxMethodCrapScore=1.0
+CrapMetric	CrapMetric/004.groovy		-	maxMethodCrapScore=1.0
+CrapMetric	CrapMetric/005.groovy		-	maxMethodCrapScore=1.0
+CrapMetric	CrapMetric/006.groovy		3	maxClassAverageMethodCrapScore=1.0
+CrapMetric	CrapMetric/007.groovy		3,4	maxClassAverageMethodCrapScore=1.0,maxClassCrapScore=5.9,maxMethodCrapScore=1.0
+CyclomaticComplexity	CyclomaticComplexity/000.groovy		-	
+CyclomaticComplexity	CyclomaticComplexity/001.groovy		-	maxMethodComplexity=5
+CyclomaticComplexity	CyclomaticComplexity/002.groovy		3	maxMethodComplexity=5
+CyclomaticComplexity	CyclomaticComplexity/003.groovy		4	maxMethodComplexity=5
+CyclomaticComplexity	CyclomaticComplexity/004.groovy		3	maxMethodComplexity=2
+CyclomaticComplexity	CyclomaticComplexity/005.groovy		3,9	maxMethodComplexity=2
+CyclomaticComplexity	CyclomaticComplexity/006.groovy		2	maxClassAverageMethodComplexity=5
+CyclomaticComplexity	CyclomaticComplexity/007.groovy		-	maxClassAverageMethodComplexity=0
+CyclomaticComplexity	CyclomaticComplexity/008.groovy		2,8	maxClassAverageMethodComplexity=3,maxClassComplexity=9,maxMethodComplexity=5
+CyclomaticComplexity	CyclomaticComplexity/009.groovy		-	maxClassAverageMethodComplexity=3,maxClassComplexity=9,maxMethodComplexity=3
+CyclomaticComplexity	CyclomaticComplexity/010.groovy		6	ignoreMethodNames=myM*d*,otherC??su*,maxMethodComplexity=1
+CyclomaticComplexity	CyclomaticComplexity/011.groovy		2	maxClassAverageMethodComplexity=1,maxMethodComplexity=1
+CyclomaticComplexity	CyclomaticComplexity/012.groovy			maxClassAverageMethodComplexity=1,maxMethodComplexity=1
+DeadCode	DeadCode/000.groovy		-	
+DeadCode	DeadCode/001.groovy		4,8	
+DeadCode	DeadCode/002.groovy		4,8	
+DeadCode	DeadCode/003.groovy		5	
+DeadCode	DeadCode/004.groovy		9	
+DeadCode	DeadCode/005.groovy		4	
+DirectConnectionManagement	DirectConnectionManagement/000.groovy		-	
+DirectConnectionManagement	DirectConnectionManagement/001.groovy		2,3	
+DoubleCheckedLocking	DoubleCheckedLocking/000.groovy		-	
+DoubleCheckedLocking	DoubleCheckedLocking/001.groovy		5	
+DoubleCheckedLocking	DoubleCheckedLocking/002.groovy		5	
+DoubleCheckedLocking	DoubleCheckedLocking/003.groovy		5	
+DoubleNegative	DoubleNegative/000.groovy		-	
+DoubleNegative	DoubleNegative/001.groovy		2,3	
+DuplicateCaseStatement	DuplicateCaseStatement/000.groovy		-	
+DuplicateCaseStatement	DuplicateCaseStatement/001.groovy		7	
+DuplicateCaseStatement	DuplicateCaseStatement/002.groovy		9	
+DuplicateImport	DuplicateImport/000.groovy		4	
+DuplicateImport	DuplicateImport/001.groovy		4,5	
+DuplicateImport	DuplicateImport/002.groovy		4	
+DuplicateImport	DuplicateImport/003.groovy		-	
+DuplicateImport	DuplicateImport/004.groovy		4,6	
+DuplicateImport	DuplicateImport/005.groovy		3,5,7	
+DuplicateImport	DuplicateImport/006.groovy		-	
+DuplicateImport	DuplicateImport/007.groovy		4	
+DuplicateImport	DuplicateImport/008.groovy		4	
+DuplicateImport	DuplicateImport/009.groovy		5	
+DuplicateImport	DuplicateImport/010.groovy		3,5,7	
+DuplicateImport	DuplicateImport/011.groovy		-	
+DuplicateImport	DuplicateImport/012.groovy		-	
+DuplicateImport	DuplicateImport/013.groovy		-	
+DuplicateImport	DuplicateImport/014.groovy		-	
+DuplicateListLiteral	DuplicateListLiteral/000.groovy		-	
+DuplicateListLiteral	DuplicateListLiteral/001.groovy		-	
+DuplicateListLiteral	DuplicateListLiteral/002.groovy		-	
+DuplicateListLiteral	DuplicateListLiteral/003.groovy		-	
+DuplicateListLiteral	DuplicateListLiteral/004.groovy		-	
+DuplicateListLiteral	DuplicateListLiteral/005.groovy		4,7	
+DuplicateListLiteral	DuplicateListLiteral/006.groovy		3	
+DuplicateListLiteral	DuplicateListLiteral/007.groovy		3	
+DuplicateListLiteral	DuplicateListLiteral/008.groovy		3	
+DuplicateListLiteral	DuplicateListLiteral/009.groovy		4	
+DuplicateListLiteral	DuplicateListLiteral/010.groovy		-	
+DuplicateMapKey	DuplicateMapKey/000.groovy		-	
+DuplicateMapKey	DuplicateMapKey/001.groovy		3	
+DuplicateMapKey	DuplicateMapKey/002.groovy		3,4	
+DuplicateMapKey	DuplicateMapKey/003.groovy		2	
+DuplicateMapKey	DuplicateMapKey/004.groovy		2	
+DuplicateMapKey	DuplicateMapKey/005.groovy		4	
+DuplicateMapLiteral	DuplicateMapLiteral/000.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/001.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/002.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/003.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/004.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/005.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/006.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/007.groovy		-	
+DuplicateMapLiteral	DuplicateMapLiteral/008.groovy		4,7	
+DuplicateMapLiteral	DuplicateMapLiteral/009.groovy		3	
+DuplicateMapLiteral	DuplicateMapLiteral/010.groovy		3	
+DuplicateMapLiteral	DuplicateMapLiteral/011.groovy		3	
+DuplicateMapLiteral	DuplicateMapLiteral/012.groovy		3	
+DuplicateMapLiteral	DuplicateMapLiteral/013.groovy		3	
+DuplicateMapLiteral	DuplicateMapLiteral/014.groovy		4	
+DuplicateMapLiteral	DuplicateMapLiteral/015.groovy		4	
+DuplicateNumberLiteral	DuplicateNumberLiteral/000.groovy		-	
+DuplicateNumberLiteral	DuplicateNumberLiteral/001.groovy		3,4	
+DuplicateNumberLiteral	DuplicateNumberLiteral/002.groovy		2,123	
+DuplicateNumberLiteral	DuplicateNumberLiteral/003.groovy		2	
+DuplicateNumberLiteral	DuplicateNumberLiteral/004.groovy		2	
+DuplicateNumberLiteral	DuplicateNumberLiteral/005.groovy		-	ignoreNumbers=99,99.0,99.0d,99.0f,99.0G
+DuplicateNumberLiteral	DuplicateNumberLiteral/006.groovy		3,5	
+DuplicateNumberLiteral	DuplicateNumberLiteral/007.groovy		4	
+DuplicateNumberLiteral	DuplicateNumberLiteral/008.groovy		2,3	
+DuplicateNumberLiteral	DuplicateNumberLiteral/009.groovy		2	
+DuplicateNumberLiteral	DuplicateNumberLiteral/010.groovy		3,4	
+DuplicateNumberLiteral	DuplicateNumberLiteral/011.groovy		3	
+DuplicateNumberLiteral	DuplicateNumberLiteral/012.groovy		3	
+DuplicateNumberLiteral	DuplicateNumberLiteral/013.groovy		3	
+DuplicateNumberLiteral	DuplicateNumberLiteral/014.groovy		3	ignoreNumbers=23
+DuplicateNumberLiteral	DuplicateNumberLiteral/015.groovy		-	ignoreNumbers=0.725,7654, -97
+DuplicateNumberLiteral	DuplicateNumberLiteral/016.groovy		-	
+DuplicateNumberLiteral	DuplicateNumberLiteral/017.groovy		-	ignoreNumbers=0.725,xxx, yyy
+DuplicateNumberLiteral	DuplicateNumberLiteral/018.groovy		2	duplicateNumberMinimumValue=0
+DuplicateNumberLiteral	DuplicateNumberLiteral/019.groovy		-	duplicateNumberMinimumValue=10
+DuplicateNumberLiteral	DuplicateNumberLiteral/020.groovy		2	duplicateNumberMinimumValue=10
+DuplicateNumberLiteral	DuplicateNumberLiteral/021.groovy		2	duplicateNumberMinimumValue=10
+DuplicateNumberLiteral	DuplicateNumberLiteral/022.groovy		3	duplicateNumberMinimumValue=9
+DuplicateNumberLiteral	DuplicateNumberLiteral/023.groovy		6	duplicateNumberMinimumValue=9
+DuplicateNumberLiteral	DuplicateNumberLiteral/024.groovy		-	
+DuplicateNumberLiteral	DuplicateNumberLiteral/025.groovy		-	
+DuplicateSetValue	DuplicateSetValue/000.groovy		-	
+DuplicateSetValue	DuplicateSetValue/001.groovy		2,3,4,5	
+DuplicateSetValue	DuplicateSetValue/002.groovy		2,3,4	
+DuplicateSetValue	DuplicateSetValue/003.groovy		2,3	
+DuplicateStringLiteral	DuplicateStringLiteral/000.groovy		-	
+DuplicateStringLiteral	DuplicateStringLiteral/001.groovy		3,4	
+DuplicateStringLiteral	DuplicateStringLiteral/002.groovy		-	
+DuplicateStringLiteral	DuplicateStringLiteral/003.groovy		2	
+DuplicateStringLiteral	DuplicateStringLiteral/004.groovy		2	
+DuplicateStringLiteral	DuplicateStringLiteral/005.groovy		2	
+DuplicateStringLiteral	DuplicateStringLiteral/006.groovy		3,5	
+DuplicateStringLiteral	DuplicateStringLiteral/007.groovy		4	
+DuplicateStringLiteral	DuplicateStringLiteral/008.groovy		2,3	
+DuplicateStringLiteral	DuplicateStringLiteral/009.groovy		2	
+DuplicateStringLiteral	DuplicateStringLiteral/010.groovy		3,4	
+DuplicateStringLiteral	DuplicateStringLiteral/011.groovy		3	
+DuplicateStringLiteral	DuplicateStringLiteral/012.groovy		3	
+DuplicateStringLiteral	DuplicateStringLiteral/013.groovy		3	
+DuplicateStringLiteral	DuplicateStringLiteral/014.groovy		3	ignoreStrings=xyz
+DuplicateStringLiteral	DuplicateStringLiteral/015.groovy		-	ignoreStrings=xyz,foo
+DuplicateStringLiteral	DuplicateStringLiteral/016.groovy		-	ignoreStrings=,xyz,foo
+DuplicateStringLiteral	DuplicateStringLiteral/017.groovy		-	ignoreStrings=|xyz|1,2|123,ignoreStringsDelimiter=|
+DuplicateStringLiteral	DuplicateStringLiteral/018.groovy		-	ignoreStrings= xyz ,foo
+DuplicateStringLiteral	DuplicateStringLiteral/019.groovy		-	duplicateStringMinimumLength=4
+DuplicateStringLiteral	DuplicateStringLiteral/020.groovy		2	duplicateStringMinimumLength=3
+DuplicateStringLiteral	DuplicateStringLiteral/021.groovy		-	
+DuplicateStringLiteral	DuplicateStringLiteral/022.groovy		-	ignoreStrings=-|_|/|$|.|:| |,,ignoreStringsDelimiter=|
+DuplicateStringLiteral	DuplicateStringLiteral/023.groovy		-	
+ElseBlockBraces	ElseBlockBraces/000.groovy		4,6	
+ElseBlockBraces	ElseBlockBraces/001.groovy		-	
+ElseBlockBraces	ElseBlockBraces/002.groovy		-	
+ElseBlockBraces	ElseBlockBraces/003.groovy		2	bracesRequiredForElseIf=true
+ElseBlockBraces	ElseBlockBraces/004.groovy		-	
+ElseBlockBraces	ElseBlockBraces/005.groovy		-	
+EmptyCatchBlock	EmptyCatchBlock/000.groovy		5	
+EmptyCatchBlock	EmptyCatchBlock/001.groovy		5	
+EmptyCatchBlock	EmptyCatchBlock/002.groovy		-	
+EmptyCatchBlock	EmptyCatchBlock/003.groovy		5	
+EmptyCatchBlock	EmptyCatchBlock/004.groovy		-	
+EmptyCatchBlock	EmptyCatchBlock/005.groovy		-	
+EmptyClass	EmptyClass/000.groovy		-	
+EmptyClass	EmptyClass/001.groovy		2	
+EmptyClass	EmptyClass/002.groovy		2,5	
+EmptyClass	EmptyClass/003.groovy		-	
+EmptyClass	EmptyClass/004.groovy		-	
+EmptyClass	EmptyClass/005.groovy		-	
+EmptyClass	EmptyClass/006.groovy		5	
+EmptyClass	EmptyClass/007.groovy		2	
+EmptyClass	EmptyClass/008.groovy		-	
+EmptyClass	EmptyClass/009.groovy		-	
+EmptyClass	EmptyClass/010.groovy		-	
+EmptyClass	EmptyClass/011.groovy		-	
+EmptyElseBlock	EmptyElseBlock/000.groovy		6,10	
+EmptyElseBlock	EmptyElseBlock/001.groovy		7	
+EmptyElseBlock	EmptyElseBlock/002.groovy		-	
+EmptyFinallyBlock	EmptyFinallyBlock/000.groovy		6	
+EmptyFinallyBlock	EmptyFinallyBlock/001.groovy		9	
+EmptyFinallyBlock	EmptyFinallyBlock/002.groovy		-	
+EmptyForStatement	EmptyForStatement/000.groovy		4,7	
+EmptyForStatement	EmptyForStatement/001.groovy		2	
+EmptyForStatement	EmptyForStatement/002.groovy		-	
+EmptyForStatement	EmptyForStatement/003.groovy		-	
+EmptyIfStatement	EmptyIfStatement/000.groovy		4,7	
+EmptyIfStatement	EmptyIfStatement/001.groovy		2	
+EmptyIfStatement	EmptyIfStatement/002.groovy		-	
+EmptyInstanceInitializer	EmptyInstanceInitializer/000.groovy		-	
+EmptyInstanceInitializer	EmptyInstanceInitializer/001.groovy		3	
+EmptyMethod	EmptyMethod/000.groovy		-	
+EmptyMethod	EmptyMethod/001.groovy		-	
+EmptyMethod	EmptyMethod/002.groovy		3	
+EmptyMethod	EmptyMethod/003.groovy		3	
+EmptyMethodInAbstractClass	EmptyMethodInAbstractClass/000.groovy		-	
+EmptyMethodInAbstractClass	EmptyMethodInAbstractClass/001.groovy		3	
+EmptyMethodInAbstractClass	EmptyMethodInAbstractClass/002.groovy		3	
+EmptyMethodInAbstractClass	EmptyMethodInAbstractClass/003.groovy		3	
+EmptyStaticInitializer	EmptyStaticInitializer/000.groovy		-	
+EmptyStaticInitializer	EmptyStaticInitializer/001.groovy		3	
+EmptySwitchStatement	EmptySwitchStatement/000.groovy		4	
+EmptySwitchStatement	EmptySwitchStatement/001.groovy		-	
+EmptySynchronizedStatement	EmptySynchronizedStatement/000.groovy		4	
+EmptySynchronizedStatement	EmptySynchronizedStatement/001.groovy		2	
+EmptySynchronizedStatement	EmptySynchronizedStatement/002.groovy		-	
+EmptyTryBlock	EmptyTryBlock/000.groovy		4	
+EmptyTryBlock	EmptyTryBlock/001.groovy		-	
+EmptyTryBlock	EmptyTryBlock/002.groovy		2	
+EmptyTryBlock	EmptyTryBlock/003.groovy		-	
+EmptyWhileStatement	EmptyWhileStatement/000.groovy		4,7	
+EmptyWhileStatement	EmptyWhileStatement/001.groovy		2	
+EmptyWhileStatement	EmptyWhileStatement/002.groovy		-	
+EmptyWhileStatement	EmptyWhileStatement/003.groovy		-	
+EnumCustomSerializationIgnored	EnumCustomSerializationIgnored/000.groovy		-	
+EnumCustomSerializationIgnored	EnumCustomSerializationIgnored/001.groovy		-	
+EnumCustomSerializationIgnored	EnumCustomSerializationIgnored/002.groovy		4,5	
+EnumCustomSerializationIgnored	EnumCustomSerializationIgnored/003.groovy		4,5	
+EnumCustomSerializationIgnored	EnumCustomSerializationIgnored/004.groovy		-	
+EqualsAndHashCode	EqualsAndHashCode/000.groovy		2	
+EqualsAndHashCode	EqualsAndHashCode/001.groovy		2	
+EqualsAndHashCode	EqualsAndHashCode/002.groovy		-	
+EqualsAndHashCode	EqualsAndHashCode/003.groovy		-	
+EqualsAndHashCode	EqualsAndHashCode/004.groovy		-	
+EqualsAndHashCode	EqualsAndHashCode/005.groovy		-	
+EqualsOverloaded	EqualsOverloaded/000.groovy		-	
+EqualsOverloaded	EqualsOverloaded/001.groovy		5	
+EqualsOverloaded	EqualsOverloaded/002.groovy		3	
+EqualsOverloaded	EqualsOverloaded/003.groovy		3	
+EqualsOverloaded	EqualsOverloaded/004.groovy		3	
+ExceptionExtendsError	ExceptionExtendsError/000.groovy		-	
+ExceptionExtendsError	ExceptionExtendsError/001.groovy		2,4	
+ExceptionExtendsError	ExceptionExtendsError/002.groovy		-	
+ExceptionExtendsError	ExceptionExtendsError/003.groovy		-	
+ExceptionExtendsThrowable	ExceptionExtendsThrowable/000.groovy		-	
+ExceptionExtendsThrowable	ExceptionExtendsThrowable/001.groovy		2	
+ExceptionExtendsThrowable	ExceptionExtendsThrowable/002.groovy		-	
+ExceptionExtendsThrowable	ExceptionExtendsThrowable/003.groovy		-	
+ExceptionNotThrown	ExceptionNotThrown/000.groovy		-	
+ExceptionNotThrown	ExceptionNotThrown/001.groovy		-	
+ExceptionNotThrown	ExceptionNotThrown/002.groovy		-	
+ExceptionNotThrown	ExceptionNotThrown/003.groovy		4	
+ExceptionNotThrown	ExceptionNotThrown/004.groovy		6,8	
+ExplicitArrayListInstantiation	ExplicitArrayListInstantiation/000.groovy		-	
+ExplicitArrayListInstantiation	ExplicitArrayListInstantiation/001.groovy		2,5	
+ExplicitArrayListInstantiation	ExplicitArrayListInstantiation/002.groovy		3,4	
+ExplicitCallToAndMethod	ExplicitCallToAndMethod/000.groovy		-	
+ExplicitCallToAndMethod	ExplicitCallToAndMethod/001.groovy		2	
+ExplicitCallToCompareToMethod	ExplicitCallToCompareToMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToCompareToMethod	ExplicitCallToCompareToMethod/001.groovy		2	
+ExplicitCallToDivMethod	ExplicitCallToDivMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToDivMethod	ExplicitCallToDivMethod/001.groovy		2	
+ExplicitCallToDivMethod	ExplicitCallToDivMethod/002.groovy		-	
+ExplicitCallToEqualsMethod	ExplicitCallToEqualsMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToEqualsMethod	ExplicitCallToEqualsMethod/001.groovy		2	
+ExplicitCallToGetAtMethod	ExplicitCallToGetAtMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToGetAtMethod	ExplicitCallToGetAtMethod/001.groovy		2	
+ExplicitCallToLeftShiftMethod	ExplicitCallToLeftShiftMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToLeftShiftMethod	ExplicitCallToLeftShiftMethod/001.groovy		2	
+ExplicitCallToMinusMethod	ExplicitCallToMinusMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToMinusMethod	ExplicitCallToMinusMethod/001.groovy		2	
+ExplicitCallToModMethod	ExplicitCallToModMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToModMethod	ExplicitCallToModMethod/001.groovy		2	
+ExplicitCallToMultiplyMethod	ExplicitCallToMultiplyMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToMultiplyMethod	ExplicitCallToMultiplyMethod/001.groovy		2	
+ExplicitCallToOrMethod	ExplicitCallToOrMethod/000.groovy		-	
+ExplicitCallToOrMethod	ExplicitCallToOrMethod/001.groovy		2	
+ExplicitCallToPlusMethod	ExplicitCallToPlusMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToPlusMethod	ExplicitCallToPlusMethod/001.groovy		-	ignoreThisReference=false
+ExplicitCallToPlusMethod	ExplicitCallToPlusMethod/002.groovy		2	
+ExplicitCallToPowerMethod	ExplicitCallToPowerMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToPowerMethod	ExplicitCallToPowerMethod/001.groovy		2	
+ExplicitCallToPutAtMethod	ExplicitCallToPutAtMethod/000.groovy		-	
+ExplicitCallToPutAtMethod	ExplicitCallToPutAtMethod/001.groovy		-	ignoreThisReference=true
+ExplicitCallToPutAtMethod	ExplicitCallToPutAtMethod/002.groovy		2	
+ExplicitCallToPutAtMethod	ExplicitCallToPutAtMethod/003.groovy		2,3	
+ExplicitCallToRightShiftMethod	ExplicitCallToRightShiftMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToRightShiftMethod	ExplicitCallToRightShiftMethod/001.groovy		2	
+ExplicitCallToXorMethod	ExplicitCallToXorMethod/000.groovy		-	ignoreThisReference=true
+ExplicitCallToXorMethod	ExplicitCallToXorMethod/001.groovy		2	
+ExplicitGarbageCollection	ExplicitGarbageCollection/000.groovy		-	
+ExplicitGarbageCollection	ExplicitGarbageCollection/001.groovy		2	
+ExplicitGarbageCollection	ExplicitGarbageCollection/002.groovy		2	
+ExplicitGarbageCollection	ExplicitGarbageCollection/003.groovy		2	
+ExplicitGarbageCollection	ExplicitGarbageCollection/004.groovy		2	
+ExplicitHashMapInstantiation	ExplicitHashMapInstantiation/000.groovy		-	
+ExplicitHashMapInstantiation	ExplicitHashMapInstantiation/001.groovy		2,5	
+ExplicitHashMapInstantiation	ExplicitHashMapInstantiation/002.groovy		3,4	
+ExplicitHashSetInstantiation	ExplicitHashSetInstantiation/000.groovy		-	
+ExplicitHashSetInstantiation	ExplicitHashSetInstantiation/001.groovy		2,5	
+ExplicitHashSetInstantiation	ExplicitHashSetInstantiation/002.groovy		3,4	
+ExplicitLinkedHashMapInstantiation	ExplicitLinkedHashMapInstantiation/000.groovy		-	
+ExplicitLinkedHashMapInstantiation	ExplicitLinkedHashMapInstantiation/001.groovy		2,5	
+ExplicitLinkedHashMapInstantiation	ExplicitLinkedHashMapInstantiation/002.groovy		3,4	
+ExplicitLinkedListInstantiation	ExplicitLinkedListInstantiation/000.groovy		-	
+ExplicitLinkedListInstantiation	ExplicitLinkedListInstantiation/001.groovy		2,5	
+ExplicitLinkedListInstantiation	ExplicitLinkedListInstantiation/002.groovy		3,4	
+ExplicitStackInstantiation	ExplicitStackInstantiation/000.groovy		-	
+ExplicitStackInstantiation	ExplicitStackInstantiation/001.groovy		2,5	
+ExplicitStackInstantiation	ExplicitStackInstantiation/002.groovy		3,4	
+ExplicitTreeSetInstantiation	ExplicitTreeSetInstantiation/000.groovy		-	
+ExplicitTreeSetInstantiation	ExplicitTreeSetInstantiation/001.groovy		2,5	
+ExplicitTreeSetInstantiation	ExplicitTreeSetInstantiation/002.groovy		3,4	
+ExpressionInCpsMethodNotSerializable	ExpressionInCpsMethodNotSerializable/000.groovy		-	
+ExpressionInCpsMethodNotSerializable	ExpressionInCpsMethodNotSerializable/001.groovy		-	
+ExpressionInCpsMethodNotSerializable	ExpressionInCpsMethodNotSerializable/002.groovy		-	
+ExpressionInCpsMethodNotSerializable	ExpressionInCpsMethodNotSerializable/003.groovy		4,5	
+ExpressionInCpsMethodNotSerializable	ExpressionInCpsMethodNotSerializable/004.groovy		4	
+ExpressionInCpsMethodNotSerializable	ExpressionInCpsMethodNotSerializable/005.groovy		4,6,7	
+FactoryMethodName	FactoryMethodName/000.groovy		-	
+FactoryMethodName	FactoryMethodName/001.groovy		5	
+FactoryMethodName	FactoryMethodName/002.groovy		5	
+FactoryMethodName	FactoryMethodName/003.groovy		7	
+FactoryMethodName	FactoryMethodName/004.groovy		7	
+FactoryMethodName	FactoryMethodName/005.groovy		3	
+FieldName	FieldName/000.groovy		-	regex=/^[a-z]([a-zA-Z0-9$])*\b/
+FieldName	FieldName/001.groovy		3	
+FieldName	FieldName/002.groovy		-	
+FieldName	FieldName/003.groovy		3	
+FieldName	FieldName/004.groovy		3	regex=/z.*/
+FieldName	FieldName/005.groovy		-	regex=/z.*/
+FieldName	FieldName/006.groovy		-	
+FieldName	FieldName/007.groovy		-	regex=/z.*/
+FieldName	FieldName/008.groovy		3	
+FieldName	FieldName/009.groovy		-	finalRegex=/z.*/
+FieldName	FieldName/010.groovy		-	staticRegex=/C.*/
+FieldName	FieldName/011.groovy		3	
+FieldName	FieldName/012.groovy		-	finalRegex=/X.*/     // ignored,staticFinalRegex=/C.*/,staticRegex=/Z.*/    // ignored
+FieldName	FieldName/013.groovy		3	finalRegex=/X.*/     // ignored,privateStaticFinalRegex=/[a-z][a-zA-Z0-9]*/,staticFinalRegex=/C.*/ //ignored,staticRegex=/Z.*/    // ignored
+FieldName	FieldName/014.groovy		3	finalRegex=/X.*/,staticFinalRegex=null,staticRegex=/C.*/       // ignored
+FieldName	FieldName/015.groovy		-	finalRegex=null,staticFinalRegex=null,staticRegex=/C.*/
+FieldName	FieldName/016.groovy		-	finalRegex=null,regex=/C.*/,staticFinalRegex=null,staticRegex=null
+FieldName	FieldName/017.groovy		-	
+FieldName	FieldName/018.groovy		-	ignoreFieldNames=Count
+FieldName	FieldName/019.groovy		3	ignoreFieldNames=Other
+FieldName	FieldName/020.groovy		4	ignoreFieldNames=OTHER?name,_*,GOOD_NAME
+FieldName	FieldName/021.groovy		-	
+FieldName	FieldName/022.groovy		-	
+FieldName	FieldName/023.groovy		-	
+FieldTypeRequired	FieldTypeRequired/000.groovy		-	
+FieldTypeRequired	FieldTypeRequired/001.groovy		3,4,6,7,9	
+FieldTypeRequired	FieldTypeRequired/002.groovy		3,4,5	ignoreFieldNames=other
+FieldTypeRequired	FieldTypeRequired/003.groovy		4	ignoreFieldNames=other, def*Name, NAME, abc
+FileCreateTempFile	FileCreateTempFile/000.groovy		4,7	
+FileCreateTempFile	FileCreateTempFile/001.groovy		4,7	
+FileCreateTempFile	FileCreateTempFile/002.groovy		2,4	
+FileCreateTempFile	FileCreateTempFile/003.groovy		-	
+FileEndsWithoutNewline	FileEndsWithoutNewline/000.groovy		-	
+FileEndsWithoutNewline	FileEndsWithoutNewline/001.groovy		3	
+FileEndsWithoutNewline	FileEndsWithoutNewline/002.groovy		-	
+FinalClassWithProtectedMember	FinalClassWithProtectedMember/000.groovy		-	
+FinalClassWithProtectedMember	FinalClassWithProtectedMember/001.groovy		3	
+FinalClassWithProtectedMember	FinalClassWithProtectedMember/002.groovy		3	
+FinalClassWithProtectedMember	FinalClassWithProtectedMember/003.groovy		3	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/000.groovy		-	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/001.groovy		-	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/002.groovy		-	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/003.groovy		-	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/004.groovy		-	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/005.groovy		3	
+ForLoopShouldBeWhileLoop	ForLoopShouldBeWhileLoop/006.groovy		-	
+ForStatementBraces	ForStatementBraces/000.groovy		4,6	
+ForStatementBraces	ForStatementBraces/001.groovy		-	
+ForStatementBraces	ForStatementBraces/002.groovy		-	
+ForbiddenCallInCpsMethod	ForbiddenCallInCpsMethod/000.groovy		-	
+ForbiddenCallInCpsMethod	ForbiddenCallInCpsMethod/001.groovy		-	
+ForbiddenCallInCpsMethod	ForbiddenCallInCpsMethod/002.groovy		4,6,8,9	
+GStringAsMapKey	GStringAsMapKey/000.groovy		-	
+GStringAsMapKey	GStringAsMapKey/001.groovy		2	
+GStringAsMapKey	GStringAsMapKey/002.groovy		3,4	
+GStringAsMapKey	GStringAsMapKey/003.groovy		3	
+GStringExpressionWithinString	GStringExpressionWithinString/000.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/001.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/002.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/003.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/004.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/005.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/006.groovy		-	
+GStringExpressionWithinString	GStringExpressionWithinString/007.groovy		2,3	
+GStringExpressionWithinString	GStringExpressionWithinString/008.groovy		5	
+GStringExpressionWithinString	GStringExpressionWithinString/009.groovy		-	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/000.groovy		-	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/001.groovy		-	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/002.groovy		12	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/003.groovy		12	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/004.groovy		5	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/005.groovy		5	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/006.groovy		4	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/007.groovy		4	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/008.groovy		4,8	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/009.groovy		6	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/010.groovy		6	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/011.groovy		-	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/012.groovy		-	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/013.groovy		4	
+GetterMethodCouldBeProperty	GetterMethodCouldBeProperty/014.groovy		8	ignoreMethodsWithOverrideAnnotation=true
+GrailsDomainGormMethods	GrailsDomainGormMethods/000.groovy		-	
+GrailsDomainGormMethods	GrailsDomainGormMethods/001.groovy		16,24,26	
+GrailsDomainGormMethods	GrailsDomainGormMethods/002.groovy		15	gormStaticMethodsNames=foo,bar,foobar
+GrailsDomainHasEquals	GrailsDomainHasEquals/000.groovy		-	
+GrailsDomainHasEquals	GrailsDomainHasEquals/001.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	2	
+GrailsDomainHasEquals	GrailsDomainHasEquals/002.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	-	
+GrailsDomainHasEquals	GrailsDomainHasEquals/003.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	-	
+GrailsDomainHasEquals	GrailsDomainHasEquals/004.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	-	
+GrailsDomainHasToString	GrailsDomainHasToString/000.groovy		-	
+GrailsDomainHasToString	GrailsDomainHasToString/001.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	2	
+GrailsDomainHasToString	GrailsDomainHasToString/002.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	-	
+GrailsDomainHasToString	GrailsDomainHasToString/003.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	-	
+GrailsDomainHasToString	GrailsDomainHasToString/004.groovy	project/MyProject/grails-app/domain/com/xxx/Person.groovy	-	
+GrailsDomainReservedSqlKeywordName	GrailsDomainReservedSqlKeywordName/000.groovy		-	
+GrailsDomainReservedSqlKeywordName	GrailsDomainReservedSqlKeywordName/001.groovy		-	
+GrailsDomainReservedSqlKeywordName	GrailsDomainReservedSqlKeywordName/002.groovy		-	
+GrailsDomainReservedSqlKeywordName	GrailsDomainReservedSqlKeywordName/003.groovy		-	
+GrailsDomainReservedSqlKeywordName	GrailsDomainReservedSqlKeywordName/004.groovy		-	
+GrailsDomainReservedSqlKeywordName	GrailsDomainReservedSqlKeywordName/005.groovy	project/MyProject/grails-app/service/Order.groovy	-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/000.groovy		-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/001.groovy		-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/002.groovy		-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/003.groovy		3,4	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/004.groovy		4	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/005.groovy		-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/006.groovy		3	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/007.groovy		3,4	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/008.groovy		-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/009.groovy		-	
+GrailsDomainStringPropertyMaxSize	GrailsDomainStringPropertyMaxSize/010.groovy		11	
+GrailsDomainWithServiceReference	GrailsDomainWithServiceReference/000.groovy		-	
+GrailsDomainWithServiceReference	GrailsDomainWithServiceReference/001.groovy		5	
+GrailsDomainWithServiceReference	GrailsDomainWithServiceReference/002.groovy		3,4	
+GrailsDomainWithServiceReference	GrailsDomainWithServiceReference/003.groovy	project/MyProject/grails-app/service/BookService.groovy	-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/000.groovy		-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/001.groovy		-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/002.groovy		-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/003.groovy		8,9	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/004.groovy		-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/005.groovy		7	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/006.groovy		7	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/007.groovy		-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/008.groovy		-	
+GrailsDuplicateConstraint	GrailsDuplicateConstraint/009.groovy	MyProject/other/Person.groovy	-	
+GrailsDuplicateMapping	GrailsDuplicateMapping/000.groovy		-	
+GrailsDuplicateMapping	GrailsDuplicateMapping/001.groovy		-	
+GrailsDuplicateMapping	GrailsDuplicateMapping/002.groovy		-	
+GrailsDuplicateMapping	GrailsDuplicateMapping/003.groovy		9,10	
+GrailsDuplicateMapping	GrailsDuplicateMapping/004.groovy		10	
+GrailsDuplicateMapping	GrailsDuplicateMapping/005.groovy		-	
+GrailsDuplicateMapping	GrailsDuplicateMapping/006.groovy		-	
+GrailsDuplicateMapping	GrailsDuplicateMapping/007.groovy	MyProject/other/Person.groovy	-	
+GrailsMassAssignment	GrailsMassAssignment/000.groovy		-	
+GrailsMassAssignment	GrailsMassAssignment/001.groovy		-	
+GrailsMassAssignment	GrailsMassAssignment/002.groovy		7	
+GrailsMassAssignment	GrailsMassAssignment/003.groovy		8	
+GrailsMassAssignment	GrailsMassAssignment/004.groovy		9	
+GrailsMassAssignment	GrailsMassAssignment/005.groovy		7,9	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/000.groovy		7	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/001.groovy		3,5	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/002.groovy		-	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/003.groovy		-	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/004.groovy		-	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/005.groovy		-	
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/006.groovy		-	ignoreMethodNames=myMethod
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/007.groovy		3	ignoreMethodNames=otherMethod
+GrailsPublicControllerMethod	GrailsPublicControllerMethod/008.groovy		5	ignoreMethodNames=is*,doO??erSt*ff,other
+GrailsServletContextReference	GrailsServletContextReference/000.groovy		5	
+GrailsServletContextReference	GrailsServletContextReference/001.groovy		4	
+GrailsServletContextReference	GrailsServletContextReference/002.groovy		4	
+GrailsServletContextReference	GrailsServletContextReference/003.groovy		3,6	
+GrailsServletContextReference	GrailsServletContextReference/004.groovy		3	
+GrailsServletContextReference	GrailsServletContextReference/005.groovy		-	
+GrailsStatelessService	GrailsStatelessService/000.groovy		3,4	
+GrailsStatelessService	GrailsStatelessService/001.groovy		-	
+GrailsStatelessService	GrailsStatelessService/002.groovy		-	
+GrailsStatelessService	GrailsStatelessService/003.groovy		3,4	
+GrailsStatelessService	GrailsStatelessService/004.groovy		3	
+GrailsStatelessService	GrailsStatelessService/005.groovy		-	
+GrailsStatelessService	GrailsStatelessService/006.groovy		3,4	
+GrailsStatelessService	GrailsStatelessService/007.groovy		-	
+GrailsStatelessService	GrailsStatelessService/008.groovy		3	ignoreFieldNames=other
+GrailsStatelessService	GrailsStatelessService/009.groovy		-	ignoreFieldNames=other,depositAmount
+GrailsStatelessService	GrailsStatelessService/010.groovy		5	ignoreFieldNames=oth*,deposit??ount
+GrailsStatelessService	GrailsStatelessService/011.groovy		4	ignoreFieldTypes=BigDecimal
+GrailsStatelessService	GrailsStatelessService/012.groovy		4,6	ignoreFieldTypes=*Decimal,java.lang.Object,l?n?
+GrailsStatelessService	GrailsStatelessService/013.groovy		-	ignoreFieldNames=oth*,XXX,ignoreFieldTypes=*Decimal,YYY,int,l?n?
+GrailsStatelessService	GrailsStatelessService/014.groovy		-	
+GrailsStatelessService	GrailsStatelessService/015.groovy		-	
+GrailsStatelessService	GrailsStatelessService/016.groovy		-	
+GrailsStatelessService	GrailsStatelessService/017.groovy		-	
+GroovyLangImmutable	GroovyLangImmutable/000.groovy		-	
+GroovyLangImmutable	GroovyLangImmutable/001.groovy		-	
+GroovyLangImmutable	GroovyLangImmutable/002.groovy		-	
+GroovyLangImmutable	GroovyLangImmutable/003.groovy		-	
+GroovyLangImmutable	GroovyLangImmutable/004.groovy		2	
+GroovyLangImmutable	GroovyLangImmutable/005.groovy		2	
+GroovyLangImmutable	GroovyLangImmutable/006.groovy		3	
+GroovyLangImmutable	GroovyLangImmutable/007.groovy		-	
+GroovyLangImmutable	GroovyLangImmutable/008.groovy		-	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/000.groovy		-	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/001.groovy		2	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/002.groovy		2	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/003.groovy		2	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/004.groovy		2	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/005.groovy		2	
+HardCodedWindowsFileSeparator	HardCodedWindowsFileSeparator/006.groovy		2	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/000.groovy		-	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/001.groovy		2	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/002.groovy		2	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/003.groovy		2	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/004.groovy		2	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/005.groovy		2	
+HardCodedWindowsRootDirectory	HardCodedWindowsRootDirectory/006.groovy		2	
+IfStatementBraces	IfStatementBraces/000.groovy		4,6	
+IfStatementBraces	IfStatementBraces/001.groovy		-	
+IfStatementBraces	IfStatementBraces/002.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/000.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/001.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/002.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/003.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/004.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/005.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/006.groovy		-	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/007.groovy		2,3,4	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/008.groovy		2	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/009.groovy		5	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/010.groovy		3,9	
+IfStatementCouldBeTernary	IfStatementCouldBeTernary/011.groovy		-	checkLastStatementImplicitElse=false
+IllegalClassMember	IllegalClassMember/000.groovy		-	applyToClassNames=null       // overwrite initialization
+IllegalClassMember	IllegalClassMember/001.groovy		4,6	illegalFieldModifiers=public static, protected
+IllegalClassMember	IllegalClassMember/002.groovy		3,4	allowedFieldModifiers=public final, private, protected static
+IllegalClassMember	IllegalClassMember/003.groovy		4	illegalPropertyModifiers=final
+IllegalClassMember	IllegalClassMember/004.groovy		3,4	allowedPropertyModifiers=static
+IllegalClassMember	IllegalClassMember/005.groovy		4,6	illegalMethodModifiers=public static, protected
+IllegalClassMember	IllegalClassMember/006.groovy		3,4	allowedMethodModifiers=public final, private, protected static
+IllegalClassMember	IllegalClassMember/007.groovy		-	ignoreMethodNames=method1,illegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/008.groovy		3	ignoreMethodNames=method2,illegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/009.groovy		4	allowedMethodModifiers=protected,ignoreMethodNames=meth?d?,x*, badM*
+IllegalClassMember	IllegalClassMember/010.groovy		-	ignoreMethodsWithAnnotationNames=Override,illegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/011.groovy		4	ignoreMethodsWithAnnotationNames=Test,illegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/012.groovy		5	allowedMethodModifiers=protected,ignoreMethodsWithAnnotationNames=Over?ide,Other,Supp*Warnings
+IllegalPackageReference	IllegalPackageReference/000.groovy		-	
+IllegalPackageReference	IllegalPackageReference/001.groovy		3	packageNames=java.math
+IllegalPackageReference	IllegalPackageReference/002.groovy		2,3,4	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/003.groovy		3,4	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/004.groovy		-	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/005.groovy		3,4,5	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/006.groovy		2,3,4	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/007.groovy		2,3	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/008.groovy		2	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/009.groovy		3	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/010.groovy		2,3	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/011.groovy		2	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/012.groovy		2,3,4	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/013.groovy		2,3	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/014.groovy		2,4	packageNames=org.bad, org.evil
+IllegalPackageReference	IllegalPackageReference/015.groovy		3	packageNames=org.bad
+IllegalPackageReference	IllegalPackageReference/016.groovy		4	packageNames=com.other,com.example.service
+IllegalPackageReference	IllegalPackageReference/017.groovy		2,4	packageNames=com.example,com.example,org.bad,com.other.ignore
+IllegalPackageReference	IllegalPackageReference/018.groovy		2,3,5	packageNames=com.ex?mple*,org.*,com.other.*
+IllegalPackageReference	IllegalPackageReference/019.groovy		2	packageNames=org.bad
+IllegalRegex	IllegalRegex/000.groovy		-	regex=null
+IllegalRegex	IllegalRegex/001.groovy		2	
+IllegalRegex	IllegalRegex/002.groovy		2,5	
+IllegalRegex	IllegalRegex/003.groovy		-	
+IllegalString	IllegalString/000.groovy		-	string=null
+IllegalString	IllegalString/001.groovy		-	
+IllegalString	IllegalString/002.groovy		2	
+IllegalString	IllegalString/003.groovy		4	
+IllegalSubclass	IllegalSubclass/000.groovy		-	
+IllegalSubclass	IllegalSubclass/001.groovy		-	superclassNames=OtherClass,ClassAbc
+IllegalSubclass	IllegalSubclass/002.groovy		2,3,4	superclassNames=MyClass,Object, Exception, Other
+IllegalSubclass	IllegalSubclass/003.groovy		2,3,4	superclassNames=*MyClass,java.lang.Object, java.*.Exception, Other
+ImplementationAsType	ImplementationAsType/000.groovy		-	
+ImplementationAsType	ImplementationAsType/001.groovy		-	
+ImplementationAsType	ImplementationAsType/002.groovy		-	
+ImplementationAsType	ImplementationAsType/003.groovy		1	
+ImplementationAsType	ImplementationAsType/004.groovy		3	
+ImplementationAsType	ImplementationAsType/005.groovy		1	
+ImplementationAsType	ImplementationAsType/006.groovy		1	
+ImplementationAsType	ImplementationAsType/007.groovy		3	
+ImplementationAsType	ImplementationAsType/008.groovy		3	
+ImplementationAsType	ImplementationAsType/009.groovy		3	
+ImplicitClosureParameter	ImplicitClosureParameter/000.groovy		-	
+ImplicitClosureParameter	ImplicitClosureParameter/001.groovy		3	
+ImplicitClosureParameter	ImplicitClosureParameter/002.groovy		3,5	
+ImplicitClosureParameter	ImplicitClosureParameter/003.groovy		4	
+ImplicitClosureParameter	ImplicitClosureParameter/004.groovy		2	
+ImplicitClosureParameter	ImplicitClosureParameter/005.groovy		-	allowUsingItAsParameterName=true
+ImplicitReturnStatement	ImplicitReturnStatement/000.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/001.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/002.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/003.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/004.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/005.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/006.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/007.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/008.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/009.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/010.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/011.groovy		-	
+ImplicitReturnStatement	ImplicitReturnStatement/012.groovy		4,8,10,21	
+ImplicitReturnStatement	ImplicitReturnStatement/013.groovy		-	
+ImportFromSamePackage	ImportFromSamePackage/000.groovy		3,5	
+ImportFromSamePackage	ImportFromSamePackage/001.groovy		3	
+ImportFromSamePackage	ImportFromSamePackage/002.groovy		-	
+ImportFromSamePackage	ImportFromSamePackage/003.groovy		-	
+ImportFromSamePackage	ImportFromSamePackage/004.groovy		-	
+ImportFromSunPackages	ImportFromSunPackages/000.groovy		-	
+ImportFromSunPackages	ImportFromSunPackages/001.groovy		2,3	
+ImportFromSunPackages	ImportFromSunPackages/002.groovy		2	
+InconsistentPropertyLocking	InconsistentPropertyLocking/000.groovy		-	
+InconsistentPropertyLocking	InconsistentPropertyLocking/001.groovy		9	
+InconsistentPropertyLocking	InconsistentPropertyLocking/002.groovy		6	
+InconsistentPropertyLocking	InconsistentPropertyLocking/003.groovy		6	
+InconsistentPropertyLocking	InconsistentPropertyLocking/004.groovy		10	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/000.groovy		-	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/001.groovy		9	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/002.groovy		6	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/003.groovy		6	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/004.groovy		10	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/005.groovy		6	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/006.groovy		6	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/007.groovy		6	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/008.groovy		8	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/009.groovy		-	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/010.groovy		-	
+InconsistentPropertySynchronization	InconsistentPropertySynchronization/011.groovy		-	
+Indentation	Indentation/000.groovy		-	
+Indentation	Indentation/001.groovy		2,3,4	
+Indentation	Indentation/002.groovy		-	
+Indentation	Indentation/003.groovy		3	
+Indentation	Indentation/004.groovy		-	
+Indentation	Indentation/005.groovy		-	
+Indentation	Indentation/006.groovy		6,16,22	
+Indentation	Indentation/007.groovy		3,4,6,7,9,12	
+Indentation	Indentation/008.groovy		-	
+Indentation	Indentation/009.groovy		-	
+Indentation	Indentation/010.groovy		-	spacesPerIndentLevel=2
+Indentation	Indentation/011.groovy		3,4	spacesPerIndentLevel=2
+Indentation	Indentation/012.groovy		-	
+Indentation	Indentation/013.groovy		3,5	
+Indentation	Indentation/014.groovy		-	
+Indentation	Indentation/015.groovy		-	
+Indentation	Indentation/016.groovy		3,4,5,6	
+Indentation	Indentation/017.groovy		4	
+Indentation	Indentation/018.groovy		-	
+Indentation	Indentation/019.groovy		-	
+Indentation	Indentation/020.groovy		-	
+Indentation	Indentation/021.groovy		4,5,6,12	
+Indentation	Indentation/022.groovy		-	
+Indentation	Indentation/023.groovy		-	
+Indentation	Indentation/024.groovy		-	
+Indentation	Indentation/025.groovy		12,16,17,21	
+Indentation	Indentation/026.groovy		-	
+Indentation	Indentation/027.groovy		-	
+Indentation	Indentation/028.groovy		-	
+Indentation	Indentation/029.groovy		-	
+Indentation	Indentation/030.groovy		9,17,23	
+Indentation	Indentation/031.groovy		13	
+Indentation	Indentation/032.groovy		-	
+Indentation	Indentation/033.groovy		-	
+Indentation	Indentation/034.groovy		-	
+Indentation	Indentation/035.groovy		-	
+Indentation	Indentation/036.groovy		-	
+Indentation	Indentation/037.groovy		5,19	
+Indentation	Indentation/038.groovy		-	
+Indentation	Indentation/039.groovy		-	
+Indentation	Indentation/040.groovy		-	indentUnderLabel=true
+Indentation	Indentation/041.groovy		8,9	indentUnderLabel=true
+Indentation	Indentation/042.groovy		-	
+Indentation	Indentation/043.groovy		-	
+Indentation	Indentation/044.groovy		-	
+Indentation	Indentation/045.groovy		-	
+Indentation	Indentation/046.groovy		-	
+Indentation	Indentation/047.groovy		-	
+Indentation	Indentation/048.groovy		-	
+Indentation	Indentation/049.groovy		-	
+Indentation	Indentation/050.groovy		4,8,16,20,23,26	
+Indentation	Indentation/051.groovy		-	
+Indentation	Indentation/052.groovy		-	spacesPerIndentLevel=2
+Indentation	Indentation/053.groovy		-	
+Indentation	Indentation/054.groovy		-	
+Indentation	Indentation/055.groovy		-	
+InsecureRandom	InsecureRandom/000.groovy		-	
+InsecureRandom	InsecureRandom/001.groovy		2,3	
+InsecureRandom	InsecureRandom/002.groovy		2,3	
+Instanceof	Instanceof/000.groovy		-	
+Instanceof	Instanceof/001.groovy		3	
+Instanceof	Instanceof/002.groovy		-	
+Instanceof	Instanceof/003.groovy		-	ignoreTypeNames=My*Class
+IntegerGetInteger	IntegerGetInteger/000.groovy		-	
+IntegerGetInteger	IntegerGetInteger/001.groovy		2,3	
+InterfaceName	InterfaceName/000.groovy		-	
+InterfaceName	InterfaceName/001.groovy		-	regex=/[A-Z].*/
+InterfaceName	InterfaceName/002.groovy		1	regex=/z.*/
+InterfaceName	InterfaceName/003.groovy		-	regex=/z.*/
+InterfaceName	InterfaceName/004.groovy		-	regex=/[A-Z].*/
+InterfaceName	InterfaceName/005.groovy		-	regex=/[A-Z].*/
+InterfaceName	InterfaceName/006.groovy		-	regex=/[A-Z].*/
+InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/000.groovy		-	
+InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/001.groovy		-	
+InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/002.groovy		2	
+InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/003.groovy		3	
+InvertedCondition	InvertedCondition/000.groovy		-	
+InvertedCondition	InvertedCondition/001.groovy		4	
+InvertedCondition	InvertedCondition/002.groovy		4,5	
+InvertedIfElse	InvertedIfElse/000.groovy		-	
+InvertedIfElse	InvertedIfElse/001.groovy		-	
+InvertedIfElse	InvertedIfElse/002.groovy		2	
+InvertedIfElse	InvertedIfElse/003.groovy		6	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/000.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/001.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/002.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/003.groovy		4,5,6,7	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/004.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/005.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/006.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/007.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/008.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/009.groovy		4,5,6,7	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/010.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/011.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/012.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/013.groovy		4,5,6,7	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/014.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/015.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/016.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/017.groovy		4	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/018.groovy		-	
+JUnitAssertAlwaysFails	JUnitAssertAlwaysFails/019.groovy	src/MyController.groovy	-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/000.groovy		-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/001.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/002.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/003.groovy		4,5,6,7	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/004.groovy		-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/005.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/006.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/007.groovy		4,5,6,7	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/008.groovy		-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/009.groovy		-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/010.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/011.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/012.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/013.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/014.groovy		4	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/015.groovy		4,5,6,7	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/016.groovy		-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/017.groovy		-	
+JUnitAssertAlwaysSucceeds	JUnitAssertAlwaysSucceeds/018.groovy	src/MyController.groovy	-	
+JUnitAssertEqualsConstantActualValue	JUnitAssertEqualsConstantActualValue/000.groovy		-	
+JUnitAssertEqualsConstantActualValue	JUnitAssertEqualsConstantActualValue/001.groovy	/src/main/ProductionCode.groovy	-	
+JUnitAssertEqualsConstantActualValue	JUnitAssertEqualsConstantActualValue/002.groovy		4	
+JUnitAssertEqualsConstantActualValue	JUnitAssertEqualsConstantActualValue/003.groovy		4	
+JUnitAssertEqualsConstantActualValue	JUnitAssertEqualsConstantActualValue/004.groovy		4	
+JUnitAssertEqualsConstantActualValue	JUnitAssertEqualsConstantActualValue/005.groovy		12,13,14,15	
+JUnitFailWithoutMessage	JUnitFailWithoutMessage/000.groovy		-	
+JUnitFailWithoutMessage	JUnitFailWithoutMessage/001.groovy		4,5	
+JUnitLostTest	JUnitLostTest/000.groovy		-	
+JUnitLostTest	JUnitLostTest/001.groovy		-	
+JUnitLostTest	JUnitLostTest/002.groovy		-	
+JUnitLostTest	JUnitLostTest/003.groovy		4	
+JUnitLostTest	JUnitLostTest/004.groovy		4	
+JUnitLostTest	JUnitLostTest/005.groovy		4	
+JUnitLostTest	JUnitLostTest/006.groovy		4	
+JUnitLostTest	JUnitLostTest/007.groovy	src/MyController.groovy	-	
+JUnitLostTest	JUnitLostTest/008.groovy		-	
+JUnitPublicField	JUnitPublicField/000.groovy		-	
+JUnitPublicField	JUnitPublicField/001.groovy	src/MyClass.groovy	-	
+JUnitPublicField	JUnitPublicField/002.groovy		-	
+JUnitPublicField	JUnitPublicField/003.groovy		-	
+JUnitPublicField	JUnitPublicField/004.groovy		4,5	
+JUnitPublicField	JUnitPublicField/005.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/000.groovy		3	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/001.groovy		3,7	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/002.groovy		3	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/003.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/004.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/005.groovy		5	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/006.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/007.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/008.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/009.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/010.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/011.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/012.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/013.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/014.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/015.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/016.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/017.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/018.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/019.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/020.groovy		-	
+JUnitPublicNonTestMethod	JUnitPublicNonTestMethod/021.groovy		-	ignoreMethodsWithAnnotations=Override,MyAnnotation
+JUnitPublicProperty	JUnitPublicProperty/000.groovy		-	
+JUnitPublicProperty	JUnitPublicProperty/001.groovy		-	
+JUnitPublicProperty	JUnitPublicProperty/002.groovy		4,5,6	
+JUnitPublicProperty	JUnitPublicProperty/003.groovy		-	ignorePropertyNames=h*lper, name
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/000.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/001.groovy		3	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/002.groovy	src/MyTests.groovy	3	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/003.groovy		3	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/004.groovy		3	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/005.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/006.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/007.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/008.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/009.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/010.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/011.groovy		-	
+JUnitSetUpCallsSuper	JUnitSetUpCallsSuper/012.groovy		-	
+JUnitStyleAssertions	JUnitStyleAssertions/000.groovy		-	
+JUnitStyleAssertions	JUnitStyleAssertions/001.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/002.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/003.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/004.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/005.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/006.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/007.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/008.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/009.groovy		4,5	
+JUnitStyleAssertions	JUnitStyleAssertions/010.groovy		4,5	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/000.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/001.groovy		3	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/002.groovy	src/MyTests.groovy	3	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/003.groovy		3	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/004.groovy		3	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/005.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/006.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/007.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/008.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/009.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/010.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/011.groovy		-	
+JUnitTearDownCallsSuper	JUnitTearDownCallsSuper/012.groovy		-	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/000.groovy		-	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/001.groovy		-	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/002.groovy		-	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/003.groovy		3	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/004.groovy		3	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/005.groovy		4,12,19	
+JUnitTestMethodWithoutAssert	JUnitTestMethodWithoutAssert/006.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/000.groovy		3	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/001.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/002.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/003.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/004.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/005.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/006.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/007.groovy		-	
+JUnitUnnecessarySetUp	JUnitUnnecessarySetUp/008.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/000.groovy		3	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/001.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/002.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/003.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/004.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/005.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/006.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/007.groovy		-	
+JUnitUnnecessaryTearDown	JUnitUnnecessaryTearDown/008.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/000.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/001.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/002.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/003.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/004.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/005.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/006.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/007.groovy		-	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/008.groovy		4,6,7,8,9	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/009.groovy		3,4	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/010.groovy		3,4	
+JUnitUnnecessaryThrowsException	JUnitUnnecessaryThrowsException/011.groovy		-	
+JavaIoPackageAccess	JavaIoPackageAccess/000.groovy		-	
+JavaIoPackageAccess	JavaIoPackageAccess/001.groovy		2,3	
+JavaIoPackageAccess	JavaIoPackageAccess/002.groovy		2	
+JavaIoPackageAccess	JavaIoPackageAccess/003.groovy		2	
+JavaIoPackageAccess	JavaIoPackageAccess/004.groovy		2,3	
+JavaIoPackageAccess	JavaIoPackageAccess/005.groovy		2,3	
+JavadocConsecutiveEmptyLines	JavadocConsecutiveEmptyLines/000.groovy		-	
+JavadocConsecutiveEmptyLines	JavadocConsecutiveEmptyLines/001.groovy		-	
+JavadocConsecutiveEmptyLines	JavadocConsecutiveEmptyLines/002.groovy		7,13,21	
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/000.groovy		-	
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/001.groovy		-	
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/002.groovy		7,17	
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/003.groovy		7,17	
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/004.groovy		-	allowMultiline=true
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/000.groovy		-	
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/001.groovy		-	
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/002.groovy		7,17	
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/003.groovy		7,17	
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/004.groovy		-	allowMultiline=true
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyFirstLine	JavadocEmptyFirstLine/000.groovy		-	
+JavadocEmptyFirstLine	JavadocEmptyFirstLine/001.groovy		-	
+JavadocEmptyFirstLine	JavadocEmptyFirstLine/002.groovy		2,10	
+JavadocEmptyFirstLine	JavadocEmptyFirstLine/003.groovy		2,10	
+JavadocEmptyLastLine	JavadocEmptyLastLine/000.groovy		-	
+JavadocEmptyLastLine	JavadocEmptyLastLine/001.groovy		-	
+JavadocEmptyLastLine	JavadocEmptyLastLine/002.groovy		6,17	
+JavadocEmptyLastLine	JavadocEmptyLastLine/003.groovy		6,17	
+JavadocEmptyParamTag	JavadocEmptyParamTag/000.groovy		-	
+JavadocEmptyParamTag	JavadocEmptyParamTag/001.groovy		-	
+JavadocEmptyParamTag	JavadocEmptyParamTag/002.groovy		7,17	
+JavadocEmptyParamTag	JavadocEmptyParamTag/003.groovy		7,17	
+JavadocEmptyParamTag	JavadocEmptyParamTag/004.groovy		-	allowMultiline=true
+JavadocEmptyParamTag	JavadocEmptyParamTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/000.groovy		-	
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/001.groovy		-	
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/002.groovy		7,17	
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/003.groovy		7,17	
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/004.groovy		-	allowMultiline=true
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptySeeTag	JavadocEmptySeeTag/000.groovy		-	
+JavadocEmptySeeTag	JavadocEmptySeeTag/001.groovy		-	
+JavadocEmptySeeTag	JavadocEmptySeeTag/002.groovy		7,17	
+JavadocEmptySeeTag	JavadocEmptySeeTag/003.groovy		7,17	
+JavadocEmptySeeTag	JavadocEmptySeeTag/004.groovy		-	allowMultiline=true
+JavadocEmptySeeTag	JavadocEmptySeeTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptySinceTag	JavadocEmptySinceTag/000.groovy		-	
+JavadocEmptySinceTag	JavadocEmptySinceTag/001.groovy		-	
+JavadocEmptySinceTag	JavadocEmptySinceTag/002.groovy		7,17	
+JavadocEmptySinceTag	JavadocEmptySinceTag/003.groovy		7,17	
+JavadocEmptySinceTag	JavadocEmptySinceTag/004.groovy		-	allowMultiline=true
+JavadocEmptySinceTag	JavadocEmptySinceTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/000.groovy		-	
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/001.groovy		-	
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/002.groovy		7,17	
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/003.groovy		7,17	
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/004.groovy		-	allowMultiline=true
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/000.groovy		-	
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/001.groovy		-	
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/002.groovy		7,17	
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/003.groovy		7,17	
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/004.groovy		-	allowMultiline=true
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/005.groovy		4,10,15	allowMultiline=true
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/000.groovy		-	
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/001.groovy		-	
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/002.groovy		6,15	
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/003.groovy		6,15	
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/004.groovy		-	allowMultiline=true
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/005.groovy		4,10,15	allowMultiline=true
+JavadocMissingParamDescription	JavadocMissingParamDescription/000.groovy		-	
+JavadocMissingParamDescription	JavadocMissingParamDescription/001.groovy		-	
+JavadocMissingParamDescription	JavadocMissingParamDescription/002.groovy		6,15	
+JavadocMissingParamDescription	JavadocMissingParamDescription/003.groovy		6,15	
+JavadocMissingParamDescription	JavadocMissingParamDescription/004.groovy		-	allowMultiline=true
+JavadocMissingParamDescription	JavadocMissingParamDescription/005.groovy		4,10,15	allowMultiline=true
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/000.groovy		-	
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/001.groovy		-	
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/002.groovy		6,15	
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/003.groovy		6,15	
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/004.groovy		-	allowMultiline=true
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/005.groovy		4,10,15	allowMultiline=true
+JdbcConnectionReference	JdbcConnectionReference/000.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/001.groovy		-	
+JdbcConnectionReference	JdbcConnectionReference/002.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/003.groovy		-	
+JdbcConnectionReference	JdbcConnectionReference/004.groovy		3	
+JdbcConnectionReference	JdbcConnectionReference/005.groovy		2,3,4,7	
+JdbcConnectionReference	JdbcConnectionReference/006.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/007.groovy		-	
+JdbcConnectionReference	JdbcConnectionReference/008.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/009.groovy		3	
+JdbcConnectionReference	JdbcConnectionReference/010.groovy		2,3	
+JdbcConnectionReference	JdbcConnectionReference/011.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/012.groovy		3	
+JdbcConnectionReference	JdbcConnectionReference/013.groovy		2,3	
+JdbcConnectionReference	JdbcConnectionReference/014.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/015.groovy		2,3	
+JdbcConnectionReference	JdbcConnectionReference/016.groovy		2	
+JdbcConnectionReference	JdbcConnectionReference/017.groovy		-	
+JdbcResultSetReference	JdbcResultSetReference/000.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/001.groovy		-	
+JdbcResultSetReference	JdbcResultSetReference/002.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/003.groovy		-	
+JdbcResultSetReference	JdbcResultSetReference/004.groovy		3	
+JdbcResultSetReference	JdbcResultSetReference/005.groovy		2,3,4,7	
+JdbcResultSetReference	JdbcResultSetReference/006.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/007.groovy		-	
+JdbcResultSetReference	JdbcResultSetReference/008.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/009.groovy		3	
+JdbcResultSetReference	JdbcResultSetReference/010.groovy		2,3	
+JdbcResultSetReference	JdbcResultSetReference/011.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/012.groovy		3	
+JdbcResultSetReference	JdbcResultSetReference/013.groovy		2,3	
+JdbcResultSetReference	JdbcResultSetReference/014.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/015.groovy		2,3	
+JdbcResultSetReference	JdbcResultSetReference/016.groovy		2	
+JdbcResultSetReference	JdbcResultSetReference/017.groovy		-	
+LineLength	LineLength/000.groovy		-	
+LineLength	LineLength/001.groovy		3	
+LineLength	LineLength/002.groovy		-	
+LineLength	LineLength/003.groovy		2	ignoreImportStatements=false
+LineLength	LineLength/004.groovy		-	
+LineLength	LineLength/005.groovy		2	ignorePackageStatements=false
+LineLength	LineLength/006.groovy		3	
+LineLength	LineLength/007.groovy		-	ignoreLineRegex=/.*name.*/,length=30
+LineLength	LineLength/008.groovy		3	ignoreLineRegex=/.*xxx.*/,length=30
+LocaleSetDefault	LocaleSetDefault/000.groovy		-	
+LocaleSetDefault	LocaleSetDefault/001.groovy		2,3,4	
+LocaleSetDefault	LocaleSetDefault/002.groovy		2,3	
+LoggerForDifferentClass	LoggerForDifferentClass/000.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/001.groovy		3,4,5	
+LoggerForDifferentClass	LoggerForDifferentClass/002.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/003.groovy		-	allowDerivedClasses=true
+LoggerForDifferentClass	LoggerForDifferentClass/004.groovy		3	allowDerivedClasses=true
+LoggerForDifferentClass	LoggerForDifferentClass/005.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/006.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/007.groovy		3	
+LoggerForDifferentClass	LoggerForDifferentClass/008.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/009.groovy		3,4	
+LoggerForDifferentClass	LoggerForDifferentClass/010.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/011.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/012.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/013.groovy		3	
+LoggerForDifferentClass	LoggerForDifferentClass/014.groovy		5	
+LoggerForDifferentClass	LoggerForDifferentClass/015.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/016.groovy		3,4	
+LoggerForDifferentClass	LoggerForDifferentClass/017.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/018.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/019.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/020.groovy		-	
+LoggerForDifferentClass	LoggerForDifferentClass/021.groovy		4	
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/000.groovy		-	
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/001.groovy		3	
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/002.groovy		3	
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/003.groovy		3	
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/004.groovy		-	allowNonStaticLogger=true,allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/005.groovy		3	allowNonStaticLogger=true,allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/006.groovy		3	allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/007.groovy		-	allowNonStaticLogger=true,allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/008.groovy		-	allowNonStaticLogger=true,allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/009.groovy		3	allowProtectedLogger=true
+LoggingSwallowsStacktrace	LoggingSwallowsStacktrace/000.groovy		-	
+LoggingSwallowsStacktrace	LoggingSwallowsStacktrace/001.groovy		13,14	
+LoggingSwallowsStacktrace	LoggingSwallowsStacktrace/002.groovy		-	
+LongLiteralWithLowerCaseL	LongLiteralWithLowerCaseL/000.groovy		-	
+LongLiteralWithLowerCaseL	LongLiteralWithLowerCaseL/001.groovy		2	
+LongLiteralWithLowerCaseL	LongLiteralWithLowerCaseL/002.groovy		2	
+MethodCount	MethodCount/000.groovy		-	
+MethodCount	MethodCount/001.groovy		2	maxMethods=2
+MethodCount	MethodCount/002.groovy		-	maxMethods=2
+MethodName	MethodName/000.groovy		3	
+MethodName	MethodName/001.groovy		-	
+MethodName	MethodName/002.groovy		-	
+MethodName	MethodName/003.groovy		3	regex=/z.*/
+MethodName	MethodName/004.groovy		-	regex=/z.*/
+MethodName	MethodName/005.groovy		1	regex=/z.*/
+MethodName	MethodName/006.groovy		-	regex=/z.*/
+MethodName	MethodName/007.groovy		-	ignoreMethodNames=MyMethod
+MethodName	MethodName/008.groovy		3	ignoreMethodNames=OTHER?name,_*,GOOD_NAME
+MethodName	MethodName/009.groovy		-	
+MethodName	MethodName/010.groovy		-	
+MethodReturnTypeRequired	MethodReturnTypeRequired/000.groovy		-	
+MethodReturnTypeRequired	MethodReturnTypeRequired/001.groovy		3	
+MethodReturnTypeRequired	MethodReturnTypeRequired/002.groovy		3,6	
+MethodReturnTypeRequired	MethodReturnTypeRequired/003.groovy		-	ignoreMethodNames=beforeUpdate
+MethodReturnTypeRequired	MethodReturnTypeRequired/004.groovy		-	ignoreMethodNames=beforeUpdate, beforeInsert
+MethodSize	MethodSize/000.groovy		3	
+MethodSize	MethodSize/001.groovy		4	maxLines=2
+MethodSize	MethodSize/002.groovy		3	maxLines=2
+MethodSize	MethodSize/003.groovy		-	
+MethodSize	MethodSize/004.groovy		-	
+MethodSize	MethodSize/005.groovy		3	maxLines=3
+MethodSize	MethodSize/006.groovy		-	ignoreMethodNames=myMethod,maxLines=2
+MethodSize	MethodSize/007.groovy		4	ignoreMethodNames=otherMethod,maxLines=2
+MethodSize	MethodSize/008.groovy		4,9	ignoreMethodNames=init*ze,doO??erSt*ff,other,maxLines=1
+MisorderedStaticImports	MisorderedStaticImports/000.groovy		-	
+MisorderedStaticImports	MisorderedStaticImports/001.groovy		-	
+MisorderedStaticImports	MisorderedStaticImports/002.groovy		-	
+MisorderedStaticImports	MisorderedStaticImports/003.groovy		-	comesBefore=false
+MisorderedStaticImports	MisorderedStaticImports/004.groovy		3	
+MisorderedStaticImports	MisorderedStaticImports/005.groovy		3	comesBefore=false
+MisorderedStaticImports	MisorderedStaticImports/006.groovy		3,5	
+MisorderedStaticImports	MisorderedStaticImports/007.groovy		4	
+MissingBlankLineAfterImports	MissingBlankLineAfterImports/000.groovy		-	
+MissingBlankLineAfterImports	MissingBlankLineAfterImports/001.groovy		5	
+MissingBlankLineAfterImports	MissingBlankLineAfterImports/002.groovy		-	
+MissingBlankLineAfterImports	MissingBlankLineAfterImports/003.groovy		-	
+MissingBlankLineAfterImports	MissingBlankLineAfterImports/004.groovy		4	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/000.groovy		-	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/001.groovy		-	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/002.groovy		-	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/003.groovy		-	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/004.groovy		-	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/005.groovy		-	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/006.groovy		1	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/007.groovy		1	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/008.groovy		1	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/009.groovy		1	
+MissingBlankLineAfterPackage	MissingBlankLineAfterPackage/010.groovy		1	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/000.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/001.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/002.groovy		5,7	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/003.groovy		5	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/004.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/005.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/006.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/007.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/008.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/009.groovy		-	
+MissingBlankLineBeforeAnnotatedField	MissingBlankLineBeforeAnnotatedField/010.groovy		-	
+MissingNewInThrowStatement	MissingNewInThrowStatement/000.groovy		-	
+MissingNewInThrowStatement	MissingNewInThrowStatement/001.groovy		2	
+MissingNewInThrowStatement	MissingNewInThrowStatement/002.groovy		2	
+MissingNewInThrowStatement	MissingNewInThrowStatement/003.groovy		2	
+MissingNewInThrowStatement	MissingNewInThrowStatement/004.groovy		2	
+MissingOverrideAnnotation	MissingOverrideAnnotation/000.groovy		-	
+MissingOverrideAnnotation	MissingOverrideAnnotation/001.groovy		8	
+MissingOverrideAnnotation	MissingOverrideAnnotation/002.groovy		-	
+MissingOverrideAnnotation	MissingOverrideAnnotation/003.groovy		7	
+MissingOverrideAnnotation	MissingOverrideAnnotation/004.groovy		-	
+MissingOverrideAnnotation	MissingOverrideAnnotation/005.groovy		14,17,20	
+MissingOverrideAnnotation	MissingOverrideAnnotation/006.groovy		7,11	
+MissingOverrideAnnotation	MissingOverrideAnnotation/007.groovy		-	
+MissingOverrideAnnotation	MissingOverrideAnnotation/008.groovy		7	
+MissingOverrideAnnotation	MissingOverrideAnnotation/009.groovy		-	
+MissingOverrideAnnotation	MissingOverrideAnnotation/010.groovy		11	
+MissingOverrideAnnotation	MissingOverrideAnnotation/011.groovy		-	
+MultipleLoggers	MultipleLoggers/000.groovy		-	
+MultipleLoggers	MultipleLoggers/001.groovy		4	
+MultipleLoggers	MultipleLoggers/002.groovy		5	
+MultipleUnaryOperators	MultipleUnaryOperators/000.groovy		-	
+MultipleUnaryOperators	MultipleUnaryOperators/001.groovy		2,3,4,5,6,7	
+NestedBlockDepth	NestedBlockDepth/000.groovy		-	
+NestedBlockDepth	NestedBlockDepth/001.groovy		-	
+NestedBlockDepth	NestedBlockDepth/002.groovy		11	
+NestedBlockDepth	NestedBlockDepth/003.groovy		-	maxNestedBlockDepth=2
+NestedBlockDepth	NestedBlockDepth/004.groovy		5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/005.groovy		5,12	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/006.groovy		5,8	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/007.groovy		5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/008.groovy		3,5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/009.groovy		4,5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/010.groovy		4	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/011.groovy		5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/012.groovy		-	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/013.groovy		5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/014.groovy		5	maxNestedBlockDepth=1
+NestedBlockDepth	NestedBlockDepth/015.groovy		-	
+NestedBlockDepth	NestedBlockDepth/016.groovy		-	
+NestedBlockDepth	NestedBlockDepth/017.groovy		-	
+NestedBlockDepth	NestedBlockDepth/018.groovy		7	
+NestedForLoop	NestedForLoop/000.groovy		-	
+NestedSynchronization	NestedSynchronization/000.groovy		-	
+NestedSynchronization	NestedSynchronization/001.groovy		-	
+NestedSynchronization	NestedSynchronization/002.groovy		-	
+NestedSynchronization	NestedSynchronization/003.groovy		7	
+NestedSynchronization	NestedSynchronization/004.groovy		6	
+NestedSynchronization	NestedSynchronization/005.groovy		7	
+NestedSynchronization	NestedSynchronization/006.groovy		7,12	
+NestedSynchronization	NestedSynchronization/007.groovy		12	
+NestedSynchronization	NestedSynchronization/008.groovy		8	
+NoDef	NoDef/000.groovy		-	
+NoDef	NoDef/001.groovy		-	
+NoDef	NoDef/002.groovy		2	
+NoDef	NoDef/003.groovy		2	
+NoDef	NoDef/004.groovy		2,4	
+NoDef	NoDef/005.groovy		-	excludeRegex=/((setup|cleanup)(|Spec)|"[^"].*")/ //spock methods
+NoDef	NoDef/006.groovy		-	excludeRegex=/aaa|bbb|ccc/
+NoDef	NoDef/007.groovy		3	
+NoDef	NoDef/008.groovy		-	
+NoDef	NoDef/009.groovy		5	
+NoDef	NoDef/010.groovy		3,4	
+NoDef	NoDef/011.groovy		2	
+NoDef	NoDef/012.groovy		-	excludeRegex=/(update|condition|other|init)/
+NoDouble	NoDouble/000.groovy		4,5,7,9	
+NoDouble	NoDouble/001.groovy		4,5,7,9	
+NoFloat	NoFloat/000.groovy		4,5,7,9	
+NoFloat	NoFloat/001.groovy		4,5,7,9	
+NoJavaUtilDate	NoJavaUtilDate/000.groovy		-	
+NoJavaUtilDate	NoJavaUtilDate/001.groovy		-	
+NoJavaUtilDate	NoJavaUtilDate/002.groovy		2,3,4	
+NoJavaUtilDate	NoJavaUtilDate/003.groovy		5	
+NoJavaUtilDate	NoJavaUtilDate/004.groovy		2,3	
+NoJavaUtilDate	NoJavaUtilDate/005.groovy		-	
+NoJavaUtilDate	NoJavaUtilDate/006.groovy		-	
+NoScriptBindings	NoScriptBindings/000.groovy		-	
+NoScriptBindings	NoScriptBindings/001.groovy		2	
+NoScriptBindings	NoScriptBindings/002.groovy		3	
+NoScriptBindings	NoScriptBindings/003.groovy		-	
+NoScriptBindings	NoScriptBindings/004.groovy		3	
+NoScriptBindings	NoScriptBindings/005.groovy		-	
+NoScriptBindings	NoScriptBindings/006.groovy		-	
+NoTabCharacter	NoTabCharacter/000.groovy		-	
+NoTabCharacter	NoTabCharacter/001.groovy		3	
+NoWildcardImports	NoWildcardImports/000.groovy		-	
+NoWildcardImports	NoWildcardImports/001.groovy		2,3,5,6	
+NoWildcardImports	NoWildcardImports/002.groovy		3	ignoreImports=true
+NoWildcardImports	NoWildcardImports/003.groovy		-	ignoreStaticImports=true
+NoWildcardImports	NoWildcardImports/004.groovy		-	ignoreImports=true,ignoreStaticImports=true
+NonFinalPublicField	NonFinalPublicField/000.groovy		-	
+NonFinalPublicField	NonFinalPublicField/001.groovy		3	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/000.groovy		-	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/001.groovy		2	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/002.groovy		2	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/003.groovy		2	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/004.groovy		2	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/005.groovy		3	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/006.groovy		3	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/007.groovy		3	
+NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/008.groovy		3	
+ObjectFinalize	ObjectFinalize/000.groovy		4,7	
+ObjectFinalize	ObjectFinalize/001.groovy		4,7	
+ObjectFinalize	ObjectFinalize/002.groovy		2,4	
+ObjectFinalize	ObjectFinalize/003.groovy		-	
+ObjectOverrideMisspelledMethodName	ObjectOverrideMisspelledMethodName/000.groovy		-	
+ObjectOverrideMisspelledMethodName	ObjectOverrideMisspelledMethodName/001.groovy		2	
+ObjectOverrideMisspelledMethodName	ObjectOverrideMisspelledMethodName/002.groovy		2,3	
+ObjectOverrideMisspelledMethodName	ObjectOverrideMisspelledMethodName/003.groovy		2,4	
+ObjectOverrideMisspelledMethodName	ObjectOverrideMisspelledMethodName/004.groovy		2,4	
+OptionalCollectionReturnType	OptionalCollectionReturnType/000.groovy		-	
+OptionalCollectionReturnType	OptionalCollectionReturnType/001.groovy		-	
+OptionalCollectionReturnType	OptionalCollectionReturnType/002.groovy		-	
+OptionalCollectionReturnType	OptionalCollectionReturnType/003.groovy		3,4,5,6	
+OptionalCollectionReturnType	OptionalCollectionReturnType/004.groovy		3,4,5,6,7	
+OptionalField	OptionalField/000.groovy		-	
+OptionalField	OptionalField/001.groovy		-	
+OptionalField	OptionalField/002.groovy		3,5,6,7	
+OptionalMethodParameter	OptionalMethodParameter/000.groovy		-	
+OptionalMethodParameter	OptionalMethodParameter/001.groovy		-	
+OptionalMethodParameter	OptionalMethodParameter/002.groovy		3,5,6	
+OptionalMethodParameter	OptionalMethodParameter/003.groovy		3,5,6	
+PackageName	PackageName/000.groovy			
+PackageName	PackageName/001.groovy		-	
+PackageName	PackageName/002.groovy		-	
+PackageName	PackageName/003.groovy		-	
+PackageName	PackageName/004.groovy		-	
+PackageName	PackageName/005.groovy			regex=/z.*/
+PackageName	PackageName/006.groovy		-	regex=/z.*/
+PackageName	PackageName/007.groovy		-	
+PackageName	PackageName/008.groovy		2	packageNameRequired=true
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/000.groovy		-	groupId=
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/001.groovy		-	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/002.groovy	/some/absolute/path/to/project/org/organization/MyClass.groovy	-	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/003.groovy	org/organization/project/component/module/MyClass.groovy	-	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/004.groovy		-	
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/005.groovy		1	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/006.groovy		1	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/007.groovy		1	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/008.groovy		1	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/009.groovy		1	groupId=org.organization
+PackageNameMatchesFilePath	PackageNameMatchesFilePath/010.groovy		1	groupId=org
+ParameterAssignmentInFilterClosure	ParameterAssignmentInFilterClosure/000.groovy		-	
+ParameterAssignmentInFilterClosure	ParameterAssignmentInFilterClosure/001.groovy		4,5,6,7,8,9,10	
+ParameterCount	ParameterCount/000.groovy		-	
+ParameterCount	ParameterCount/001.groovy		-	maxParameters=3
+ParameterCount	ParameterCount/002.groovy		-	maxParameters=3
+ParameterName	ParameterName/000.groovy		3	
+ParameterName	ParameterName/001.groovy		-	
+ParameterName	ParameterName/002.groovy		3	regex=/z.*/
+ParameterName	ParameterName/003.groovy		-	regex=/_.*/
+ParameterName	ParameterName/004.groovy		3	
+ParameterName	ParameterName/005.groovy		-	
+ParameterName	ParameterName/006.groovy		3	
+ParameterName	ParameterName/007.groovy		1	
+ParameterName	ParameterName/008.groovy		3	
+ParameterName	ParameterName/009.groovy		3,4	
+ParameterName	ParameterName/010.groovy		-	ignoreParameterNames=deposit_amount
+ParameterName	ParameterName/011.groovy		3	ignoreParameterNames=OTHER?name,_*,GOOD
+ParameterName	ParameterName/012.groovy		-	
+ParameterOrReturnTypeNotSerializable	ParameterOrReturnTypeNotSerializable/000.groovy		-	
+ParameterOrReturnTypeNotSerializable	ParameterOrReturnTypeNotSerializable/001.groovy		-	
+ParameterOrReturnTypeNotSerializable	ParameterOrReturnTypeNotSerializable/002.groovy		3,4	
+ParameterOrReturnTypeNotSerializable	ParameterOrReturnTypeNotSerializable/003.groovy		4,5	
+ParameterReassignment	ParameterReassignment/000.groovy		-	
+ParameterReassignment	ParameterReassignment/001.groovy		-	
+ParameterReassignment	ParameterReassignment/002.groovy		5	
+ParameterReassignment	ParameterReassignment/003.groovy		3,4	
+ParameterReassignment	ParameterReassignment/004.groovy		3,6	
+ParameterReassignment	ParameterReassignment/005.groovy		3,6	
+ParameterReassignment	ParameterReassignment/006.groovy		5	
+ParameterReassignment	ParameterReassignment/007.groovy		5,6,8	
+ParameterReassignment	ParameterReassignment/008.groovy		-	
+PrintStackTrace	PrintStackTrace/000.groovy		4	
+PrintStackTrace	PrintStackTrace/001.groovy		6	
+PrintStackTrace	PrintStackTrace/002.groovy		-	
+PrintStackTrace	PrintStackTrace/003.groovy		4	
+PrintStackTrace	PrintStackTrace/004.groovy		-	
+PrintStackTrace	PrintStackTrace/005.groovy		-	
+PrintStackTrace	PrintStackTrace/006.groovy		-	
+Println	Println/000.groovy		2	
+Println	Println/001.groovy		5	
+Println	Println/002.groovy		2	
+Println	Println/003.groovy		2	
+Println	Println/004.groovy		2	
+Println	Println/005.groovy		2	
+Println	Println/006.groovy		2	
+Println	Println/007.groovy		2	
+Println	Println/008.groovy		6	
+Println	Println/009.groovy		-	
+Println	Println/010.groovy		-	
+Println	Println/011.groovy		-	
+Println	Println/012.groovy		-	
+Println	Println/013.groovy		-	
+Println	Println/014.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/000.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/001.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/002.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/003.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/004.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/005.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/006.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/007.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/008.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/009.groovy		3	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/010.groovy		3	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/011.groovy		3,4	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/012.groovy		3	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/013.groovy		3	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/014.groovy		3	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/015.groovy		3,4	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/016.groovy		3	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/017.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/018.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/019.groovy		3,4	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/020.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/021.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/022.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/023.groovy		11	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/024.groovy		-	ignoreFieldNames=count, xxx, ot*r
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/025.groovy		-	doNotApplyToClassNames=MyClass
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/026.groovy		-	
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/027.groovy		-	ignoreJpaEntities=true
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/028.groovy		-	ignoreJpaEntities=true
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/029.groovy		-	ignoreJpaEntities=true
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/030.groovy		-	ignoreJpaEntities=true
+PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/031.groovy		-	
+PropertyName	PropertyName/000.groovy		3	
+PropertyName	PropertyName/001.groovy		-	
+PropertyName	PropertyName/002.groovy		3	
+PropertyName	PropertyName/003.groovy		3	regex=/z.*/
+PropertyName	PropertyName/004.groovy		-	regex=/z.*/
+PropertyName	PropertyName/005.groovy		-	
+PropertyName	PropertyName/006.groovy		-	regex=/z.*/
+PropertyName	PropertyName/007.groovy		3	
+PropertyName	PropertyName/008.groovy		-	finalRegex=/z.*/
+PropertyName	PropertyName/009.groovy		-	staticRegex=/C.*/
+PropertyName	PropertyName/010.groovy		3	
+PropertyName	PropertyName/011.groovy		-	finalRegex=/X.*/     // ignored,staticFinalRegex=/C.*/,staticRegex=/Z.*/    // ignored
+PropertyName	PropertyName/012.groovy		3	staticRegex=/C.*/       // ignored
+PropertyName	PropertyName/013.groovy		-	staticFinalRegex=null,staticRegex=/C.*/
+PropertyName	PropertyName/014.groovy		-	ignorePropertyNames=Count
+PropertyName	PropertyName/015.groovy		3	ignorePropertyNames=Other
+PropertyName	PropertyName/016.groovy		4	ignorePropertyNames=OTHER?name,_*,GOOD_NAME
+PropertyName	PropertyName/017.groovy		-	
+PropertyName	PropertyName/018.groovy		-	
+PropertyName	PropertyName/019.groovy		-	
+PublicFinalizeMethod	PublicFinalizeMethod/000.groovy		-	
+PublicFinalizeMethod	PublicFinalizeMethod/001.groovy		3	
+PublicFinalizeMethod	PublicFinalizeMethod/002.groovy		3	
+PublicInstanceField	PublicInstanceField/000.groovy		-	
+PublicInstanceField	PublicInstanceField/001.groovy		3	
+PublicInstanceField	PublicInstanceField/002.groovy		3	
+PublicInstanceField	PublicInstanceField/003.groovy		-	
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/000.groovy		-	
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/001.groovy		7,8	
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/002.groovy		5,6	
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/003.groovy		-	
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/004.groovy		-	
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/005.groovy		-	ignoreMethodNames=get*
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/006.groovy		5,6	ignoreMethodNames=ignoredMethod
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/007.groovy		-	ignoreMethodNames=getSomething
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/008.groovy		7	ignoreMethodNames=ignoredMethod*
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/009.groovy		-	ignoreMethodNames=get*,setSomethingPrivate
+PublicMethodsBeforeNonPublicMethods	PublicMethodsBeforeNonPublicMethods/010.groovy		6,7,9,10	ignoreMethodNames=get*,setSomethingPrivate
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/000.groovy		-	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/001.groovy		3,4	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/002.groovy		3,4	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/003.groovy		3,4	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/004.groovy		3,6	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/005.groovy		3,4	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/006.groovy		3,4	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/007.groovy		3,4	
+RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/008.groovy		3,6	
+RemoveAllOnSelf	RemoveAllOnSelf/000.groovy		-	
+RemoveAllOnSelf	RemoveAllOnSelf/001.groovy		3	
+RemoveAllOnSelf	RemoveAllOnSelf/002.groovy		5	
+RequiredRegex	RequiredRegex/000.groovy		-	regex=null
+RequiredRegex	RequiredRegex/001.groovy		-	
+RequiredRegex	RequiredRegex/002.groovy			
+RequiredString	RequiredString/000.groovy		-	string=null
+RequiredString	RequiredString/001.groovy		-	
+RequiredString	RequiredString/002.groovy			
+ReturnFromFinallyBlock	ReturnFromFinallyBlock/000.groovy		15	
+ReturnFromFinallyBlock	ReturnFromFinallyBlock/001.groovy		10,15	
+ReturnFromFinallyBlock	ReturnFromFinallyBlock/002.groovy		-	
+ReturnNullFromCatchBlock	ReturnNullFromCatchBlock/000.groovy		-	
+ReturnNullFromCatchBlock	ReturnNullFromCatchBlock/001.groovy		6,9	
+ReturnNullFromCatchBlock	ReturnNullFromCatchBlock/002.groovy		5	
+ReturnNullFromCatchBlock	ReturnNullFromCatchBlock/003.groovy		6	
+ReturnNullFromCatchBlock	ReturnNullFromCatchBlock/004.groovy		-	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/000.groovy		-	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/001.groovy		3	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/002.groovy		4	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/003.groovy		3	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/004.groovy		3,6	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/005.groovy		4	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/006.groovy		4	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/007.groovy		3	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/008.groovy		4,8	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/009.groovy		6,9	
+ReturnsNullInsteadOfEmptyArray	ReturnsNullInsteadOfEmptyArray/010.groovy		8	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/000.groovy		-	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/001.groovy		3,6	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/002.groovy		3,8	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/003.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/004.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/005.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/006.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/007.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/008.groovy		4	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/009.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/010.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/011.groovy		-	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/012.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/013.groovy		4	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/014.groovy		4	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/015.groovy		3	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/016.groovy		4,8	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/017.groovy		6,9	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/018.groovy		8	
+ReturnsNullInsteadOfEmptyCollection	ReturnsNullInsteadOfEmptyCollection/019.groovy		-	
+SerialPersistentFields	SerialPersistentFields/000.groovy		-	
+SerialPersistentFields	SerialPersistentFields/001.groovy		3	
+SerialPersistentFields	SerialPersistentFields/002.groovy		4	
+SerialPersistentFields	SerialPersistentFields/003.groovy		4	
+SerialPersistentFields	SerialPersistentFields/004.groovy		4	
+SerialPersistentFields	SerialPersistentFields/005.groovy		4	
+SerialVersionUID	SerialVersionUID/000.groovy		-	
+SerialVersionUID	SerialVersionUID/001.groovy		3,6	
+SerialVersionUID	SerialVersionUID/002.groovy		3,6	
+SerialVersionUID	SerialVersionUID/003.groovy		3	
+SerialVersionUID	SerialVersionUID/004.groovy		3	
+SerializableClassMustDefineSerialVersionUID	SerializableClassMustDefineSerialVersionUID/000.groovy		-	
+SerializableClassMustDefineSerialVersionUID	SerializableClassMustDefineSerialVersionUID/001.groovy		-	
+SerializableClassMustDefineSerialVersionUID	SerializableClassMustDefineSerialVersionUID/002.groovy		-	
+SerializableClassMustDefineSerialVersionUID	SerializableClassMustDefineSerialVersionUID/003.groovy		-	
+SerializableClassMustDefineSerialVersionUID	SerializableClassMustDefineSerialVersionUID/004.groovy		-	
+SerializableClassMustDefineSerialVersionUID	SerializableClassMustDefineSerialVersionUID/005.groovy		2	
+SimpleDateFormatMissingLocale	SimpleDateFormatMissingLocale/000.groovy		-	
+SimpleDateFormatMissingLocale	SimpleDateFormatMissingLocale/001.groovy		2	
+SimpleDateFormatMissingLocale	SimpleDateFormatMissingLocale/002.groovy		2	
+SimpleDateFormatMissingLocale	SimpleDateFormatMissingLocale/003.groovy		3	
+SpaceAfterCatch	SpaceAfterCatch/000.groovy		-	
+SpaceAfterCatch	SpaceAfterCatch/001.groovy		2,3,4	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/000.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/001.groovy		2	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/002.groovy		2	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/003.groovy		2	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/004.groovy		2,4,5,6	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/005.groovy		3,4,6	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/006.groovy		2,4	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/007.groovy		3	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/008.groovy		2,4,5,8	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/009.groovy		2,4	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/010.groovy		2	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/011.groovy		3	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/012.groovy		2	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/013.groovy		2,3,4	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/014.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/015.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/016.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/017.groovy		2	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/018.groovy		-	checkClosureMapEntryValue=true   // ignored
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/019.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/020.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/021.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/022.groovy		-	
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/023.groovy		-	
+SpaceAfterComma	SpaceAfterComma/000.groovy		-	
+SpaceAfterComma	SpaceAfterComma/001.groovy		-	
+SpaceAfterComma	SpaceAfterComma/002.groovy		-	
+SpaceAfterComma	SpaceAfterComma/003.groovy		3	
+SpaceAfterComma	SpaceAfterComma/004.groovy		3	
+SpaceAfterComma	SpaceAfterComma/005.groovy		2	
+SpaceAfterComma	SpaceAfterComma/006.groovy		2,3	
+SpaceAfterComma	SpaceAfterComma/007.groovy		3	
+SpaceAfterComma	SpaceAfterComma/008.groovy		-	
+SpaceAfterComma	SpaceAfterComma/009.groovy		-	
+SpaceAfterComma	SpaceAfterComma/010.groovy		3	
+SpaceAfterComma	SpaceAfterComma/011.groovy		3	
+SpaceAfterComma	SpaceAfterComma/012.groovy		3	
+SpaceAfterComma	SpaceAfterComma/013.groovy		-	
+SpaceAfterComma	SpaceAfterComma/014.groovy		3	
+SpaceAfterComma	SpaceAfterComma/015.groovy		3	
+SpaceAfterComma	SpaceAfterComma/016.groovy		-	
+SpaceAfterComma	SpaceAfterComma/017.groovy		2	
+SpaceAfterComma	SpaceAfterComma/018.groovy		3	
+SpaceAfterComma	SpaceAfterComma/019.groovy		-	
+SpaceAfterComma	SpaceAfterComma/020.groovy		2	
+SpaceAfterComma	SpaceAfterComma/021.groovy		3	
+SpaceAfterComma	SpaceAfterComma/022.groovy		-	
+SpaceAfterComma	SpaceAfterComma/023.groovy		2	
+SpaceAfterCommentDelimiter	SpaceAfterCommentDelimiter/000.groovy		-	
+SpaceAfterCommentDelimiter	SpaceAfterCommentDelimiter/001.groovy		-	
+SpaceAfterCommentDelimiter	SpaceAfterCommentDelimiter/002.groovy		-	
+SpaceAfterCommentDelimiter	SpaceAfterCommentDelimiter/003.groovy		-	
+SpaceAfterCommentDelimiter	SpaceAfterCommentDelimiter/004.groovy		-	
+SpaceAfterCommentDelimiter	SpaceAfterCommentDelimiter/005.groovy		2,7,11,12,13,14,16,17	
+SpaceAfterFor	SpaceAfterFor/000.groovy		-	
+SpaceAfterFor	SpaceAfterFor/001.groovy		2,3,4	
+SpaceAfterFor	SpaceAfterFor/002.groovy		-	
+SpaceAfterIf	SpaceAfterIf/000.groovy		-	
+SpaceAfterIf	SpaceAfterIf/001.groovy		-	
+SpaceAfterIf	SpaceAfterIf/002.groovy		2,3,4	
+SpaceAfterIf	SpaceAfterIf/003.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/000.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/001.groovy		4	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/002.groovy		4	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/003.groovy		4	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/004.groovy		4	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/005.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/006.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/007.groovy		4,5	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/008.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/009.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/010.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/011.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/012.groovy		-	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/013.groovy		2	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/014.groovy		4	
+SpaceAfterMethodCallName	SpaceAfterMethodCallName/015.groovy		-	
+SpaceAfterMethodDeclarationName	SpaceAfterMethodDeclarationName/000.groovy		-	
+SpaceAfterMethodDeclarationName	SpaceAfterMethodDeclarationName/001.groovy		-	
+SpaceAfterMethodDeclarationName	SpaceAfterMethodDeclarationName/002.groovy		3	
+SpaceAfterMethodDeclarationName	SpaceAfterMethodDeclarationName/003.groovy		3	
+SpaceAfterMethodDeclarationName	SpaceAfterMethodDeclarationName/004.groovy		3,6	
+SpaceAfterMethodDeclarationName	SpaceAfterMethodDeclarationName/005.groovy		-	
+SpaceAfterNotOperator	SpaceAfterNotOperator/000.groovy		-	
+SpaceAfterNotOperator	SpaceAfterNotOperator/001.groovy		4	
+SpaceAfterNotOperator	SpaceAfterNotOperator/002.groovy		4	
+SpaceAfterNotOperator	SpaceAfterNotOperator/003.groovy		4	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/000.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/001.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/002.groovy		4	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/003.groovy		-	ignoreEmptyBlock=true
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/004.groovy		2,3	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/005.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/006.groovy		2	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/007.groovy		2	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/008.groovy		2,4,6	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/009.groovy		-	ignoreEmptyBlock=true
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/010.groovy		3,4,5	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/011.groovy		2,4	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/012.groovy		3	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/013.groovy		2,4,5,8	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/014.groovy		2,4	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/015.groovy		2	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/016.groovy		2	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/017.groovy		2	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/018.groovy		2,3,4,5	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/019.groovy		2	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/020.groovy		-	checkClosureMapEntryValue=false
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/021.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/022.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/023.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/024.groovy		2,3,4	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/025.groovy		-	
+SpaceAfterOpeningBrace	SpaceAfterOpeningBrace/026.groovy		-	
+SpaceAfterSemicolon	SpaceAfterSemicolon/000.groovy		-	
+SpaceAfterSemicolon	SpaceAfterSemicolon/001.groovy		4,5,6	
+SpaceAfterSemicolon	SpaceAfterSemicolon/002.groovy		-	
+SpaceAfterSemicolon	SpaceAfterSemicolon/003.groovy		-	
+SpaceAfterSemicolon	SpaceAfterSemicolon/004.groovy		4,5	
+SpaceAfterSwitch	SpaceAfterSwitch/000.groovy		-	
+SpaceAfterSwitch	SpaceAfterSwitch/001.groovy		2,5,8	
+SpaceAfterWhile	SpaceAfterWhile/000.groovy		-	
+SpaceAfterWhile	SpaceAfterWhile/001.groovy		2,3,4	
+SpaceAfterWhile	SpaceAfterWhile/002.groovy		-	
+SpaceAroundClosureArrow	SpaceAroundClosureArrow/000.groovy		-	
+SpaceAroundClosureArrow	SpaceAroundClosureArrow/001.groovy		-	
+SpaceAroundClosureArrow	SpaceAroundClosureArrow/002.groovy		2,3,4,5,6,7	
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/000.groovy		-	
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/001.groovy		-	characterBeforeColonRegex=/\s/
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/002.groovy		-	characterAfterColonRegex=/\s/
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/003.groovy		-	characterAfterColonRegex=/\s/
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/004.groovy		-	characterAfterColonRegex=/\s/
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/005.groovy		-	characterAfterColonRegex=/\s/,characterBeforeColonRegex=/./
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/006.groovy		-	characterAfterColonRegex=/\s/
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/007.groovy		-	characterAfterColonRegex=/\s/
+SpaceAroundOperator	SpaceAroundOperator/000.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/001.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/002.groovy		4,7	
+SpaceAroundOperator	SpaceAroundOperator/003.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/004.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/005.groovy		2,3,4,5,6	
+SpaceAroundOperator	SpaceAroundOperator/006.groovy		2	
+SpaceAroundOperator	SpaceAroundOperator/007.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/008.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/009.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/010.groovy		4,5,6,7	
+SpaceAroundOperator	SpaceAroundOperator/011.groovy		4	
+SpaceAroundOperator	SpaceAroundOperator/012.groovy		4,6,8	
+SpaceAroundOperator	SpaceAroundOperator/013.groovy		4,5	
+SpaceAroundOperator	SpaceAroundOperator/014.groovy		-	
+SpaceAroundOperator	SpaceAroundOperator/015.groovy		2,3,5	
+SpaceAroundOperator	SpaceAroundOperator/016.groovy		3,4,6,7	
+SpaceAroundOperator	SpaceAroundOperator/017.groovy		3,4	ignoreParameterDefaultValueAssignments=true
+SpaceAroundOperator	SpaceAroundOperator/018.groovy		-	ignoreParameterDefaultValueAssignments=true
+SpaceAroundOperator	SpaceAroundOperator/019.groovy		3,4	ignoreParameterDefaultValueAssignments=true
+SpaceAroundOperator	SpaceAroundOperator/020.groovy		-	ignoreParameterDefaultValueAssignments=true
+SpaceAroundOperator	SpaceAroundOperator/021.groovy		2,3,4,5,6	
+SpaceAroundOperator	SpaceAroundOperator/022.groovy		-	ignoreParameterDefaultValueAssignments=false
+SpaceAroundOperator	SpaceAroundOperator/023.groovy		3,6,9	ignoreParameterDefaultValueAssignments=false
+SpaceAroundOperator	SpaceAroundOperator/024.groovy		-	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/000.groovy		-	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/001.groovy		4	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/002.groovy		-	ignoreEmptyBlock=true
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/003.groovy		2,3	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/004.groovy		2	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/005.groovy		2	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/006.groovy		2,4,5	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/007.groovy		3,4	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/008.groovy		2,4	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/009.groovy		3	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/010.groovy		2,4,5,8	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/011.groovy		2,4	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/012.groovy		2	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/013.groovy		2	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/014.groovy		2	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/015.groovy		2,3,4,5	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/016.groovy		2	
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/017.groovy		-	checkClosureMapEntryValue=false
+SpaceBeforeClosingBrace	SpaceBeforeClosingBrace/018.groovy		-	
+SpaceBeforeCommentDelimiter	SpaceBeforeCommentDelimiter/000.groovy		-	
+SpaceBeforeCommentDelimiter	SpaceBeforeCommentDelimiter/001.groovy		-	
+SpaceBeforeCommentDelimiter	SpaceBeforeCommentDelimiter/002.groovy		-	
+SpaceBeforeCommentDelimiter	SpaceBeforeCommentDelimiter/003.groovy		-	
+SpaceBeforeCommentDelimiter	SpaceBeforeCommentDelimiter/004.groovy		-	
+SpaceBeforeCommentDelimiter	SpaceBeforeCommentDelimiter/005.groovy		2,5,9,10,12,13,15	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/000.groovy		-	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/001.groovy		-	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/002.groovy		2,3	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/003.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/004.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/005.groovy		2,6	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/006.groovy		3,4	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/007.groovy		2,4	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/008.groovy		3	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/009.groovy		2,4,5,8	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/010.groovy		2,4	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/011.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/012.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/013.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/014.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/015.groovy		2,3,4,5	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/016.groovy		2	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/017.groovy		-	checkClosureMapEntryValue=false
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/018.groovy		-	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/019.groovy		-	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/020.groovy		-	
+SpaceBeforeOpeningBrace	SpaceBeforeOpeningBrace/021.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/000.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/001.groovy		2,3,4,5	
+SpaceInsideParentheses	SpaceInsideParentheses/002.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/003.groovy		2,3,4,5	
+SpaceInsideParentheses	SpaceInsideParentheses/004.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/005.groovy		2,3,4,5	
+SpaceInsideParentheses	SpaceInsideParentheses/006.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/007.groovy		6	
+SpaceInsideParentheses	SpaceInsideParentheses/008.groovy		6	
+SpaceInsideParentheses	SpaceInsideParentheses/009.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/010.groovy		2,3,4,6	
+SpaceInsideParentheses	SpaceInsideParentheses/011.groovy		2,3,4,5	
+SpaceInsideParentheses	SpaceInsideParentheses/012.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/013.groovy		3,4,5,6	
+SpaceInsideParentheses	SpaceInsideParentheses/014.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/015.groovy		2,3,4	
+SpaceInsideParentheses	SpaceInsideParentheses/016.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/017.groovy		18	
+SpaceInsideParentheses	SpaceInsideParentheses/018.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/019.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/020.groovy		2,6	
+SpaceInsideParentheses	SpaceInsideParentheses/021.groovy		-	
+SpaceInsideParentheses	SpaceInsideParentheses/022.groovy		2,3,5	
+SpaceInsideParentheses	SpaceInsideParentheses/023.groovy		-	
+SpockIgnoreRestUsed	SpockIgnoreRestUsed/000.groovy		-	
+SpockIgnoreRestUsed	SpockIgnoreRestUsed/001.groovy		-	
+SpockIgnoreRestUsed	SpockIgnoreRestUsed/002.groovy		4	
+SpockIgnoreRestUsed	SpockIgnoreRestUsed/003.groovy		3	
+SpockIgnoreRestUsed	SpockIgnoreRestUsed/004.groovy		3	specificationSuperclassNames=OtherBaseClass
+SpockIgnoreRestUsed	SpockIgnoreRestUsed/005.groovy		-	specificationClassNames=OtherName
+SpockMissingAssert	SpockMissingAssert/000.groovy		-	
+SpockMissingAssert	SpockMissingAssert/001.groovy		-	
+SpockMissingAssert	SpockMissingAssert/002.groovy		-	
+SpockMissingAssert	SpockMissingAssert/003.groovy		-	
+SpockMissingAssert	SpockMissingAssert/004.groovy		-	
+SpockMissingAssert	SpockMissingAssert/005.groovy		11,14,17	
+SpockMissingAssert	SpockMissingAssert/006.groovy		13	
+SpockMissingAssert	SpockMissingAssert/007.groovy		6,7,8,9,10,11	
+SpockMissingAssert	SpockMissingAssert/008.groovy		6,7,8,9,10	
+SpockMissingAssert	SpockMissingAssert/009.groovy		10,11,12	
+SpockMissingAssert	SpockMissingAssert/010.groovy		6,7,8,9	
+SpockMissingAssert	SpockMissingAssert/011.groovy		6,7,8,9	
+SpockMissingAssert	SpockMissingAssert/012.groovy		6,7,8,9,10	
+SpockMissingAssert	SpockMissingAssert/013.groovy		6,7,8,9,10,11,12	
+SpockMissingAssert	SpockMissingAssert/014.groovy		7,8	
+SpockMissingAssert	SpockMissingAssert/015.groovy		8	
+SpockMissingAssert	SpockMissingAssert/016.groovy		-	
+SpockMissingAssert	SpockMissingAssert/017.groovy		29	
+StatelessClass	StatelessClass/000.groovy		-	
+StatelessClass	StatelessClass/001.groovy		3,4	applyToClassNames=MyClass
+StatelessClass	StatelessClass/002.groovy		-	applyToClassNames=*
+StatelessClass	StatelessClass/003.groovy		-	applyToClassNames=*
+StatelessClass	StatelessClass/004.groovy		-	applyToClassNames=*
+StatelessClass	StatelessClass/005.groovy		-	applyToFileNames=*
+StatelessClass	StatelessClass/006.groovy		3,4	applyToFilesMatching=/.*/
+StatelessClass	StatelessClass/007.groovy		-	applyToClassNames=*
+StatelessClass	StatelessClass/008.groovy		3	applyToClassNames=*,ignoreFieldNames=other
+StatelessClass	StatelessClass/009.groovy		5	addToIgnoreFieldNames=yyy,deposit??ount,applyToClassNames=*,ignoreFieldNames=oth*,xxxx
+StatelessClass	StatelessClass/010.groovy		4	applyToClassNames=*,ignoreFieldTypes=BigDecimal
+StatelessClass	StatelessClass/011.groovy		5,7	applyToClassNames=*,ignoreFieldTypes=*Decimal,java.lang.Object,l?n?
+StatelessClass	StatelessClass/012.groovy		-	applyToClassNames=*,ignoreFieldNames=oth*,XXX,ignoreFieldTypes=*Decimal,YYY,int,l?n?
+StatelessClass	StatelessClass/013.groovy		-	applyToFileNames=*
+StatelessClass	StatelessClass/014.groovy		-	applyToClassNames=*
+StatelessSingleton	StatelessSingleton/000.groovy		-	
+StatelessSingleton	StatelessSingleton/001.groovy		-	
+StatelessSingleton	StatelessSingleton/002.groovy		-	
+StatelessSingleton	StatelessSingleton/003.groovy		-	
+StatelessSingleton	StatelessSingleton/004.groovy		3	
+StatelessSingleton	StatelessSingleton/005.groovy		-	
+StatelessSingleton	StatelessSingleton/006.groovy		2	
+StatelessSingleton	StatelessSingleton/007.groovy		2	
+StatelessSingleton	StatelessSingleton/008.groovy		2	
+StatelessSingleton	StatelessSingleton/009.groovy		-	
+StatelessSingleton	StatelessSingleton/010.groovy		-	
+StatelessSingleton	StatelessSingleton/011.groovy		-	
+StaticCalendarField	StaticCalendarField/000.groovy		-	
+StaticCalendarField	StaticCalendarField/001.groovy		3	
+StaticCalendarField	StaticCalendarField/002.groovy		3	
+StaticCalendarField	StaticCalendarField/003.groovy		3,4,5,6	
+StaticCalendarField	StaticCalendarField/004.groovy		-	
+StaticConnection	StaticConnection/000.groovy		-	
+StaticConnection	StaticConnection/001.groovy		3	
+StaticDateFormatField	StaticDateFormatField/000.groovy		-	
+StaticDateFormatField	StaticDateFormatField/001.groovy		3	
+StaticDateFormatField	StaticDateFormatField/002.groovy		3	
+StaticDateFormatField	StaticDateFormatField/003.groovy		3,4,5,6,8	
+StaticDateFormatField	StaticDateFormatField/004.groovy		-	
+StaticFieldsBeforeInstanceFields	StaticFieldsBeforeInstanceFields/000.groovy		-	
+StaticFieldsBeforeInstanceFields	StaticFieldsBeforeInstanceFields/001.groovy		9,10,11,12,13	
+StaticMatcherField	StaticMatcherField/000.groovy		-	
+StaticMatcherField	StaticMatcherField/001.groovy		3	
+StaticMatcherField	StaticMatcherField/002.groovy		3	
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/000.groovy		-	
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/001.groovy		-	
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/002.groovy		7,11,16	
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/003.groovy		-	
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/004.groovy		-	ignoreMethodNames=get*,set*
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/005.groovy		-	ignoreMethodNames=staticMethod3,static*4
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/006.groovy		-	ignoreMethodNames=get*,set*
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/007.groovy		12,13,22	ignoreMethodNames=unmatchedGet*,unmatchedSet*
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/008.groovy		12,13,18	ignoreMethodNames=get*,setPrivateStringValue1
+StaticMethodsBeforeInstanceMethods	StaticMethodsBeforeInstanceMethods/009.groovy		-	ignoreMethodNames=get*,set*
+StaticSimpleDateFormatField	StaticSimpleDateFormatField/000.groovy		-	
+StaticSimpleDateFormatField	StaticSimpleDateFormatField/001.groovy		3	
+StaticSimpleDateFormatField	StaticSimpleDateFormatField/002.groovy		3	
+StaticSimpleDateFormatField	StaticSimpleDateFormatField/003.groovy		3,4,5,6,7	
+StaticSimpleDateFormatField	StaticSimpleDateFormatField/004.groovy		-	
+SwallowThreadDeath	SwallowThreadDeath/000.groovy		-	
+SwallowThreadDeath	SwallowThreadDeath/001.groovy		-	
+SwallowThreadDeath	SwallowThreadDeath/002.groovy		-	
+SwallowThreadDeath	SwallowThreadDeath/003.groovy		4	
+SwallowThreadDeath	SwallowThreadDeath/004.groovy		5	
+SwallowThreadDeath	SwallowThreadDeath/005.groovy		4	
+SynchronizedMethod	SynchronizedMethod/000.groovy		3,5	
+SynchronizedMethod	SynchronizedMethod/001.groovy		-	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/000.groovy		-	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/001.groovy		12,13,14,15	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/002.groovy		12,13,14,15	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/003.groovy		12,13,14,15	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/004.groovy		12,13,14,15	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/005.groovy		12,13,14,15	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/006.groovy		12,13,14,15	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/007.groovy		10,11,12,13	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/008.groovy		-	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/009.groovy		5	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/010.groovy		5	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/011.groovy		7	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/012.groovy		9	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/013.groovy		8	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/014.groovy		11	
+SynchronizedOnBoxedPrimitive	SynchronizedOnBoxedPrimitive/015.groovy		11	
+SynchronizedOnGetClass	SynchronizedOnGetClass/000.groovy		4	
+SynchronizedOnGetClass	SynchronizedOnGetClass/001.groovy		-	
+SynchronizedOnGetClass	SynchronizedOnGetClass/002.groovy		4	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/000.groovy		-	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/001.groovy		5	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/002.groovy		7	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/003.groovy		9	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/004.groovy		8	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/005.groovy		11	
+SynchronizedOnReentrantLock	SynchronizedOnReentrantLock/006.groovy		11	
+SynchronizedOnString	SynchronizedOnString/000.groovy		-	
+SynchronizedOnString	SynchronizedOnString/001.groovy		5	
+SynchronizedOnString	SynchronizedOnString/002.groovy		7	
+SynchronizedOnString	SynchronizedOnString/003.groovy		9	
+SynchronizedOnString	SynchronizedOnString/004.groovy		8	
+SynchronizedOnString	SynchronizedOnString/005.groovy		11	
+SynchronizedOnString	SynchronizedOnString/006.groovy		11	
+SynchronizedOnThis	SynchronizedOnThis/000.groovy		6,12	
+SynchronizedOnThis	SynchronizedOnThis/001.groovy		-	
+SynchronizedReadObjectMethod	SynchronizedReadObjectMethod/000.groovy		-	
+SynchronizedReadObjectMethod	SynchronizedReadObjectMethod/001.groovy		4	
+SynchronizedReadObjectMethod	SynchronizedReadObjectMethod/002.groovy		4	
+SystemErrPrint	SystemErrPrint/000.groovy		2	
+SystemErrPrint	SystemErrPrint/001.groovy		2	
+SystemErrPrint	SystemErrPrint/002.groovy		2	
+SystemErrPrint	SystemErrPrint/003.groovy		2	
+SystemErrPrint	SystemErrPrint/004.groovy		2,1234	
+SystemErrPrint	SystemErrPrint/005.groovy		4	
+SystemErrPrint	SystemErrPrint/006.groovy		-	
+SystemExit	SystemExit/000.groovy		4,7	
+SystemExit	SystemExit/001.groovy		4,7	
+SystemExit	SystemExit/002.groovy		2,4	
+SystemExit	SystemExit/003.groovy		-	
+SystemOutPrint	SystemOutPrint/000.groovy		2	
+SystemOutPrint	SystemOutPrint/001.groovy		2	
+SystemOutPrint	SystemOutPrint/002.groovy		2	
+SystemOutPrint	SystemOutPrint/003.groovy		2	
+SystemOutPrint	SystemOutPrint/004.groovy		2,1234	
+SystemOutPrint	SystemOutPrint/005.groovy		4	
+SystemOutPrint	SystemOutPrint/006.groovy		-	
+SystemRunFinalizersOnExit	SystemRunFinalizersOnExit/000.groovy		4,7	
+SystemRunFinalizersOnExit	SystemRunFinalizersOnExit/001.groovy		4,7	
+SystemRunFinalizersOnExit	SystemRunFinalizersOnExit/002.groovy		2,4	
+SystemRunFinalizersOnExit	SystemRunFinalizersOnExit/003.groovy		-	
+TernaryCouldBeElvis	TernaryCouldBeElvis/000.groovy		-	
+TernaryCouldBeElvis	TernaryCouldBeElvis/001.groovy		-	
+TernaryCouldBeElvis	TernaryCouldBeElvis/002.groovy		2	
+TernaryCouldBeElvis	TernaryCouldBeElvis/003.groovy		-	
+TernaryCouldBeElvis	TernaryCouldBeElvis/004.groovy		2,3	
+ThisReferenceEscapesConstructor	ThisReferenceEscapesConstructor/000.groovy		-	
+ThisReferenceEscapesConstructor	ThisReferenceEscapesConstructor/001.groovy		4	
+ThisReferenceEscapesConstructor	ThisReferenceEscapesConstructor/002.groovy		4,5,6	
+ThreadGroup	ThreadGroup/000.groovy		-	
+ThreadGroup	ThreadGroup/001.groovy		2	
+ThreadGroup	ThreadGroup/002.groovy		2	
+ThreadGroup	ThreadGroup/003.groovy		2	
+ThreadGroup	ThreadGroup/004.groovy		2	
+ThreadGroup	ThreadGroup/005.groovy		2	
+ThreadLocalNotStaticFinal	ThreadLocalNotStaticFinal/000.groovy		3,4	
+ThreadLocalNotStaticFinal	ThreadLocalNotStaticFinal/001.groovy		3,4	
+ThreadLocalNotStaticFinal	ThreadLocalNotStaticFinal/002.groovy		-	
+ThreadLocalNotStaticFinal	ThreadLocalNotStaticFinal/003.groovy		-	
+ThreadYield	ThreadYield/000.groovy		4,7	
+ThreadYield	ThreadYield/001.groovy		4,7	
+ThreadYield	ThreadYield/002.groovy		2,4	
+ThreadYield	ThreadYield/003.groovy		-	
+ThrowError	ThrowError/000.groovy		4	
+ThrowError	ThrowError/001.groovy		5	
+ThrowError	ThrowError/002.groovy		-	
+ThrowException	ThrowException/000.groovy		4	
+ThrowException	ThrowException/001.groovy		5	
+ThrowException	ThrowException/002.groovy		-	
+ThrowExceptionFromFinallyBlock	ThrowExceptionFromFinallyBlock/000.groovy		15	
+ThrowExceptionFromFinallyBlock	ThrowExceptionFromFinallyBlock/001.groovy		10,15	
+ThrowExceptionFromFinallyBlock	ThrowExceptionFromFinallyBlock/002.groovy		-	
+ThrowNullPointerException	ThrowNullPointerException/000.groovy		4	
+ThrowNullPointerException	ThrowNullPointerException/001.groovy		5	
+ThrowNullPointerException	ThrowNullPointerException/002.groovy		-	
+ThrowRuntimeException	ThrowRuntimeException/000.groovy		4	
+ThrowRuntimeException	ThrowRuntimeException/001.groovy		5	
+ThrowRuntimeException	ThrowRuntimeException/002.groovy		-	
+ThrowThrowable	ThrowThrowable/000.groovy		4	
+ThrowThrowable	ThrowThrowable/001.groovy		5	
+ThrowThrowable	ThrowThrowable/002.groovy		-	
+ToStringReturnsNull	ToStringReturnsNull/000.groovy		-	
+ToStringReturnsNull	ToStringReturnsNull/001.groovy		-	
+ToStringReturnsNull	ToStringReturnsNull/002.groovy		4	
+ToStringReturnsNull	ToStringReturnsNull/003.groovy		5	
+ToStringReturnsNull	ToStringReturnsNull/004.groovy		3	
+ToStringReturnsNull	ToStringReturnsNull/005.groovy		7	
+ToStringReturnsNull	ToStringReturnsNull/006.groovy		-	
+TrailingComma	TrailingComma/000.groovy		-	
+TrailingComma	TrailingComma/001.groovy		-	checkList=false
+TrailingComma	TrailingComma/002.groovy		2	
+TrailingComma	TrailingComma/003.groovy		2,4	
+TrailingComma	TrailingComma/004.groovy		-	ignoreSingleElementList=true
+TrailingComma	TrailingComma/005.groovy		2,6	ignoreSingleElementList=false
+TrailingComma	TrailingComma/006.groovy		-	
+TrailingComma	TrailingComma/007.groovy		-	
+TrailingComma	TrailingComma/008.groovy		-	
+TrailingComma	TrailingComma/009.groovy		4	
+TrailingComma	TrailingComma/010.groovy		-	
+TrailingComma	TrailingComma/011.groovy		-	checkMap=false
+TrailingComma	TrailingComma/012.groovy		2	
+TrailingComma	TrailingComma/013.groovy		2,4	
+TrailingComma	TrailingComma/014.groovy		-	
+TrailingComma	TrailingComma/015.groovy		-	ignoreSingleElementMap=true
+TrailingComma	TrailingComma/016.groovy		2,4	ignoreSingleElementMap=false
+TrailingComma	TrailingComma/017.groovy		-	
+TrailingComma	TrailingComma/018.groovy		-	
+TrailingComma	TrailingComma/019.groovy		5	
+TrailingWhitespace	TrailingWhitespace/000.groovy		-	
+TrailingWhitespace	TrailingWhitespace/001.groovy		1	
+TrailingWhitespace	TrailingWhitespace/002.groovy		1	
+TrailingWhitespace	TrailingWhitespace/003.groovy		1	
+TrailingWhitespace	TrailingWhitespace/004.groovy		1,3,5,6,8	
+TrailingWhitespace	TrailingWhitespace/005.groovy		1,3,5,6,8	
+TrailingWhitespace	TrailingWhitespace/006.groovy		2,4	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/000.groovy		-	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/001.groovy		2	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/002.groovy		-	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/003.groovy		2	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/004.groovy		-	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/005.groovy		-	
+UnnecessaryBigDecimalInstantiation	UnnecessaryBigDecimalInstantiation/006.groovy		3	
+UnnecessaryBigIntegerInstantiation	UnnecessaryBigIntegerInstantiation/000.groovy		-	
+UnnecessaryBigIntegerInstantiation	UnnecessaryBigIntegerInstantiation/001.groovy		2	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/000.groovy		2,3,6,8,9,10	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/001.groovy		2,3,6,8,9,10	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/002.groovy		2,3	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/003.groovy		2,3	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/004.groovy		2,3	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/005.groovy		2,3	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/006.groovy		2,3	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/007.groovy		-	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/008.groovy		-	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/009.groovy		2,3,4,5	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/010.groovy		2,3,4,5,6	
+UnnecessaryBooleanExpression	UnnecessaryBooleanExpression/011.groovy		-	
+UnnecessaryBooleanInstantiation	UnnecessaryBooleanInstantiation/000.groovy		3,5	
+UnnecessaryBooleanInstantiation	UnnecessaryBooleanInstantiation/001.groovy		2,6	
+UnnecessaryBooleanInstantiation	UnnecessaryBooleanInstantiation/002.groovy		4,6	
+UnnecessaryBooleanInstantiation	UnnecessaryBooleanInstantiation/003.groovy		-	
+UnnecessaryBooleanInstantiation	UnnecessaryBooleanInstantiation/004.groovy		-	
+UnnecessaryCallForLastElement	UnnecessaryCallForLastElement/000.groovy		-	
+UnnecessaryCallForLastElement	UnnecessaryCallForLastElement/001.groovy		2	
+UnnecessaryCallForLastElement	UnnecessaryCallForLastElement/002.groovy		2	
+UnnecessaryCallForLastElement	UnnecessaryCallForLastElement/003.groovy		2	
+UnnecessaryCallForLastElement	UnnecessaryCallForLastElement/004.groovy		2	
+UnnecessaryCallForLastElement	UnnecessaryCallForLastElement/005.groovy		2,3	
+UnnecessaryCallToSubstring	UnnecessaryCallToSubstring/000.groovy		-	
+UnnecessaryCallToSubstring	UnnecessaryCallToSubstring/001.groovy		2	
+UnnecessaryCast	UnnecessaryCast/000.groovy		-	
+UnnecessaryCast	UnnecessaryCast/001.groovy		2,3,4,5,6	
+UnnecessaryCatchBlock	UnnecessaryCatchBlock/000.groovy		-	
+UnnecessaryCatchBlock	UnnecessaryCatchBlock/001.groovy		4	
+UnnecessaryCatchBlock	UnnecessaryCatchBlock/002.groovy		4,6	
+UnnecessaryCollectCall	UnnecessaryCollectCall/000.groovy		-	
+UnnecessaryCollectCall	UnnecessaryCollectCall/001.groovy		2	
+UnnecessaryCollectCall	UnnecessaryCollectCall/002.groovy		2	
+UnnecessaryCollectCall	UnnecessaryCollectCall/003.groovy		2	
+UnnecessaryCollectionCall	UnnecessaryCollectionCall/000.groovy		-	
+UnnecessaryCollectionCall	UnnecessaryCollectionCall/001.groovy		3,4	
+UnnecessaryCollectionCall	UnnecessaryCollectionCall/002.groovy		6,7	
+UnnecessaryConstructor	UnnecessaryConstructor/000.groovy		-	
+UnnecessaryConstructor	UnnecessaryConstructor/001.groovy		-	
+UnnecessaryConstructor	UnnecessaryConstructor/002.groovy		-	
+UnnecessaryConstructor	UnnecessaryConstructor/003.groovy		3	
+UnnecessaryConstructor	UnnecessaryConstructor/004.groovy		3	
+UnnecessaryConstructor	UnnecessaryConstructor/005.groovy		-	
+UnnecessaryConstructor	UnnecessaryConstructor/006.groovy		-	
+UnnecessaryConstructor	UnnecessaryConstructor/007.groovy		-	
+UnnecessaryConstructor	UnnecessaryConstructor/008.groovy		5	
+UnnecessaryConstructor	UnnecessaryConstructor/009.groovy		4	
+UnnecessaryConstructor	UnnecessaryConstructor/010.groovy		-	ignoreAnnotations=true
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/000.groovy		-	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/001.groovy		-	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/002.groovy		-	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/003.groovy		-	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/004.groovy		-	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/005.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/006.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/007.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/008.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/009.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/010.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/011.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/012.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/013.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/014.groovy		3	
+UnnecessaryDefInFieldDeclaration	UnnecessaryDefInFieldDeclaration/015.groovy		3,4	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/000.groovy		-	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/001.groovy		-	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/002.groovy		-	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/003.groovy		-	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/004.groovy		-	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/005.groovy		-	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/006.groovy		3	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/007.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/008.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/009.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/010.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/011.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/012.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/013.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/014.groovy		3	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/015.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/016.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/017.groovy		2	
+UnnecessaryDefInMethodDeclaration	UnnecessaryDefInMethodDeclaration/018.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/000.groovy		-	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/001.groovy		-	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/002.groovy		-	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/003.groovy		-	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/004.groovy		-	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/005.groovy		-	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/006.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/007.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/008.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/009.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/010.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/011.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/012.groovy		2,3	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/013.groovy		2	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/014.groovy		2	
+UnnecessaryDefInVariableDeclaration	UnnecessaryDefInVariableDeclaration/015.groovy		2,3	
+UnnecessaryDotClass	UnnecessaryDotClass/000.groovy		-	
+UnnecessaryDotClass	UnnecessaryDotClass/001.groovy		2,3	
+UnnecessaryDotClass	UnnecessaryDotClass/002.groovy		3	
+UnnecessaryDoubleInstantiation	UnnecessaryDoubleInstantiation/000.groovy		-	
+UnnecessaryDoubleInstantiation	UnnecessaryDoubleInstantiation/001.groovy		2	
+UnnecessaryDoubleInstantiation	UnnecessaryDoubleInstantiation/002.groovy		2	
+UnnecessaryElseStatement	UnnecessaryElseStatement/000.groovy		-	
+UnnecessaryElseStatement	UnnecessaryElseStatement/001.groovy		-	
+UnnecessaryElseStatement	UnnecessaryElseStatement/002.groovy		-	
+UnnecessaryElseStatement	UnnecessaryElseStatement/003.groovy		-	
+UnnecessaryElseStatement	UnnecessaryElseStatement/004.groovy		-	
+UnnecessaryElseStatement	UnnecessaryElseStatement/005.groovy		-	
+UnnecessaryElseStatement	UnnecessaryElseStatement/006.groovy		9	
+UnnecessaryElseStatement	UnnecessaryElseStatement/007.groovy		5	
+UnnecessaryElseStatement	UnnecessaryElseStatement/008.groovy		4	
+UnnecessaryElseStatement	UnnecessaryElseStatement/009.groovy		5	
+UnnecessaryElseStatement	UnnecessaryElseStatement/010.groovy		9	
+UnnecessaryElseStatement	UnnecessaryElseStatement/011.groovy		6	
+UnnecessaryElseStatement	UnnecessaryElseStatement/012.groovy		5,8	
+UnnecessaryElseStatement	UnnecessaryElseStatement/013.groovy		6,10	
+UnnecessaryFail	UnnecessaryFail/000.groovy		-	
+UnnecessaryFail	UnnecessaryFail/001.groovy		7	
+UnnecessaryFail	UnnecessaryFail/002.groovy		9	
+UnnecessaryFail	UnnecessaryFail/003.groovy		8	
+UnnecessaryFail	UnnecessaryFail/004.groovy		7	
+UnnecessaryFail	UnnecessaryFail/005.groovy		7	
+UnnecessaryFinalOnPrivateMethod	UnnecessaryFinalOnPrivateMethod/000.groovy		-	
+UnnecessaryFinalOnPrivateMethod	UnnecessaryFinalOnPrivateMethod/001.groovy		2	
+UnnecessaryFloatInstantiation	UnnecessaryFloatInstantiation/000.groovy		-	
+UnnecessaryFloatInstantiation	UnnecessaryFloatInstantiation/001.groovy		2	
+UnnecessaryFloatInstantiation	UnnecessaryFloatInstantiation/002.groovy		2	
+UnnecessaryFloatInstantiation	UnnecessaryFloatInstantiation/003.groovy		2	
+UnnecessaryGString	UnnecessaryGString/000.groovy		-	
+UnnecessaryGString	UnnecessaryGString/001.groovy		-	
+UnnecessaryGString	UnnecessaryGString/002.groovy		-	
+UnnecessaryGString	UnnecessaryGString/003.groovy		-	
+UnnecessaryGString	UnnecessaryGString/004.groovy		-	
+UnnecessaryGString	UnnecessaryGString/005.groovy		-	
+UnnecessaryGString	UnnecessaryGString/006.groovy		2	
+UnnecessaryGString	UnnecessaryGString/007.groovy		2	
+UnnecessaryGString	UnnecessaryGString/008.groovy		3	
+UnnecessaryGString	UnnecessaryGString/009.groovy		2	
+UnnecessaryGString	UnnecessaryGString/010.groovy		2	
+UnnecessaryGetter	UnnecessaryGetter/000.groovy		-	
+UnnecessaryGetter	UnnecessaryGetter/001.groovy		2,3	
+UnnecessaryGetter	UnnecessaryGetter/002.groovy		2	
+UnnecessaryGetter	UnnecessaryGetter/003.groovy		2	
+UnnecessaryGetter	UnnecessaryGetter/004.groovy		2	
+UnnecessaryGetter	UnnecessaryGetter/005.groovy		2,3	
+UnnecessaryGetter	UnnecessaryGetter/006.groovy		-	
+UnnecessaryGetter	UnnecessaryGetter/007.groovy		-	
+UnnecessaryGetter	UnnecessaryGetter/008.groovy		2,3,4	
+UnnecessaryGetter	UnnecessaryGetter/009.groovy		-	checkIsMethods=false
+UnnecessaryGetter	UnnecessaryGetter/010.groovy		4	
+UnnecessaryGetter	UnnecessaryGetter/011.groovy		4	
+UnnecessaryGetter	UnnecessaryGetter/012.groovy		3,6,9,11,12,14	
+UnnecessaryGetter	UnnecessaryGetter/013.groovy		-	
+UnnecessaryGetter	UnnecessaryGetter/014.groovy		-	
+UnnecessaryGetter	UnnecessaryGetter/015.groovy		-	
+UnnecessaryGetter	UnnecessaryGetter/016.groovy		-	ignoreMethodNames=getOrNull, isPi
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/000.groovy		-	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/001.groovy		-	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/002.groovy		-	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/003.groovy		-	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/004.groovy		2	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/005.groovy		3,4	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/006.groovy		2,5	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/007.groovy		2,5	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/008.groovy		2,4	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/009.groovy		2,4	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/010.groovy		2,4	
+UnnecessaryGroovyImport	UnnecessaryGroovyImport/011.groovy		2,4	
+UnnecessaryIfStatement	UnnecessaryIfStatement/000.groovy		2,3,4,5	
+UnnecessaryIfStatement	UnnecessaryIfStatement/001.groovy		2,3	
+UnnecessaryIfStatement	UnnecessaryIfStatement/002.groovy		2,3,4	
+UnnecessaryIfStatement	UnnecessaryIfStatement/003.groovy		-	
+UnnecessaryIfStatement	UnnecessaryIfStatement/004.groovy		-	
+UnnecessaryIfStatement	UnnecessaryIfStatement/005.groovy		-	
+UnnecessaryIfStatement	UnnecessaryIfStatement/006.groovy		3,9	
+UnnecessaryIfStatement	UnnecessaryIfStatement/007.groovy		-	checkLastStatementImplicitElse=false
+UnnecessaryIfStatement	UnnecessaryIfStatement/008.groovy		8	
+UnnecessaryIfStatement	UnnecessaryIfStatement/009.groovy		4,8	
+UnnecessaryIfStatement	UnnecessaryIfStatement/010.groovy		6	
+UnnecessaryIfStatement	UnnecessaryIfStatement/011.groovy		4,6	
+UnnecessaryIfStatement	UnnecessaryIfStatement/012.groovy		-	
+UnnecessaryIfStatement	UnnecessaryIfStatement/013.groovy		-	
+UnnecessaryIfStatement	UnnecessaryIfStatement/014.groovy		-	
+UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/000.groovy		-	
+UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/001.groovy		2	
+UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/002.groovy		2	
+UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/003.groovy		2	
+UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/004.groovy		2	
+UnnecessaryInstantiationToGetClass	UnnecessaryInstantiationToGetClass/000.groovy		-	
+UnnecessaryInstantiationToGetClass	UnnecessaryInstantiationToGetClass/001.groovy		2	
+UnnecessaryInstantiationToGetClass	UnnecessaryInstantiationToGetClass/002.groovy		2	
+UnnecessaryIntegerInstantiation	UnnecessaryIntegerInstantiation/000.groovy		-	
+UnnecessaryIntegerInstantiation	UnnecessaryIntegerInstantiation/001.groovy		2	
+UnnecessaryIntegerInstantiation	UnnecessaryIntegerInstantiation/002.groovy		2	
+UnnecessaryLongInstantiation	UnnecessaryLongInstantiation/000.groovy		-	
+UnnecessaryLongInstantiation	UnnecessaryLongInstantiation/001.groovy		2	
+UnnecessaryLongInstantiation	UnnecessaryLongInstantiation/002.groovy		2	
+UnnecessaryModOne	UnnecessaryModOne/000.groovy		-	
+UnnecessaryModOne	UnnecessaryModOne/001.groovy		2,3	
+UnnecessaryNullCheck	UnnecessaryNullCheck/000.groovy		-	
+UnnecessaryNullCheck	UnnecessaryNullCheck/001.groovy		2	
+UnnecessaryNullCheck	UnnecessaryNullCheck/002.groovy		2	
+UnnecessaryNullCheck	UnnecessaryNullCheck/003.groovy		2	
+UnnecessaryNullCheck	UnnecessaryNullCheck/004.groovy		2	
+UnnecessaryNullCheck	UnnecessaryNullCheck/005.groovy		4	
+UnnecessaryNullCheck	UnnecessaryNullCheck/006.groovy		2,3	
+UnnecessaryNullCheck	UnnecessaryNullCheck/007.groovy		2,3	
+UnnecessaryNullCheck	UnnecessaryNullCheck/008.groovy		2	
+UnnecessaryNullCheck	UnnecessaryNullCheck/009.groovy		2,3	
+UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/000.groovy		-	
+UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/001.groovy		2	
+UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/002.groovy		2	
+UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/003.groovy		2	
+UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/004.groovy		2	
+UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/005.groovy		3	
+UnnecessaryObjectReferences	UnnecessaryObjectReferences/000.groovy		-	
+UnnecessaryObjectReferences	UnnecessaryObjectReferences/001.groovy		17,25	
+UnnecessaryObjectReferences	UnnecessaryObjectReferences/002.groovy		14	maxReferencesAllowed=2
+UnnecessaryObjectReferences	UnnecessaryObjectReferences/003.groovy		17	
+UnnecessaryObjectReferences	UnnecessaryObjectReferences/004.groovy		-	maxReferencesAllowed=2
+UnnecessaryObjectReferences	UnnecessaryObjectReferences/005.groovy		-	maxReferencesAllowed=2
+UnnecessaryOverridingMethod	UnnecessaryOverridingMethod/000.groovy		-	
+UnnecessaryOverridingMethod	UnnecessaryOverridingMethod/001.groovy		4	
+UnnecessaryOverridingMethod	UnnecessaryOverridingMethod/002.groovy		4	
+UnnecessaryPackageReference	UnnecessaryPackageReference/000.groovy		-	
+UnnecessaryPackageReference	UnnecessaryPackageReference/001.groovy		3,4,5	
+UnnecessaryPackageReference	UnnecessaryPackageReference/002.groovy		2,3,4	
+UnnecessaryPackageReference	UnnecessaryPackageReference/003.groovy		3,4	
+UnnecessaryPackageReference	UnnecessaryPackageReference/004.groovy		-	
+UnnecessaryPackageReference	UnnecessaryPackageReference/005.groovy		-	
+UnnecessaryPackageReference	UnnecessaryPackageReference/006.groovy		3,4,5	
+UnnecessaryPackageReference	UnnecessaryPackageReference/007.groovy		2,3,4	
+UnnecessaryPackageReference	UnnecessaryPackageReference/008.groovy		2,3	
+UnnecessaryPackageReference	UnnecessaryPackageReference/009.groovy		2,3	
+UnnecessaryPackageReference	UnnecessaryPackageReference/010.groovy		2,3	
+UnnecessaryPackageReference	UnnecessaryPackageReference/011.groovy		-	
+UnnecessaryPackageReference	UnnecessaryPackageReference/012.groovy		2,3	
+UnnecessaryPackageReference	UnnecessaryPackageReference/013.groovy		3,4	
+UnnecessaryPackageReference	UnnecessaryPackageReference/014.groovy		2	
+UnnecessaryPackageReference	UnnecessaryPackageReference/015.groovy		7,8	
+UnnecessaryPackageReference	UnnecessaryPackageReference/016.groovy		7,8	
+UnnecessaryPackageReference	UnnecessaryPackageReference/017.groovy		-	
+UnnecessaryPackageReference	UnnecessaryPackageReference/018.groovy		-	
+UnnecessaryParenthesesForMethodCallWithClosure	UnnecessaryParenthesesForMethodCallWithClosure/000.groovy		-	
+UnnecessaryParenthesesForMethodCallWithClosure	UnnecessaryParenthesesForMethodCallWithClosure/001.groovy		-	
+UnnecessaryParenthesesForMethodCallWithClosure	UnnecessaryParenthesesForMethodCallWithClosure/002.groovy		2	
+UnnecessaryParenthesesForMethodCallWithClosure	UnnecessaryParenthesesForMethodCallWithClosure/003.groovy		2	
+UnnecessaryParenthesesForMethodCallWithClosure	UnnecessaryParenthesesForMethodCallWithClosure/004.groovy		-	
+UnnecessaryParenthesesForMethodCallWithClosure	UnnecessaryParenthesesForMethodCallWithClosure/005.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/000.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/001.groovy		1,4	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/002.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/003.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/004.groovy		2	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/005.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/006.groovy		2	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/007.groovy		3	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/008.groovy		3	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/009.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/010.groovy		3	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/011.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/012.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/013.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/014.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/015.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/016.groovy		-	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/017.groovy		3	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/018.groovy		3	
+UnnecessaryPublicModifier	UnnecessaryPublicModifier/019.groovy		-	
+UnnecessaryReturnKeyword	UnnecessaryReturnKeyword/000.groovy		-	
+UnnecessaryReturnKeyword	UnnecessaryReturnKeyword/001.groovy		2,3	
+UnnecessaryReturnKeyword	UnnecessaryReturnKeyword/002.groovy		4,7	
+UnnecessarySafeNavigationOperator	UnnecessarySafeNavigationOperator/000.groovy		-	
+UnnecessarySafeNavigationOperator	UnnecessarySafeNavigationOperator/001.groovy		3,4,5,6,7	
+UnnecessarySafeNavigationOperator	UnnecessarySafeNavigationOperator/002.groovy		3,4,5,6,7	
+UnnecessarySafeNavigationOperator	UnnecessarySafeNavigationOperator/003.groovy		-	
+UnnecessarySelfAssignment	UnnecessarySelfAssignment/000.groovy		-	
+UnnecessarySelfAssignment	UnnecessarySelfAssignment/001.groovy		2	
+UnnecessarySelfAssignment	UnnecessarySelfAssignment/002.groovy		3	
+UnnecessarySelfAssignment	UnnecessarySelfAssignment/003.groovy		2	
+UnnecessarySelfAssignment	UnnecessarySelfAssignment/004.groovy		2	
+UnnecessarySemicolon	UnnecessarySemicolon/000.groovy		-	
+UnnecessarySemicolon	UnnecessarySemicolon/001.groovy		2	
+UnnecessarySemicolon	UnnecessarySemicolon/002.groovy		2	
+UnnecessarySemicolon	UnnecessarySemicolon/003.groovy		6	
+UnnecessarySemicolon	UnnecessarySemicolon/004.groovy		7	
+UnnecessarySemicolon	UnnecessarySemicolon/005.groovy		2	
+UnnecessarySemicolon	UnnecessarySemicolon/006.groovy		2	
+UnnecessarySemicolon	UnnecessarySemicolon/007.groovy		2	
+UnnecessarySemicolon	UnnecessarySemicolon/008.groovy		2,3,10,11	
+UnnecessarySemicolon	UnnecessarySemicolon/009.groovy		-	
+UnnecessarySemicolon	UnnecessarySemicolon/010.groovy		4	
+UnnecessarySemicolon	UnnecessarySemicolon/011.groovy		3,4,5,6	
+UnnecessarySemicolon	UnnecessarySemicolon/012.groovy		3	
+UnnecessarySemicolon	UnnecessarySemicolon/013.groovy		2,3,4	
+UnnecessarySetter	UnnecessarySetter/000.groovy		-	
+UnnecessarySetter	UnnecessarySetter/001.groovy		2,3,4,5,7	
+UnnecessarySetter	UnnecessarySetter/002.groovy		2,3	
+UnnecessarySetter	UnnecessarySetter/003.groovy		3,4,5,7	
+UnnecessarySetter	UnnecessarySetter/004.groovy		-	
+UnnecessarySetter	UnnecessarySetter/005.groovy		-	
+UnnecessarySetter	UnnecessarySetter/006.groovy		-	
+UnnecessarySetter	UnnecessarySetter/007.groovy		-	
+UnnecessarySetter	UnnecessarySetter/008.groovy		-	
+UnnecessaryStringInstantiation	UnnecessaryStringInstantiation/000.groovy		5,6	
+UnnecessaryStringInstantiation	UnnecessaryStringInstantiation/001.groovy		4	
+UnnecessaryStringInstantiation	UnnecessaryStringInstantiation/002.groovy		2,6	
+UnnecessaryStringInstantiation	UnnecessaryStringInstantiation/003.groovy		-	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/000.groovy		2,3	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/001.groovy		2,3	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/002.groovy		2,3	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/003.groovy		3,4,5,6,7,8,9,10,11,12	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/004.groovy		2,3	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/005.groovy		2,3	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/006.groovy		2	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/007.groovy		2	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/008.groovy		2,3	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/009.groovy		-	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/010.groovy		-	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/011.groovy		-	
+UnnecessaryTernaryExpression	UnnecessaryTernaryExpression/012.groovy		-	
+UnnecessaryToString	UnnecessaryToString/000.groovy		-	
+UnnecessaryToString	UnnecessaryToString/001.groovy		3,6,7	
+UnnecessaryToString	UnnecessaryToString/002.groovy		3,7,8	
+UnnecessaryToString	UnnecessaryToString/003.groovy		2,4,5	
+UnnecessaryToString	UnnecessaryToString/004.groovy		3,4,5	
+UnnecessaryToString	UnnecessaryToString/005.groovy		2,3,4	
+UnnecessaryToString	UnnecessaryToString/006.groovy		-	checkAssignments=false
+UnnecessaryTransientModifier	UnnecessaryTransientModifier/000.groovy		-	
+UnnecessaryTransientModifier	UnnecessaryTransientModifier/001.groovy		4	
+UnnecessaryTransientModifier	UnnecessaryTransientModifier/002.groovy		5	
+UnsafeArrayDeclaration	UnsafeArrayDeclaration/000.groovy		-	
+UnsafeArrayDeclaration	UnsafeArrayDeclaration/001.groovy		3	
+UnsafeArrayDeclaration	UnsafeArrayDeclaration/002.groovy		3	
+UnsafeArrayDeclaration	UnsafeArrayDeclaration/003.groovy		-	
+UnsafeImplementationAsMap	UnsafeImplementationAsMap/000.groovy		-	
+UnusedArray	UnusedArray/000.groovy		-	
+UnusedArray	UnusedArray/001.groovy		-	
+UnusedArray	UnusedArray/002.groovy		-	
+UnusedArray	UnusedArray/003.groovy		2	
+UnusedArray	UnusedArray/004.groovy		3	
+UnusedImport	UnusedImport/000.groovy		3	
+UnusedImport	UnusedImport/001.groovy		2,4	
+UnusedImport	UnusedImport/002.groovy		2,3	
+UnusedImport	UnusedImport/003.groovy		2	
+UnusedImport	UnusedImport/004.groovy		2	
+UnusedImport	UnusedImport/005.groovy		3	
+UnusedImport	UnusedImport/006.groovy		2	
+UnusedImport	UnusedImport/007.groovy		-	
+UnusedImport	UnusedImport/008.groovy		-	
+UnusedImport	UnusedImport/009.groovy		-	
+UnusedImport	UnusedImport/010.groovy		-	
+UnusedImport	UnusedImport/011.groovy		-	
+UnusedImport	UnusedImport/012.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/000.groovy		3	
+UnusedMethodParameter	UnusedMethodParameter/001.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/002.groovy		-	ignoreRegex=value|ignored|ignore
+UnusedMethodParameter	UnusedMethodParameter/003.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/004.groovy		-	ignoreClassRegex=.*Custom.*
+UnusedMethodParameter	UnusedMethodParameter/005.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/006.groovy		3	
+UnusedMethodParameter	UnusedMethodParameter/007.groovy		3,5	
+UnusedMethodParameter	UnusedMethodParameter/008.groovy		3,5	
+UnusedMethodParameter	UnusedMethodParameter/009.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/010.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/011.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/012.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/013.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/014.groovy		-	
+UnusedMethodParameter	UnusedMethodParameter/015.groovy		3,6,9,12	
+UnusedMethodParameter	UnusedMethodParameter/016.groovy		-	
+UnusedObject	UnusedObject/000.groovy		-	
+UnusedObject	UnusedObject/001.groovy		-	
+UnusedObject	UnusedObject/002.groovy		-	
+UnusedObject	UnusedObject/003.groovy		2,3	
+UnusedObject	UnusedObject/004.groovy		3	
+UnusedObject	UnusedObject/005.groovy		-	
+UnusedObject	UnusedObject/006.groovy		-	
+UnusedPrivateField	UnusedPrivateField/000.groovy		-	
+UnusedPrivateField	UnusedPrivateField/001.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/000.groovy		11	
+UnusedPrivateMethod	UnusedPrivateMethod/001.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/002.groovy		11,18	
+UnusedPrivateMethod	UnusedPrivateMethod/003.groovy		9,16	
+UnusedPrivateMethod	UnusedPrivateMethod/004.groovy		13,14	
+UnusedPrivateMethod	UnusedPrivateMethod/005.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/006.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/007.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/008.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/009.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/010.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/011.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/012.groovy		3	
+UnusedPrivateMethod	UnusedPrivateMethod/013.groovy		5	
+UnusedPrivateMethod	UnusedPrivateMethod/014.groovy		6	ignoreMethodsWithAnnotationNames=PostConstruct
+UnusedPrivateMethod	UnusedPrivateMethod/015.groovy		-	ignoreMethodsWithAnnotationNames=PostConstruct,Test
+UnusedPrivateMethod	UnusedPrivateMethod/016.groovy		3,6	
+UnusedPrivateMethod	UnusedPrivateMethod/017.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/018.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/019.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/020.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/021.groovy		3	
+UnusedPrivateMethod	UnusedPrivateMethod/022.groovy		3	
+UnusedPrivateMethod	UnusedPrivateMethod/023.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/024.groovy		3	
+UnusedPrivateMethod	UnusedPrivateMethod/025.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/026.groovy		3	
+UnusedPrivateMethod	UnusedPrivateMethod/027.groovy		4	
+UnusedPrivateMethod	UnusedPrivateMethod/028.groovy		3	
+UnusedPrivateMethod	UnusedPrivateMethod/029.groovy		2	
+UnusedPrivateMethod	UnusedPrivateMethod/030.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/031.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/032.groovy		-	
+UnusedPrivateMethod	UnusedPrivateMethod/033.groovy		10	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/000.groovy		3	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/001.groovy		-	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/002.groovy		-	ignoreRegex=value|ignored|ignore
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/003.groovy		-	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/004.groovy		3	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/005.groovy		3,5	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/006.groovy		3,5	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/007.groovy		-	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/008.groovy		-	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/009.groovy		-	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/010.groovy		-	
+UnusedPrivateMethodParameter	UnusedPrivateMethodParameter/011.groovy		-	
+UnusedVariable	UnusedVariable/000.groovy		4	
+UnusedVariable	UnusedVariable/001.groovy		4	
+UnusedVariable	UnusedVariable/002.groovy		4	
+UnusedVariable	UnusedVariable/003.groovy		4,6	
+UnusedVariable	UnusedVariable/004.groovy		-	
+UnusedVariable	UnusedVariable/005.groovy		4	
+UnusedVariable	UnusedVariable/006.groovy		4,10	
+UnusedVariable	UnusedVariable/007.groovy		-	
+UnusedVariable	UnusedVariable/008.groovy		-	
+UnusedVariable	UnusedVariable/009.groovy		4	
+UnusedVariable	UnusedVariable/010.groovy		-	
+UnusedVariable	UnusedVariable/011.groovy		-	
+UnusedVariable	UnusedVariable/012.groovy		-	
+UnusedVariable	UnusedVariable/013.groovy		-	
+UnusedVariable	UnusedVariable/014.groovy		-	
+UnusedVariable	UnusedVariable/015.groovy		-	
+UnusedVariable	UnusedVariable/016.groovy		4	
+UnusedVariable	UnusedVariable/017.groovy		4	
+UnusedVariable	UnusedVariable/018.groovy		-	
+UnusedVariable	UnusedVariable/019.groovy		-	
+UnusedVariable	UnusedVariable/020.groovy		-	
+UnusedVariable	UnusedVariable/021.groovy		2	
+UnusedVariable	UnusedVariable/022.groovy		-	
+UnusedVariable	UnusedVariable/023.groovy		2	
+UnusedVariable	UnusedVariable/024.groovy		-	
+UnusedVariable	UnusedVariable/025.groovy		-	
+UnusedVariable	UnusedVariable/026.groovy		-	
+UnusedVariable	UnusedVariable/027.groovy		-	
+UnusedVariable	UnusedVariable/028.groovy		-	
+UnusedVariable	UnusedVariable/029.groovy		-	
+UnusedVariable	UnusedVariable/030.groovy		-	ignoreVariableNames=depositAmount
+UnusedVariable	UnusedVariable/031.groovy		4	ignoreVariableNames=other
+UnusedVariable	UnusedVariable/032.groovy		6	ignoreVariableNames=oth*,xxx,deposit??ount
+UseAssertEqualsInsteadOfAssertTrue	UseAssertEqualsInsteadOfAssertTrue/000.groovy		-	
+UseAssertEqualsInsteadOfAssertTrue	UseAssertEqualsInsteadOfAssertTrue/001.groovy		4,5	
+UseAssertEqualsInsteadOfAssertTrue	UseAssertEqualsInsteadOfAssertTrue/002.groovy		4,5	
+UseAssertFalseInsteadOfNegation	UseAssertFalseInsteadOfNegation/000.groovy		-	
+UseAssertFalseInsteadOfNegation	UseAssertFalseInsteadOfNegation/001.groovy		4	
+UseAssertFalseInsteadOfNegation	UseAssertFalseInsteadOfNegation/002.groovy		4	
+UseAssertNullInsteadOfAssertEquals	UseAssertNullInsteadOfAssertEquals/000.groovy		-	
+UseAssertNullInsteadOfAssertEquals	UseAssertNullInsteadOfAssertEquals/001.groovy		4,5	
+UseAssertNullInsteadOfAssertEquals	UseAssertNullInsteadOfAssertEquals/002.groovy		4,5	
+UseAssertSameInsteadOfAssertTrue	UseAssertSameInsteadOfAssertTrue/000.groovy		-	
+UseAssertSameInsteadOfAssertTrue	UseAssertSameInsteadOfAssertTrue/001.groovy		4,5	
+UseAssertSameInsteadOfAssertTrue	UseAssertSameInsteadOfAssertTrue/002.groovy		4,5	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/000.groovy		-	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/001.groovy		4,5	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/002.groovy		4,5	checkAssertStatements=true
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/003.groovy		-	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/004.groovy		4,5	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/005.groovy		4,5	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/006.groovy		4,5	checkAssertStatements=true
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/007.groovy		-	
+UseAssertTrueInsteadOfAssertEquals	UseAssertTrueInsteadOfAssertEquals/008.groovy		4,5	
+UseAssertTrueInsteadOfNegation	UseAssertTrueInsteadOfNegation/000.groovy		-	
+UseAssertTrueInsteadOfNegation	UseAssertTrueInsteadOfNegation/001.groovy		4	
+UseAssertTrueInsteadOfNegation	UseAssertTrueInsteadOfNegation/002.groovy		4	
+UseCollectMany	UseCollectMany/000.groovy		-	
+UseCollectMany	UseCollectMany/001.groovy		3	
+UseCollectNested	UseCollectNested/000.groovy		-	
+UseCollectNested	UseCollectNested/001.groovy		-	
+UseCollectNested	UseCollectNested/002.groovy		6,12	
+UseCollectNested	UseCollectNested/003.groovy		-	
+UseOfNotifyMethod	UseOfNotifyMethod/000.groovy		-	
+UseOfNotifyMethod	UseOfNotifyMethod/001.groovy		2	
+UseOfNotifyMethod	UseOfNotifyMethod/002.groovy		2	
+UseOfNotifyMethod	UseOfNotifyMethod/003.groovy		2	
+VariableName	VariableName/000.groovy		4	
+VariableName	VariableName/001.groovy		-	
+VariableName	VariableName/002.groovy		4	regex=/z.*/
+VariableName	VariableName/003.groovy		-	regex=/z.*/
+VariableName	VariableName/004.groovy		-	
+VariableName	VariableName/005.groovy		-	
+VariableName	VariableName/006.groovy		4	
+VariableName	VariableName/007.groovy		-	finalRegex=
+VariableName	VariableName/008.groovy		4	finalRegex=/z.*/
+VariableName	VariableName/009.groovy		-	finalRegex=/z.*/
+VariableName	VariableName/010.groovy		3	
+VariableName	VariableName/011.groovy		-	
+VariableName	VariableName/012.groovy		4	
+VariableName	VariableName/013.groovy		-	
+VariableName	VariableName/014.groovy		3	
+VariableName	VariableName/015.groovy		3	
+VariableName	VariableName/016.groovy		3	
+VariableName	VariableName/017.groovy		-	ignoreVariableNames=deposit_amount
+VariableName	VariableName/018.groovy		5	ignoreVariableNames=OTHER?name,_*,GOOD_NAME
+VariableName	VariableName/019.groovy		-	
+VariableName	VariableName/020.groovy		-	
+VariableName	VariableName/021.groovy		-	
+VariableTypeRequired	VariableTypeRequired/000.groovy		-	
+VariableTypeRequired	VariableTypeRequired/001.groovy		4,5,6	
+VariableTypeRequired	VariableTypeRequired/002.groovy		3,4	ignoreVariableNames=other
+VariableTypeRequired	VariableTypeRequired/003.groovy		4	ignoreVariableNames=other, a*Names, max, abc
+VolatileArrayField	VolatileArrayField/000.groovy		-	
+VolatileArrayField	VolatileArrayField/001.groovy		3	
+VolatileArrayField	VolatileArrayField/002.groovy		3	
+VolatileArrayField	VolatileArrayField/003.groovy		3	
+VolatileArrayField	VolatileArrayField/004.groovy		3	
+VolatileArrayField	VolatileArrayField/005.groovy		3	
+VolatileArrayField	VolatileArrayField/006.groovy		3	
+VolatileLongOrDoubleField	VolatileLongOrDoubleField/000.groovy		3,4	
+VolatileLongOrDoubleField	VolatileLongOrDoubleField/001.groovy		3,4	
+VolatileLongOrDoubleField	VolatileLongOrDoubleField/002.groovy		3,4	
+VolatileLongOrDoubleField	VolatileLongOrDoubleField/003.groovy		-	
+WaitOutsideOfWhileLoop	WaitOutsideOfWhileLoop/000.groovy		-	
+WaitOutsideOfWhileLoop	WaitOutsideOfWhileLoop/001.groovy		-	
+WaitOutsideOfWhileLoop	WaitOutsideOfWhileLoop/002.groovy		3	
+WaitOutsideOfWhileLoop	WaitOutsideOfWhileLoop/003.groovy		4	
+WhileStatementBraces	WhileStatementBraces/000.groovy		4,6	
+WhileStatementBraces	WhileStatementBraces/001.groovy		-	
+WhileStatementBraces	WhileStatementBraces/002.groovy		-	

@@ -1,0 +1,1 @@
+try {  } catch(java.lang.NullPointerException t) { }

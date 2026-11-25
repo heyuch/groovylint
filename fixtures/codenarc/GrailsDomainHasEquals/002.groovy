@@ -1,0 +1,5 @@
+
+            @EqualsAndHashCode
+            class Person {
+            }
+        

@@ -1,0 +1,7 @@
+
+            class TrailingWhitespaceInSuperConstructorCall {
+                TrailingWhitespaceInSuperConstructorCall() {
+                    super("{(   (}")
+                }
+            }
+        

@@ -1,1 +1,5 @@
 * text=auto eol=lf
+
+# CodeNarc's fixtures assert on exact bytes: trailing whitespace, CRLF endings and
+# missing final newlines are the subject of several rules.
+fixtures/codenarc/** -text linguist-vendored

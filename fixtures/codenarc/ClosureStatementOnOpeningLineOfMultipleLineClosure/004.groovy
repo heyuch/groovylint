@@ -1,0 +1,5 @@
+
+            doStuff { }
+            assertCondition(TEXT, 'Info') {
+            }
+            

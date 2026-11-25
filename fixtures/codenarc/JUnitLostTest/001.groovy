@@ -1,0 +1,5 @@
+
+            class MyTestCase {
+                void testMe() { }
+            }
+        

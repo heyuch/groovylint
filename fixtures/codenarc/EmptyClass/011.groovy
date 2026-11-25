@@ -1,0 +1,4 @@
+
+            @AnyAnnotation
+            class Empty { }
+        

@@ -1,0 +1,5 @@
+
+            class BookService {
+                FooService fooService
+            }
+        

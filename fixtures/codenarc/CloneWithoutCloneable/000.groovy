@@ -1,0 +1,5 @@
+
+            class Unrelated {
+                def irrelevant() {}
+            }
+        

@@ -1,0 +1,6 @@
+
+            class InvalidClass {
+                def defReturningMethod() {
+                }
+            }
+        

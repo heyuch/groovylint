@@ -1,0 +1,5 @@
+
+            void foo() {
+              echo 'hi'
+            }
+        

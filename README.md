@@ -59,8 +59,9 @@ registered under their CodeNarc class names:
 
 Each implemented rule has a minimal Groovy fixture under
 `crates/groovylint-cli/tests/fixtures/rules/` and is exercised end-to-end through
-the CLI. The current fixtures are minimal positive cases; broader edge-case and
-negative coverage is an ongoing task.
+the CLI. Beyond that, 3,000 snippets harvested from CodeNarc's own rule tests assert
+the line numbers CodeNarc asserts, including 1,400 cases that must stay silent: see
+[rule fixtures from CodeNarc](docs/RULE-FIXTURES.md).
 
 ## Quick start
 
@@ -198,6 +199,7 @@ cargo doc-all
 - [Nullness analysis design](docs/NULLCHECK.md)
 - [Incremental analysis and caching](docs/PERFORMANCE.md)
 - [CodeNarc rule coverage](docs/COVERAGE.md)
+- [Rule fixtures from CodeNarc](docs/RULE-FIXTURES.md)
 - [Gradle plugin](gradle-plugin/README.md)
 - [Distribution: Gradle and Maven](docs/DISTRIBUTION.md)
 - [Changed files only](docs/CHANGED-FILES.md)

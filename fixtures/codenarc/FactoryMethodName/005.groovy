@@ -1,0 +1,6 @@
+
+            class WidgetBuilder {
+                def create() {
+                }
+            }
+        

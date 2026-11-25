@@ -142,8 +142,9 @@ more of CodeNarc's own positive/negative test cases per rule.
   - `TrailingComma`, `UnnecessaryDotClass` and `Space*Brace` still differ on a
     few percent of findings in code bases that use many collection literals and
     interpolated strings.
-- The former stub rules now have implementations, but several are intentionally
-  approximate and still need broader CodeNarc differential fixtures.
+- The former stub rules now have implementations. How close each one is to CodeNarc
+  is measured, not guessed: `docs/RULE-FIXTURES.md` runs 2,986 snippets taken from
+  CodeNarc's own rule tests and lists what still differs.
 - The parser is a common-syntax subset, not full Groovy. Unsupported syntax
   becomes a `ParseError` diagnostic for that file. On a 118,470-file private
   Groovy corpus (Spring/Grails services, Spock tests, Gradle build logic) every

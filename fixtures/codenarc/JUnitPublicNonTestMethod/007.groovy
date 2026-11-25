@@ -1,0 +1,6 @@
+
+            class MyTest extends GroovyTestCase {
+                public void testSomething() { println 'ok' }
+                @BeforeEach void init() { println 'ok' }
+            }
+        

@@ -1,0 +1,1 @@
+ def myMethod() { println "bad" }

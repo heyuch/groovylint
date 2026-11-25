@@ -1,0 +1,3 @@
+
+            a.rightShift(b)
+        

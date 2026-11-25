@@ -1,0 +1,1 @@
+ class MyClass { static class _MyNestedClass { }  } 

@@ -1,0 +1,6 @@
+
+        interface Foo {
+            
+            void hi()
+         }
+        
