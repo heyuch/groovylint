@@ -21,7 +21,7 @@ groovylint with the same ruleset on the same files, and compares the sets of
 `(file, rule, line)`. One iteration takes about a second instead of the 16
 minutes CodeNarc needs for the corpus.
 
-- Ruleset: `buildScript/codenarc/codenarc-bug.xml` (the CI subset, 96 rules)
+- Ruleset: `buildScript/codenarc/production-rules.xml` (the CI subset, 96 rules)
 - Corpus: 24,345 `.groovy` files across 45 modules
 - CodeNarc: 3.7.0-groovy-4.0, one JVM per module (a single JVM runs out of heap)
 
@@ -73,8 +73,8 @@ implement them with a classpath; groovylint currently has none.
 ```bash
 python3 benchmarks/diff_codenarc_report.py \
   --codenarc-report /tmp/cn-bug-full.xml \
-  --corpus ~/Code/SaaS/saas-service \
-  --config buildScript/codenarc/codenarc-bug.xml \
+  --corpus /path/to/project \
+  --config buildScript/codenarc/production-rules.xml \
   --paths $(cat /tmp/cn-modules.txt)
 ```
 
@@ -82,7 +82,7 @@ CodeNarc itself is run per module, otherwise the JVM exhausts the heap:
 
 ```bash
 java -cp "$(cat /tmp/cn-cp.txt)" org.codenarc.CodeNarc \
-  -rulesetfiles=file:$PWD/buildScript/codenarc/codenarc-bug.xml \
+  -rulesetfiles=file:$PWD/buildScript/codenarc/production-rules.xml \
   -includes='**/*.groovy' -basedir=$PWD/<module> \
   -report=xml:/tmp/cn-bug-chunks/<module>.xml
 ```

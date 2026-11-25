@@ -9,3 +9,6 @@ lcov.info
 gradle-plugin/.gradle/
 gradle-plugin/build/
 gradle-plugin/.kotlin/
+
+# Local notes that reference internal projects.
+docs/local/

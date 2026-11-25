@@ -2,7 +2,7 @@
 
 Status: **proposal** (analysis only, nothing implemented).
 
-`com.bytesforce.literal.LiteralRule` in `saas-service/buildSrc` flags places that
+A project-local `LiteralRule` in `buildSrc` flags places that
 compare strings where an enum would do. This document records what the rule does,
 how it behaves on the corpus, what it would take to build it here, and where we
 can be more precise.
@@ -46,7 +46,7 @@ commas, keep `[A-Z][A-Z0-9_]*` names). Four categories:
 "enum or dictionary value". Scope is ratchet-friendly: only the modules owning the
 checked files are indexed, so a changed-files run costs 0.1–0.3 s instead of 3.5 s.
 
-### Measured behaviour on `saas-service`
+### Measured behaviour
 
 `./gradlew staticChecks -Prule=literal -PstaticAll`, 206 modules, 20,825 files:
 

@@ -2,7 +2,7 @@
 
 Status: **proposal for review** (design only, nothing implemented).
 
-`saas-service-giis247` encodes its architecture as 40-odd ArchUnit tests
+A production project encoded its architecture as 40-odd ArchUnit tests
 (`docs/archunit-rule-catalog.md`). This document proposes how `groovylint` should
 implement the same constraints natively, with a declarative rule model reusable
 across projects, and where source-level analysis beats bytecode.
@@ -64,19 +64,19 @@ produces the same model). The model has four parts: **slices**, **selectors**,
 ### 3.1 Slices
 
 A slice is a named set of files/packages/classes used on both sides of a rule.
-Project layouts differ (`<module>-<layer>/*` in `saas-service`, single-module
+Project layouts differ (`<module>-<layer>/*` in one project, single-module
 elsewhere), so a slice is defined by any combination of paths and packages:
 
 ```toml
 [architecture.slices.adapter]
 paths = ["*/adapter/**", "*/adapter-shared/**"]
-packages = ["com.bytesforce.adapter.."]
+packages = ["com.acme.adapter.."]
 
 [architecture.slices.application]
-packages = ["com.bytesforce.application.."]
+packages = ["com.acme.application.."]
 
 [architecture.allow.adapter]
-domain-enums = "com.bytesforce.domain.*.*Enum"   # class whitelist inside a rule
+domain-enums = "com.acme.domain.*.*Enum"   # class whitelist inside a rule
 ```
 
 `module = "first path segment"` is the default slice axis (that is what the
@@ -106,7 +106,7 @@ within a segment, `(*)`/`(..)` for parameters.
 [[architecture.rules]]
 id = "domain-must-not-declare-transactions"
 family = "annotation"
-selector.classes = "com.bytesforce.domain..*"
+selector.classes = "com.acme.domain..*"
 selector.sourceSets = ["main"]
 condition.mustNotBeAnnotatedWith = "org.springframework.transaction.annotation.Transactional"
 condition.appliesTo.methods = "*"        # also check method-level annotations
@@ -136,7 +136,7 @@ Every rule carries `because` (copied into the diagnostic, like the catalog's
 ```toml
 [[architecture.rules]]
 id = "output-domain-no-transactions"
-exclude.classes = ["com.bytesforce.domain.output.service.impl.OutputServiceImpl", "…"]
+exclude.classes = ["com.acme.domain.output.service.impl.OutputServiceImpl", "…"]
 exclude.reason = "LEGACY_TRANSACTIONAL_CLASSES: 存量迁 application 前放行"
 ```
 
@@ -173,7 +173,7 @@ its graph in reasonable time") should be turned into a benchmark early.
 | **A** | Per-file families 1–3 (placement, annotations + attributes, type shape) with selectors `classes`/`methods`/`fields`/`annotatedWith`/`implement` | No graph. Covers ~24 of the catalog's 40 rules, and they are the ones that fail most often today. |
 | **B** | `ProjectIndex` + dependency extraction + `mustDependOnlyOn` / `mustNotDependOn` per slice; module/layer rules; `exclude` baselines | The module-boundary rules are the catalog's core value. |
 | **C** | Call-graph conditions (`callersOf` with callee annotation/body requirements), `runtimeContext` specialisations, `allowEmptyShould` tuning | Fewest rules, highest resolution cost. |
-| **D** | Gradle DSL facade emitting the same TOML model; migration helper that prints a config skeleton per module | Needed before the `saas-service` switch-over. |
+| **D** | Gradle DSL facade emitting the same TOML model; migration helper that prints a config skeleton per module | Needed before switching an existing project over. |
 
 ## 6. Decisions to settle before implementation
 

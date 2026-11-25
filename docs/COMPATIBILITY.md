@@ -35,7 +35,7 @@ CodeNarc once and reuses its XML report:
 ```bash
 # once per corpus change
 java -cp "$CODENARC_CLASSPATH" org.codenarc.CodeNarc \
-    -basedir=. -includes='claim/claim-domain/src/**/*.groovy,component-utils/src/**/*.groovy' \
+    -basedir=. -includes='module-a/module-a-domain/src/**/*.groovy,module-b/src/**/*.groovy' \
     -rulesetfiles=file:buildScript/codenarc/codenarc-bug.xml \
     -report=xml:/tmp/codenarc.xml
 
@@ -43,7 +43,7 @@ java -cp "$CODENARC_CLASSPATH" org.codenarc.CodeNarc \
 python3 benchmarks/diff_codenarc_report.py \
     --codenarc-report /tmp/codenarc.xml --corpus . \
     --config buildScript/codenarc/codenarc-bug.xml \
-    --paths claim/claim-domain/src component-utils/src
+    --paths module-a/module-a-domain/src module-b/src
 ```
 
 The benchmark tables below were collected before the unsupported framework rules
@@ -54,12 +54,12 @@ Latest results:
 
 | Ruleset | Files | CodeNarc findings | `groovylint` findings | identical on `(file, rule, line)` |
 |---|---|---|---|---|
-| `codenarc-bug.xml` (96 rules) | 838 (`claim-domain`+`component-utils`) | 913 | 951 | 909 (99.6%) |
-| `codenarc.xml` (323 rules) | 838 (`claim-domain`+`component-utils`) | 9499 | 10251 | 9034 (95.1%) |
-| `codenarc.xml` (323 rules) | 2330 (`gi-policy`) | 27_918 | 34_716 | 26_659 (95.5%) |
+| `codenarc-bug.xml` (96 rules) | 838 (two modules) | 913 | 951 | 909 (99.6%) |
+| `codenarc.xml` (323 rules) | 838 (two modules) | 9499 | 10251 | 9034 (95.1%) |
+| `codenarc.xml` (323 rules) | 2330 (largest module) | 27_918 | 34_716 | 26_659 (95.5%) |
 
-Timing on the `gi-policy` slice (2330 files, 323 rules): CodeNarc 110.6 s,
-`groovylint` 1.48 s. On the whole `saas-service` corpus (24,345 files, 323
+Timing on the largest-module slice (2330 files, 323 rules): CodeNarc 110.6 s,
+`groovylint` 1.48 s. On the whole project corpus (24,345 files, 323
 rules) `groovylint` reports 266,632 findings in 10.7 s with no parse errors;
 CodeNarc did not finish the same corpus within an hour before it was stopped.
 
