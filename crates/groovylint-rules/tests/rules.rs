@@ -261,3 +261,47 @@ fn unused_import_resolves_names_instead_of_matching_text() {
     let wildcard = lint("import a.b.*\n\nclass Example {\n}\n", unused_import);
     assert!(wildcard.is_empty(), "{wildcard:?}");
 }
+
+#[test]
+fn references_groovylint_used_to_miss() {
+    // A parameter annotation names the field.
+    let annotation = lint(
+        "class Example {\n    private static final String HEADER = 'X'\n\n    void run(@RequestHeader(value = HEADER) String token) {\n    }\n}\n",
+        &["org.codenarc.rule.unused.UnusedPrivateFieldRule"],
+    );
+    assert!(annotation.is_empty(), "{annotation:?}");
+
+    // A parameter default names the field.
+    let default_value = lint(
+        "class Example {\n    private static final Map<String, String> DEFAULTS = [:]\n\n    void run(Map<String, String> labels = DEFAULTS) {\n    }\n}\n",
+        &["org.codenarc.rule.unused.UnusedPrivateFieldRule"],
+    );
+    assert!(default_value.is_empty(), "{default_value:?}");
+
+    // A private accessor is used through its property name.
+    let accessor = lint(
+        "class Example {\n    private int getPageSize() {\n        return 1\n    }\n\n    void run(Map ctx) {\n        println ctx.pageSize\n    }\n}\n",
+        &["org.codenarc.rule.unused.UnusedPrivateMethodRule"],
+    );
+    assert!(accessor.is_empty(), "{accessor:?}");
+
+    // `else if` chains are never inverted if statements for CodeNarc.
+    let inverted = lint(
+        "class Example {\n    void run(boolean a, boolean b) {\n        if (!a) {\n            println 1\n        } else if (!b) {\n            println 2\n        } else {\n            println 3\n        }\n    }\n}\n",
+        &["org.codenarc.rule.convention.InvertedIfElseRule"],
+    );
+    assert!(inverted.is_empty(), "{inverted:?}");
+
+    // A logger created through another receiver is not a logger field.
+    let logger = lint(
+        "class Example {\n    private Logger gateway = context.getLogger(Example)\n}\n",
+        &["org.codenarc.rule.logging.LoggerForDifferentClassRule"],
+    );
+    assert!(logger.is_empty(), "{logger:?}");
+
+    let direct = lint(
+        "class Example {\n    private Logger log = LoggerFactory.getLogger(Other.class)\n}\n",
+        &["org.codenarc.rule.logging.LoggerForDifferentClassRule"],
+    );
+    assert_eq!(direct.len(), 1, "{direct:?}");
+}
