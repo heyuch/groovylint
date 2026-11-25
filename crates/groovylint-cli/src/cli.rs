@@ -35,6 +35,12 @@ pub struct CheckArgs {
     #[arg(short, long, value_name = "FILE")]
     pub config: Option<PathBuf>,
 
+    /// Skip every path containing this substring. Repeatable.
+    ///
+    /// Use it to mirror a main-only `CodeNarc` setup: `--exclude /src/test/`.
+    #[arg(long, value_name = "SUBSTRING")]
+    pub exclude: Vec<String>,
+
     /// Diagnostic output format.
     #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
     pub format: OutputFormat,
@@ -62,6 +68,10 @@ pub struct NullcheckArgs {
     /// Diagnostic output format.
     #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
     pub format: OutputFormat,
+
+    /// Skip every path containing this substring. Repeatable.
+    #[arg(long, value_name = "SUBSTRING")]
+    pub exclude: Vec<String>,
 
     /// Optional TOML contract file for project/library models.
     #[arg(long, value_name = "FILE")]

@@ -48,6 +48,29 @@ Deleted files are dropped (`--diff-filter=ACMR`), renamed files count as the new
 path, and untracked files are included in the first two modes — a new file that is
 not committed yet is still a change you want checked.
 
+## Narrowing the scope further
+
+`--exclude <SUBSTRING>` drops every path that contains the given text, and it can
+be repeated. It exists to line the local run up with whatever CI actually checks:
+
+```bash
+# CI only lints main sources
+groovylint check --config codenarc.xml --exclude /src/test/ --changed-baseline origin/develop .
+
+# CI lints test sources too, but not the test classes themselves
+groovylint check --config codenarc.xml --exclude Test.groovy --changed-baseline origin/develop .
+```
+
+The patterns are substrings, not globs, because the intent is always "somewhere in
+this path" and a substring is one rule instead of a pattern language. Excluded
+paths are counted out before the files are parsed, so a run that skips the test
+tree costs less, and the summary line says what was skipped:
+
+```text
+96 warning(s) in 300 file(s) (300 file(s) checked, changed since origin/develop...HEAD
+  + working tree (391 path(s) in the set), excluding Test.groovy)
+```
+
 ## Cost
 
 A changed-only run must be cheaper than a full run, otherwise it is only a

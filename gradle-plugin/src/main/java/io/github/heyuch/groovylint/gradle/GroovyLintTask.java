@@ -17,6 +17,7 @@ import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
@@ -119,6 +120,13 @@ public abstract class GroovyLintTask extends DefaultTask {
     @Internal
     public abstract DirectoryProperty getNativeCacheDirectory();
 
+    /** Path substrings the analyzer skips, e.g. {@code /src/test/}.
+     *
+     * @return the excluded path substrings
+     */
+    @Input
+    public abstract ListProperty<String> getExclude();
+
     /** Whether to check only the changed files.
      *
      * @return the changed-only flag
@@ -200,6 +208,10 @@ public abstract class GroovyLintTask extends DefaultTask {
         } else if (getConfigFile().isPresent()) {
             arguments.add("--config");
             arguments.add(getConfigFile().get().getAsFile().getAbsolutePath());
+        }
+        for (String pattern : getExclude().getOrElse(List.of())) {
+            arguments.add("--exclude");
+            arguments.add(pattern);
         }
         sources.stream().map(File::getAbsolutePath).forEach(arguments::add);
 

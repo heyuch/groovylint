@@ -1,5 +1,6 @@
 package io.github.heyuch.groovylint.gradle;
 
+import java.util.List;
 import java.util.Locale;
 
 import org.gradle.api.Plugin;
@@ -27,6 +28,7 @@ public final class GroovyLintPlugin implements Plugin<Project> {
         extension.getThreads().convention(Math.max(1, Runtime.getRuntime().availableProcessors()));
         extension.getIgnoreFailures().convention(false);
         extension.getNullcheckMode().convention("conservative");
+        extension.getExclude().convention(List.of());
         extension.getChangedOnly().convention(false);
         String nativeVersion = pluginVersion();
 
@@ -65,6 +67,7 @@ public final class GroovyLintPlugin implements Plugin<Project> {
                         lint.getIgnoreFailures().set(extension.getIgnoreFailures());
                         lint.getNativeVersion().set(nativeVersion);
                         lint.getExecutable().set(extension.getExecutable());
+                        lint.getExclude().set(extension.getExclude());
                         lint.getChangedOnly().set(extension.getChangedOnly());
                         lint.getChangedFiles().from(extension.getChangedFiles());
                         lint.getChangedFilesList().set(extension.getChangedFilesList());
@@ -90,6 +93,7 @@ public final class GroovyLintPlugin implements Plugin<Project> {
                         lint.getIgnoreFailures().set(extension.getIgnoreFailures());
                         lint.getNativeVersion().set(nativeVersion);
                         lint.getExecutable().set(extension.getExecutable());
+                        lint.getExclude().set(extension.getExclude());
                         lint.getChangedOnly().set(extension.getChangedOnly());
                         lint.getChangedFiles().from(extension.getChangedFiles());
                         lint.getChangedFilesList().set(extension.getChangedFilesList());

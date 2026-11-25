@@ -93,6 +93,9 @@ cargo run -p groovylint -- check --changed-baseline origin/develop .
 
 # Only the files a build already computed, one path per line
 cargo run -p groovylint -- check --changed-files build/changed-groovy-files.txt .
+
+# Mirror a main-only CI gate: skip every path containing this substring
+cargo run -p groovylint -- check --exclude /src/test/ .
 ```
 
 Restricting the analysis to changed files is what makes the tool usable as a

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -126,6 +127,35 @@ class GroovyLintPluginTest {
         int index = args.indexOf("--changed-files");
         assertTrue(index >= 0, "--changed-files should be passed: " + args);
         assertTrue(args.get(index + 1).endsWith("changed.txt"), args.toString());
+    }
+
+    @Test
+    void passesExcludedPathSubstringsToTheAnalyzer() throws IOException {
+        writeProjectFiles("""
+                groovylint {
+                    executable.set(layout.projectDirectory.file("fake-groovylint.sh"))
+                    exclude.add("/src/test/")
+                    exclude.add("Test.groovy")
+                }
+                """);
+        writeFakeAnalyzer("0");
+
+        BuildResult result = run("groovylintMain");
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":groovylintMain").getOutcome());
+        List<String> args = Files.readAllLines(projectDir.resolve("args.txt"));
+        assertEquals(List.of("--exclude", "/src/test/", "--exclude", "Test.groovy"), excludeArgs(args), args.toString());
+    }
+
+    private List<String> excludeArgs(List<String> args) {
+        List<String> found = new ArrayList<>();
+        for (int index = 0; index < args.size(); index++) {
+            if ("--exclude".equals(args.get(index))) {
+                found.add(args.get(index));
+                found.add(args.get(index + 1));
+            }
+        }
+        return found;
     }
 
     @Test

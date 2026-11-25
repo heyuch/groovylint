@@ -2,6 +2,7 @@ package io.github.heyuch.groovylint.gradle;
 
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 
 /**
@@ -51,6 +52,17 @@ public abstract class GroovyLintExtension {
      * @return the optional executable
      */
     public abstract RegularFileProperty getExecutable();
+
+    /**
+     * Path substrings to skip, so a main-only gate can mirror what CI checks.
+     *
+     * <p>For example {@code exclude.add('/src/test/')} leaves test sources out, and
+     * {@code exclude.add('Test.groovy')} drops test classes while keeping the helper
+     * classes that live in test source sets.
+     *
+     * @return the excluded path substrings
+     */
+    public abstract ListProperty<String> getExclude();
 
     /**
      * Whether to check only {@link #getChangedFiles() changed files}.

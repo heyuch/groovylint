@@ -6,7 +6,10 @@ use anyhow::{Context, Result, bail};
 use ignore::WalkBuilder;
 
 /// Collects Groovy source files from explicit files and directories.
-pub fn collect_files(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
+///
+/// `excludes` drop every path that contains one of the given substrings, which is
+/// how a run mirrors `CodeNarc`'s main-only setup: `--exclude /src/test/`.
+pub fn collect_files(paths: &[PathBuf], excludes: &[String]) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     for path in paths {
@@ -21,7 +24,9 @@ pub fn collect_files(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
         let walker = WalkBuilder::new(path).standard_filters(true).build();
         for entry in walker {
             let entry = entry.with_context(|| format!("failed to walk {}", path.display()))?;
-            if entry.file_type().is_some_and(|kind| kind.is_file()) && is_groovy_file(entry.path())
+            if entry.file_type().is_some_and(|kind| kind.is_file())
+                && is_groovy_file(entry.path())
+                && !is_excluded(entry.path(), excludes)
             {
                 files.push(entry.into_path());
             }
@@ -31,6 +36,14 @@ pub fn collect_files(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
     files.sort();
     files.dedup();
     Ok(files)
+}
+
+fn is_excluded(path: &Path, excludes: &[String]) -> bool {
+    if excludes.is_empty() {
+        return false;
+    }
+    let text = path.to_string_lossy().replace('\\', "/");
+    excludes.iter().any(|pattern| text.contains(pattern))
 }
 
 fn is_groovy_file(path: &Path) -> bool {
@@ -62,6 +75,7 @@ fn is_groovy_file(path: &Path) -> bool {
 pub fn collect_changed(
     paths: &[PathBuf],
     files: impl Iterator<Item = PathBuf>,
+    excludes: &[String],
 ) -> Result<Vec<PathBuf>> {
     let mut roots = Vec::new();
     for path in paths {
@@ -87,6 +101,9 @@ pub fn collect_changed(
                 .map_or_else(|_| resolved.clone(), PathBuf::from),
             None => resolved,
         };
+        if is_excluded(&displayed, excludes) {
+            continue;
+        }
         selected.push(displayed);
     }
 
@@ -97,8 +114,17 @@ pub fn collect_changed(
 
 #[cfg(test)]
 mod tests {
-    use super::is_groovy_file;
+    use super::{is_excluded, is_groovy_file};
     use std::path::Path;
+
+    #[test]
+    fn excludes_paths_containing_a_pattern() {
+        let patterns = vec!["/src/test/".to_string()];
+
+        assert!(is_excluded(Path::new("a/src/test/b/C.groovy"), &patterns));
+        assert!(!is_excluded(Path::new("a/src/main/b/C.groovy"), &patterns));
+        assert!(!is_excluded(Path::new("a/src/test/b/C.groovy"), &[]));
+    }
 
     #[test]
     fn recognizes_groovy_file_types() {
