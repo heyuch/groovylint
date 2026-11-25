@@ -64,6 +64,8 @@ struct Parser<'a> {
     /// Nesting depth of `(...)` and `[...]`, where newlines are insignificant.
     nesting: usize,
     last_type_annotations: Vec<String>,
+    /// Declaration kind of the class body being parsed.
+    class_kind: Option<ClassKind>,
 }
 
 impl<'a> Parser<'a> {
@@ -74,6 +76,7 @@ impl<'a> Parser<'a> {
             pos: 0,
             nesting: 0,
             last_type_annotations: Vec::new(),
+            class_kind: None,
         }
     }
 
@@ -336,6 +339,8 @@ impl<'a> Parser<'a> {
 
         let _ = self.expect(TokenKind::LeftBrace)?;
         let mut members = Vec::new();
+        let previous_kind = self.class_kind;
+        self.class_kind = Some(kind);
         self.skip_separators();
 
         if kind == ClassKind::Enum {
@@ -354,6 +359,7 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(TokenKind::RightBrace)?;
+        self.class_kind = previous_kind;
         Ok(ClassDecl {
             name,
             kind,
@@ -533,6 +539,10 @@ impl<'a> Parser<'a> {
                 None
             };
             let span = Span::new(next_start, self.previous_span().end);
+            // Members of an interface are implicitly `public static final`.
+            let in_interface = self
+                .class_kind
+                .is_some_and(|kind| matches!(kind, ClassKind::Interface | ClassKind::Annotation));
             let item = if in_class {
                 Item::Field(FieldDecl {
                     name: next_name,
@@ -540,10 +550,10 @@ impl<'a> Parser<'a> {
                     annotations: prefix.annotations.clone(),
                     annotation_details: prefix.annotation_details.clone(),
                     suppressed_rules: prefix.suppressed_rules.clone(),
-                    is_static: prefix.is_static,
-                    is_final: prefix.is_final,
+                    is_static: prefix.is_static || in_interface,
+                    is_final: prefix.is_final || in_interface,
                     is_private: prefix.is_private,
-                    is_public: prefix.is_public,
+                    is_public: prefix.is_public || in_interface,
                     is_protected: prefix.is_protected,
                     is_transient: prefix.is_transient,
                     is_volatile: prefix.is_volatile,

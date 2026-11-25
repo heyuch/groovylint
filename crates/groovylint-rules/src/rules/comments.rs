@@ -10,6 +10,7 @@ use crate::rule::{
     AstRule, Category, DiagnosticSink, FileContext, FileRule, NodeKind, NodeMask, NodeRef, Rule,
     RuleMeta,
 };
+use crate::rules::util::first_annotation_line;
 
 /// One `/** ... */` block whose first line is `/**` on its own.
 struct Javadoc {
@@ -157,21 +158,6 @@ impl AstRule for ClassJavadocRule {
             &format!("Class {} missing Javadoc", class.name),
         );
     }
-}
-
-/// Returns the first line of a run of annotations ending at `line`.
-fn first_annotation_line(context: &FileContext<'_>, line: usize) -> usize {
-    let mut first = line;
-    while first > 1 {
-        let Some(text) = context.source.line_text(first - 1) else {
-            break;
-        };
-        if !text.trim_start().starts_with('@') {
-            break;
-        }
-        first -= 1;
-    }
-    first
 }
 
 /// Walks back over blank lines, line comments, annotations and Javadoc lines.

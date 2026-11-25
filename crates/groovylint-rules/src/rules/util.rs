@@ -224,3 +224,21 @@ pub(crate) fn is_serializable(class: &groovylint_syntax::ast::ClassDecl) -> bool
         .chain(class.extends.iter())
         .any(|name| simple_name(name) == "Serializable")
 }
+
+/// Returns the first line of a run of annotations ending at `line`.
+///
+/// `CodeNarc` reports class-level findings at the first annotation line, because
+/// Groovy's `ClassNode.lineNumber` includes them.
+pub(crate) fn first_annotation_line(context: &crate::rule::FileContext<'_>, line: usize) -> usize {
+    let mut first = line;
+    while first > 1 {
+        let Some(text) = context.source.line_text(first - 1) else {
+            break;
+        };
+        if !text.trim_start().starts_with('@') {
+            break;
+        }
+        first -= 1;
+    }
+    first
+}

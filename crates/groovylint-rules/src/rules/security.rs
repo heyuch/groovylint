@@ -108,9 +108,13 @@ impl AstRule for UnsafeImplementationAsMapRule {
     fn enter(
         &mut self,
         node: NodeRef<'_>,
-        _context: &FileContext<'_>,
+        context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
+        // `CodeNarc` does not apply this rule to test sources.
+        if crate::rules::util::is_test_file(context.source.path().to_string_lossy().as_ref()) {
+            return;
+        }
         let NodeRef::Expr(expr) = node else {
             return;
         };

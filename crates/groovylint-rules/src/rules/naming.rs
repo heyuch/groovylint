@@ -10,7 +10,7 @@ use crate::rule::{
     AstRule, Category, DiagnosticSink, FileContext, FileRule, NodeKind, NodeMask, NodeRef, Rule,
     RuleMeta, RuleProperties,
 };
-use crate::rules::util::ClassStack;
+use crate::rules::util::{ClassStack, first_annotation_line};
 
 /// The default identifier pattern `CodeNarc` uses for classes and methods.
 const LOWER_CAMEL: &str = "[a-z]\\w*";
@@ -429,8 +429,13 @@ impl FileRule for ClassNameSameAsFilenameRule {
             ClassKind::Enum => "Enum",
             _ => "Class",
         };
+        // `CodeNarc` reports the first annotation line of the declaration.
+        let line = first_annotation_line(context, context.source.line_col(class.span.start).line);
+        let Some(span) = context.source.line_span(line) else {
+            return;
+        };
         sink.report(
-            class.span,
+            span,
             format!(
                 "{kind} `{}` is the only class in `{stem}.groovy`. In such a case the file and the class should have the same name.",
                 class.name

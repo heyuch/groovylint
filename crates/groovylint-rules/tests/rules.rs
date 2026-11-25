@@ -127,3 +127,31 @@ fn unknown_rules_are_reported_as_unsupported() {
     assert_eq!(engine.rule_count(), 0);
     assert_eq!(engine.unsupported().len(), 1);
 }
+
+#[test]
+fn interface_fields_are_implicitly_static_and_final() {
+    // Interface members are constants, so the property-name rule must use the
+    // constant pattern instead of the lowercase one.
+    let diagnostics = lint(
+        "interface Names {\n    String NAMESPACE = 'x'\n}\n",
+        &["org.codenarc.rule.naming.PropertyNameRule"],
+    );
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+}
+
+#[test]
+fn unsafe_implementation_as_map_skips_test_sources() {
+    let source = "class Example {\n    void run() {\n        def statement = [setString: { a, b -> }] as PreparedStatement\n    }\n}\n";
+    let parsed = parse(source).expect("source should parse");
+    let registry = RuleRegistry::builtin();
+    let engine = Engine::from_codenarc_classes(
+        &registry,
+        &["org.codenarc.rule.security.UnsafeImplementationAsMapRule".to_string()],
+    );
+
+    let test_file = SourceFile::new("src/test/groovy/ExampleTest.groovy", source);
+    assert_eq!(engine.lint(&test_file, &parsed).len(), 0);
+
+    let main_file = SourceFile::new("src/main/groovy/Example.groovy", source);
+    assert_eq!(engine.lint(&main_file, &parsed).len(), 1);
+}
