@@ -223,7 +223,39 @@ because = "02: 模块组合只有 adapter/application/domain/infrastructure/clie
 `unknown`) is a violation, which is the "模块里能有哪些子模块" check enforced rather
 than documented. `counts` covers `*` (zero or more), `+` (one or more) and `<=n`.
 
-### 4.5 Agreement rules (cheap, optional)
+### 4.5 Exceptions: node-level and self-kind
+
+Kinds are coarse. Two real constraints cannot be written with kinds alone:
+
+- **one specific node may do anything** — the application module that wires every
+  other module together (`insmate-main`, `api-gateway`);
+- **one specific node may be reached by everyone** — `global-support:global-support-models`,
+  which every business module reads.
+
+So an allow entry is either a kind or a kind plus a node pattern, and a rule may
+exempt source nodes:
+
+```toml
+allowOther = ["client", "shared-models",
+              { kind = "models", node = "global-support:global-support-models" }]
+
+[[rule]]
+id = "cross-module-only-through-client"
+from = ["adapter", "application", "domain", "infrastructure", "models"]
+allowOther = ["client", "shared-models", { kind = "models", node = "global-support:*-models" }]
+exemptFrom = ["insmate-main", "api-gateway"]          # these may depend on everything
+```
+
+`exemptFrom` is a source-side pattern list; an explicitly unconstrained kind is
+written `allow = ["*"]` so that `lint-config` does not report it as dead config.
+
+**Self-kind default.** A class depending on another class *of its own kind in its
+own module* is never a boundary violation (a service calling a sibling service).
+`allowSelf` therefore always includes the source kind; `allowSelfKind = false`
+turns that off for a genuinely layered module. Without this default the four
+constraints below produce 650 false positives on the corpus.
+
+### 4.6 Agreement rules (cheap, optional)
 
 ```toml
 [[rule]]
@@ -240,7 +272,7 @@ because = "02: 模块依赖必须在 build.gradle 显式声明，不得通过传
 Measured today: 1 violation for `package-root`; `declared-dependency` needs a
 Gradle reader and is phase 5.
 
-### 4.6 The proposal's block syntax as a facade
+### 4.7 The proposal's block syntax as a facade
 
 The Groovy-looking blocks in the proposal are a good *surface* for the Gradle
 plugin; they must not become a second parser. The facade lowers to the same kind
@@ -257,6 +289,76 @@ arch {
 
 `groovylint arch --print-config` prints the TOML a facade produced, so the two
 surfaces cannot drift.
+
+### 4.8 Worked example: four constraints from a real project
+
+The four constraints below were given as an acceptance test for the DSL. All four
+are expressible; three of them need the features added above (§4.5) and the first
+needs the kind aliases.
+
+```toml
+# 1. A module may only contain these sub-module kinds; shared-models is optional.
+[[rule]]
+id = "module-composition"
+parent   = ["module", "nested-module"]
+children = ["adapter", "application", "domain", "infrastructure", "infra",
+            "client", "models", "model", "shared-models"]
+counts   = { adapter = "<=1", application = "<=1", domain = ">=1",
+             client = "<=1", models = "<=1", shared-models = "<=1" }
+except   = ["component-*"]          # the 9 single-module libraries declare no children
+
+# 2. Inside one module.
+[[rule]]
+id = "adapter-intra"
+from = "adapter"
+allowSelf = ["application", "models"]
+
+[[rule]]
+id = "application-intra"
+from = "application"
+allowSelf = ["domain", "models"]
+
+# 3. Across modules: application reaches another module only through its client.
+[[rule]]
+id = "cross-module-only-through-client"
+from = "application"
+allowOther = ["client", "shared-models"]
+
+# 4a. The wiring module may depend on everything.
+[[rule]]
+id = "entry-unconstrained"
+from = "entry"                      # kind: path = "insmate-main" / "api-gateway"
+allow = ["*"]
+
+# 4b. One shared model module is readable from everywhere.
+[[rule]]
+id = "cross-module-only-through-client"
+from = "application"
+allowOther = ["client", "shared-models",
+              { kind = "models", node = "global-support:global-support-models" }]
+```
+
+Day-0 findings of exactly these four rules (main sources, imports resolved through
+the derived node map; type-reference extraction will move the numbers, not the
+ranking):
+
+| Constraint | What it reports today | Reading |
+|---|---|---|
+| 1 composition | **22** sub-modules outside the list: `-metadata-context` 11, `-dsl` 4, `-model` 2, `-mgmt` 2, `-core`, `-kit`, `-common` 1 each | Either add these kinds to the list, or the 22 are real violations. Nothing else can express "legacy sub-module, keep it". |
+| 2 `adapter` intra | `adapter → infrastructure` 21, `→ domain` 20, `→ client` 3 (`→ model` 10 disappear once `model` aliases to `models`) | Real debt: adapter bypassing application. |
+| 2 `application` intra | `application → infrastructure` **254**, `→ client` 185 | `→ infrastructure` is real debt. **`→ client` is likely legitimate**: 02 puts the Client *implementation* in `-application`, so it implements the module's own `-client` contract. Needs `allowSelf` to include `client`. |
+| 3 cross-module | `application → models` **2,024**, `→ domain` 161, `→ model` 3 | As written, this rule alone produces ~2,188 violations: business modules read each other's `-models` directly. Either `models` joins `allowOther` (recommended) or the baseline carries 2k entries. |
+| 4a `entry` | unconstrained by construction | — |
+| 4b `global-support` models | cross-module references into `global-support:*-models`: **15,533** import occurrences | The exception is load-bearing, not cosmetic: it is the single most reached target in the project. |
+
+Two constraints need a decision before they are written into config:
+
+- **`application → client` inside the same module** (185 edges): 02 requires the
+  Client implementation to live in `-application`, so this direction must be
+  allowed; the constraint as stated forbids it.
+- **`domain → client` across modules** (478 edges): 02 allows calling a client from
+  Domain, the constraint only names `application`. Encoding the constraint as
+  written would flag 478 legitimate calls.
 
 ## 5. Executor
 
@@ -294,7 +396,7 @@ Fails or warns without parsing the project:
 | `parent`/`children`/`allow*` contain a kind that can never be a child/target of that direction | error |
 | two kinds match the same location | error, listing location and kinds |
 | kind matched by no location (dead pattern, likely a typo) | warn |
-| kind with no rule constraining it | warn |
+| kind with no rule constraining it (a rule with `allow = ["*"]` silences it) | warn |
 | cycle in the kind-level allow graph | warn (may be intentional) |
 | external kind that is also declared by the project | warn |
 
@@ -378,6 +480,11 @@ the sub-modules the way the conventions say", which is half of the original requ
    cover "client contracts must not depend on Spring" at package granularity.
 6. **Facade**: is the Groovy block syntax the Gradle-plugin surface (lowering to
    TOML), or should TOML be the only supported format?
+7. **Self-kind default**: `allowSelf` implicitly includes the source kind (proposed,
+   avoids 650 false positives) — or must every rule state it explicitly?
+8. **Legacy sub-modules**: are `-metadata-context`, `-dsl`, `-model`, `-mgmt`,
+   `-core`, `-kit`, `-common` declared as kinds (allowed by the composition rule) or
+   accepted as 22 baseline entries?
 
 ## 10. Design checklist
 
