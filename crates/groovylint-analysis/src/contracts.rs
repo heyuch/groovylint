@@ -155,6 +155,18 @@ struct ContractSpec {
     returns_param: Option<usize>,
     #[serde(default)]
     return_nonnull_if_param: Option<usize>,
+    /// One-based parameter that is asserted to be true when the call returns
+    /// (an `assertTrue`-style guard).
+    #[serde(default)]
+    condition: Option<usize>,
+    /// Whether the condition parameter is expected to be true (default) or
+    /// false when the call returns.
+    #[serde(default)]
+    condition_result: Option<bool>,
+    /// One-based parameter of a receiver expression that is non-null after the
+    /// call (`assertThat(x).isNotNull()`).
+    #[serde(default)]
+    receiver: Option<usize>,
     origin: Option<String>,
 }
 
@@ -190,8 +202,13 @@ impl ContractSpec {
                 .collect::<Result<_, String>>()?,
             never_returns: self.never_returns,
             return_nonnull_if_param: self.return_nonnull_if_param,
-            condition_param: None,
-            receiver_param: None,
+            condition_param: self.condition.map(|index| {
+                (
+                    index.saturating_sub(1),
+                    self.condition_result.unwrap_or(true),
+                )
+            }),
+            receiver_param: self.receiver.map(|index| index.saturating_sub(1)),
             origin: self.origin.unwrap_or_else(|| "dsl".to_string()),
         };
         for (index, value) in self.params.iter().enumerate() {

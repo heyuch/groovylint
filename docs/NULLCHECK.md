@@ -28,7 +28,10 @@ Current implementation in `groovylint-analysis`:
 - local/field access paths, unqualified field resolution, and guard refinement;
 - conservative and inferred modes;
 - `groovylint nullcheck [paths]` with
-  `--mode conservative|inferred|strict` and `--contracts <file.toml>`;
+  `--mode conservative|inferred|strict`, `--contracts <file.toml>`,
+  `--marked-only` (only `@NullMarked`/`@NonNullApi` classes and packages) and
+  `--initialization-check false` (skip field-initialisation findings for
+  frameworks that inject fields);
 - local method return summaries, direct closure summaries, Map/List/Optional
   models, and fluent assertion guards;
 - `@Nullable`, `@NonNull`, `@MonotonicNonNull`, Bean Validation
@@ -47,8 +50,22 @@ Build-in contract sources:
 - `contracts::from_annotations()` for source annotations;
 - `ContractRegistry::load_toml()` for project/library DSL files.
 
+### Fixpoint convergence
+
+The worklist in `run_cfg` only terminates when `State::join` is commutative,
+idempotent and monotone. `local_types` used to keep the last-written type, so two
+`for` loops reusing one variable name (`for (CoverDTO cover : …)` and
+`for (PolicyCoverDO cover : …)`) made the join non-commutative and the analysis
+spun forever on 8 files of a production codebase. Types are now kept only when
+both sides agree, and `field_expectations` joins the same way. A
+`MAX_WORKLIST_ITERATIONS` budget (100k steps per method) remains as a safety net,
+and `joins_reused_loop_variables_without_oscillating` asserts the step count stays
+small.
+
 Still pending: generic annotations on fields/local variables, full closure
-element modeling, complete closure capture, and complex `@Contract` shapes.
+element modeling, complete closure capture, complex `@Contract` shapes, and
+element-wise correlation between chained closures (`xs.findAll { m.containsKey(it) }
+.collect { m[it] }` is still reported).
 For-each element nullness from `List<@Nullable T>` and `Map.Entry` values from
 nullable map value types is implemented. The design below remains the target.
 
@@ -74,6 +91,22 @@ returns = "nullable"
 
 `#1` is a one-based parameter path. `this.field`, `this`, `returns`, and
 nullable/non-null values use the same domain for all three sources.
+
+Guard-style helpers are declared with `condition` (one-based parameter that is
+asserted when the call returns) and `receiver` (a receiver expression that is
+non-null afterwards):
+
+```toml
+# assertTrue(x != null) narrows x
+[[contracts]]
+method = "com.acme.Assert.isTrue"
+condition = 1
+
+# assertThat(optional).isPresent() narrows optional
+[[contracts]]
+method = "com.acme.Assert.that"
+receiver = 1
+```
 
 ## 1. What the corpus says
 

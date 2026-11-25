@@ -129,10 +129,21 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
         cli::NullnessModeArg::Inferred => groovylint_analysis::nullability::Mode::Inferred,
         cli::NullnessModeArg::Strict => groovylint_analysis::nullability::Mode::Strict,
     };
+    let options = groovylint_analysis::nullcheck::Options {
+        initialization_check: args.initialization_check,
+    };
     let reports = pool.install(|| {
         files
             .par_iter()
-            .map(|path| analyze_nullness_file(path, mode, args.contracts.as_deref()))
+            .map(|path| {
+                analyze_nullness_file(
+                    path,
+                    mode,
+                    args.contracts.as_deref(),
+                    options,
+                    args.marked_only,
+                )
+            })
             .collect::<Result<Vec<_>>>()
     })?;
 
@@ -175,6 +186,8 @@ fn analyze_nullness_file(
     path: &Path,
     mode: groovylint_analysis::nullability::Mode,
     contracts_path: Option<&Path>,
+    options: groovylint_analysis::nullcheck::Options,
+    marked_only: bool,
 ) -> Result<FileReport> {
     let text =
         fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))?;
@@ -182,17 +195,24 @@ fn analyze_nullness_file(
     let diagnostics = match parse(source.text()) {
         Ok(parsed) => {
             let defaults = package_defaults(path);
+            if marked_only && !is_marked(&parsed.script, defaults) {
+                return Ok(FileReport {
+                    source,
+                    diagnostics: Vec::new(),
+                });
+            }
             let contracts = groovylint_analysis::contracts::registry_with_defaults(
                 &parsed.script,
                 contracts_path,
                 defaults,
             )
             .map_err(anyhow::Error::msg)?;
-            groovylint_analysis::nullcheck::analyze_with_defaults(
+            groovylint_analysis::nullcheck::analyze_with_options(
                 &parsed.script,
                 mode,
                 contracts,
                 defaults,
+                options,
             )
             .into_iter()
             .map(|finding| {
@@ -220,6 +240,28 @@ fn analyze_nullness_file(
     Ok(FileReport {
         source,
         diagnostics,
+    })
+}
+
+/// Returns whether the script opts into nullness checking.
+///
+/// A script is marked when a class carries `@NullMarked`/`@NonNullApi`, or when
+/// its package does through `package-info.java`.
+fn is_marked(
+    script: &groovylint_syntax::ast::Script,
+    defaults: groovylint_analysis::nullability::Defaults,
+) -> bool {
+    if defaults.any() {
+        return true;
+    }
+    script.items.iter().any(|item| match item {
+        groovylint_syntax::ast::Item::Class(class) => class.annotations.iter().any(|annotation| {
+            annotation == "NullMarked"
+                || annotation.ends_with(".NullMarked")
+                || annotation == "NonNullApi"
+                || annotation.ends_with(".NonNullApi")
+        }),
+        _ => false,
     })
 }
 

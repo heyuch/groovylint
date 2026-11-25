@@ -61,6 +61,21 @@ pub struct NullcheckArgs {
     #[arg(long, value_name = "FILE")]
     pub contracts: Option<PathBuf>,
 
+    /// Only analyze classes or packages marked with `@NullMarked`/`@NonNullApi`.
+    #[arg(long)]
+    pub marked_only: bool,
+
+    /// Report non-null fields that constructors never initialize.
+    ///
+    /// Turn this off for frameworks that inject fields (`Spring`, `MyBatis`).
+    #[arg(
+        long,
+        value_name = "BOOL",
+        default_value_t = true,
+        action = clap::ArgAction::Set
+    )]
+    pub initialization_check: bool,
+
     /// Number of worker threads. Defaults to available parallelism.
     #[arg(long, value_name = "N")]
     pub threads: Option<usize>,

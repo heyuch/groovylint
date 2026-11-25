@@ -20,6 +20,23 @@ use crate::cfg::{
 use crate::contracts::{self, ContractPath, ContractRegistry};
 use crate::nullability::{AccessPath, Defaults, Finding, Mode, Nullness, Store};
 
+/// Upper bound on CFG worklist steps per method.
+const MAX_WORKLIST_ITERATIONS: usize = 100_000;
+
+/// Analyzes a script and returns the number of CFG worklist steps taken.
+///
+/// Only used by regression tests that must fail when a non-monotone join makes
+/// the fixpoint oscillate.
+#[cfg(test)]
+#[must_use]
+pub fn analyze_with_iteration_count(script: &Script, mode: Mode) -> (Vec<Finding>, usize) {
+    let registry = contracts::registry(script, None).unwrap_or_default();
+    let mut analyzer = Analyzer::new(mode, registry, Defaults::default(), Options::default());
+    analyzer.analyze_script(script);
+    let iterations = analyzer.worklist_iterations;
+    (analyzer.finish(), iterations)
+}
+
 /// Analyzes all executable units in a script.
 #[must_use]
 pub fn analyze(script: &Script, mode: Mode) -> Vec<Finding> {
@@ -38,6 +55,24 @@ pub fn analyze_with_contracts(
     analyze_with_defaults(script, mode, contracts, Defaults::default())
 }
 
+/// Options that select which findings the analysis reports.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Options {
+    /// Report non-null fields that a constructor never initializes.
+    ///
+    /// Turn this off for frameworks that inject fields (`Spring`, `MyBatis`,
+    /// `MapStruct`), where the initializer is not visible in the source.
+    pub initialization_check: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            initialization_check: true,
+        }
+    }
+}
+
 /// Analyzes with contracts and package/compiler defaults.
 #[must_use]
 pub fn analyze_with_defaults(
@@ -46,19 +81,34 @@ pub fn analyze_with_defaults(
     contracts: ContractRegistry,
     defaults: Defaults,
 ) -> Vec<Finding> {
-    let mut analyzer = Analyzer::new(mode, contracts, defaults);
+    analyze_with_options(script, mode, contracts, defaults, Options::default())
+}
+
+/// Analyzes with contracts, defaults and reporting options.
+#[must_use]
+pub fn analyze_with_options(
+    script: &Script,
+    mode: Mode,
+    contracts: ContractRegistry,
+    defaults: Defaults,
+    options: Options,
+) -> Vec<Finding> {
+    let mut analyzer = Analyzer::new(mode, contracts, defaults, options);
     analyzer.analyze_script(script);
     analyzer.finish()
 }
 
 struct Analyzer {
     mode: Mode,
+    options: Options,
     findings: Vec<Finding>,
     seen: BTreeSet<(usize, usize, &'static str)>,
     summaries: std::collections::BTreeMap<(String, usize), Nullness>,
     contracts: ContractRegistry,
     return_expectation: Option<Nullness>,
     param_requirements: std::collections::BTreeMap<(String, usize), Vec<usize>>,
+    /// Worklist steps spent by the last analysis, used by regression tests.
+    worklist_iterations: usize,
     collect_required: bool,
     param_names: Vec<String>,
     required_params: BTreeSet<usize>,
@@ -260,13 +310,15 @@ impl State {
                 .and_modify(|existing| *existing = existing.join(*value))
                 .or_insert(*value);
         }
-        let mut local_types = self.local_types.clone();
-        local_types.extend(
-            other
-                .local_types
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone())),
-        );
+        // A variable can be declared with different types on different paths
+        // (two `for` loops reusing one name). The merged state only keeps a type
+        // both paths agree on, which keeps the join commutative and idempotent.
+        let mut local_types = std::collections::BTreeMap::new();
+        for (name, type_name) in &self.local_types {
+            if other.local_types.get(name) == Some(type_name) {
+                local_types.insert(name.clone(), type_name.clone());
+            }
+        }
         let mut local_element_nullness = self.local_element_nullness.clone();
         for (name, value) in &other.local_element_nullness {
             local_element_nullness
@@ -291,7 +343,15 @@ impl State {
             locals,
             local_expectations,
             local_types,
-            field_expectations: self.field_expectations.clone(),
+            field_expectations: {
+                let mut expectations = std::collections::BTreeMap::new();
+                for (name, value) in &self.field_expectations {
+                    if other.field_expectations.get(name) == Some(value) {
+                        expectations.insert(name.clone(), *value);
+                    }
+                }
+                expectations
+            },
             monotonic_fields,
             monotonic_nonnull,
             local_element_nullness,
@@ -304,15 +364,17 @@ impl State {
 }
 
 impl Analyzer {
-    fn new(mode: Mode, contracts: ContractRegistry, defaults: Defaults) -> Self {
+    fn new(mode: Mode, contracts: ContractRegistry, defaults: Defaults, options: Options) -> Self {
         Self {
             mode,
+            options,
             findings: Vec::new(),
             seen: BTreeSet::new(),
             summaries: std::collections::BTreeMap::new(),
             contracts,
             return_expectation: None,
             param_requirements: std::collections::BTreeMap::new(),
+            worklist_iterations: 0,
             collect_required: false,
             param_names: Vec::new(),
             required_params: BTreeSet::new(),
@@ -434,7 +496,12 @@ impl Analyzer {
         let Some(cfg) = build_method(method) else {
             return Vec::new();
         };
-        let mut child = Analyzer::new(self.mode, self.contracts.clone(), self.defaults);
+        let mut child = Analyzer::new(
+            self.mode,
+            self.contracts.clone(),
+            self.defaults,
+            self.options,
+        );
         child.collect_required = true;
         child.param_names = method
             .params
@@ -527,7 +594,7 @@ impl Analyzer {
         let params_marked = !unmarked && (class_marked || self.defaults.params_nonnull);
         let returns_marked = !unmarked && (class_marked || self.defaults.returns_nonnull);
         let fields = self.field_values(class);
-        if self.mode == Mode::Strict {
+        if self.mode == Mode::Strict && self.options.initialization_check {
             self.check_field_initialization(class, class_marked || self.defaults.fields_nonnull);
         }
         let expectations: Vec<(String, Nullness)> = class
@@ -697,10 +764,19 @@ impl Analyzer {
         incoming[cfg.entry] = Some(initial);
         queue.push_back(cfg.entry);
 
+        // shortcut: the worklist runs without a cap because the lattice is
+        // finite; a non-monotone transfer function would spin here forever, so
+        // keep the iteration budget as a safety net.
+        let mut budget = MAX_WORKLIST_ITERATIONS;
         while let Some(block_id) = queue.pop_front() {
             let Some(start) = incoming[block_id].clone() else {
                 continue;
             };
+            budget = budget.saturating_sub(1);
+            self.worklist_iterations += 1;
+            if budget == 0 {
+                return;
+            }
             let block = cfg.block(block_id);
             let mut state = start;
             for instruction in &block.instructions {
@@ -1993,6 +2069,43 @@ def run(unknown) {
 mod closure_tests {
     use super::{Mode, analyze};
     use groovylint_syntax::parser::parse;
+
+    #[test]
+    fn joins_reused_loop_variables_without_oscillating() {
+        // Two `for` loops reuse `cover` with different declared types and the
+        // second loop reads a map entry built by the first one. The merge used
+        // to keep the last-written type, so the worklist never converged.
+        let source = r"
+class Example {
+    Map<String, DO> load(Object repo, Object version) {
+        Map<String, DO> settingsByCode = [:]
+        for (CoverDTO cover : repo.getCovers(version.code)) {
+            settingsByCode.put(cover.coverCode, cover)
+        }
+        Map<String, DO> settingsByCover = [:]
+        for (PolicyCoverDO cover : repo.getPolicyCovers(version.id)) {
+            settingsByCover.put(cover.policyCoverId, settingsByCode.get(cover.coverCode))
+        }
+        Map<String, DO> result = [:]
+        for (RiskCoverDO relation : repo.getRiskCovers([version.id])) {
+            if (relation.policyId != version.policyId) {
+                Panic.damagedData('mismatch')
+            }
+            result.put(relation.riskCoverId, settingsByCover.get(relation.policyCoverId))
+        }
+        return result
+    }
+}
+";
+        let parsed = parse(source).expect("source parses");
+        let (_, iterations) =
+            super::analyze_with_iteration_count(&parsed.script, Mode::Conservative);
+        // The fixpoint settles after a handful of steps; the budget is 100_000.
+        assert!(
+            iterations < 5_000,
+            "worklist did not converge: {iterations} steps"
+        );
+    }
 
     #[test]
     fn analyzes_closure_bodies_with_captured_state() {
