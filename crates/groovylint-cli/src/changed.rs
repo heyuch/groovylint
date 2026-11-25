@@ -210,44 +210,24 @@ fn uncommitted_paths(root: &Path) -> Result<Vec<String>> {
     Ok(paths)
 }
 
-fn repository_root() -> Result<PathBuf> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .output()
-        .context("failed to run git; is it installed?")?;
-    if !output.status.success() {
-        bail!(
-            "--changed requires a git repository: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
-    }
-    let root = String::from_utf8(output.stdout).context("git printed a non-UTF-8 path")?;
-    Ok(PathBuf::from(root.trim_end()))
-}
+/// What to tell the user when `git` cannot be executed at all.
+const NO_GIT: &str = "git is not available in this environment, so the changed set cannot be \
+computed here; pass it explicitly with --changed-files <FILE|-> (the build or CI job that does \
+have git can write the list, see docs/CHANGED-FILES.md)";
 
-fn require_ref(root: &Path, reference: &str) -> Result<()> {
-    let output = Command::new("git")
-        .current_dir(root)
-        .args([
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            &format!("{reference}^{{commit}}"),
-        ])
-        .output()
-        .context("failed to run git")?;
-    if output.status.success() {
-        return Ok(());
+/// Runs `git` and returns its standard output.
+fn run_git(root: Option<&Path>, args: &[&str]) -> Result<String> {
+    let mut command = Command::new("git");
+    if let Some(root) = root {
+        command.current_dir(root);
     }
-    bail!("cannot resolve {reference}: not a commit in this repository (run `git fetch` first)");
-}
-
-fn git_paths(root: &Path, args: &[&str]) -> Result<Vec<String>> {
-    let output = Command::new("git")
-        .current_dir(root)
+    let output = command
         .args(args)
         .output()
-        .context("failed to run git")?;
+        .map_err(|error| match error.kind() {
+            std::io::ErrorKind::NotFound => anyhow::anyhow!("{NO_GIT}"),
+            _ => anyhow::anyhow!("failed to run git {}: {error}", args.join(" ")),
+        })?;
     if !output.status.success() {
         bail!(
             "git {} failed: {}",
@@ -255,7 +235,36 @@ fn git_paths(root: &Path, args: &[&str]) -> Result<Vec<String>> {
             String::from_utf8_lossy(&output.stderr).trim()
         );
     }
-    let text = String::from_utf8(output.stdout).context("git printed a non-UTF-8 path")?;
+    String::from_utf8(output.stdout).context("git printed a non-UTF-8 path")
+}
+
+fn repository_root() -> Result<PathBuf> {
+    let output = run_git(None, &["rev-parse", "--show-toplevel"])
+        .context("the changed-file git modes need a git repository")?;
+    Ok(PathBuf::from(output.trim_end()))
+}
+
+fn require_ref(root: &Path, reference: &str) -> Result<()> {
+    let probe = format!("{reference}^{{commit}}");
+    let output = Command::new("git")
+        .current_dir(root)
+        .args(["rev-parse", "--verify", "--quiet", &probe])
+        .output()
+        .map_err(|error| match error.kind() {
+            std::io::ErrorKind::NotFound => anyhow::anyhow!("{NO_GIT}"),
+            _ => anyhow::anyhow!("failed to run git: {error}"),
+        })?;
+    if output.status.success() {
+        return Ok(());
+    }
+    bail!(
+        "cannot resolve {reference}: not a commit in this repository (run `git fetch` first; a \
+         shallow clone needs `git fetch --deepen` or a full checkout)"
+    );
+}
+
+fn git_paths(root: &Path, args: &[&str]) -> Result<Vec<String>> {
+    let text = run_git(Some(root), args)?;
     Ok(text
         .lines()
         .map(str::trim)

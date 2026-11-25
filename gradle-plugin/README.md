@@ -51,6 +51,15 @@ groovylint {
 - The plugin writes the set to a file inside the task's temporary directory and
   passes `--changed-files`, so the analyzer owns the matching rules and the log
   stays consistent with CLI usage.
+- When the build has no `git` (container or restricted image), let whatever does
+  have it write the list and hand it over as a file:
+
+  ```groovy
+  groovylint {
+      changedFilesList.set(layout.projectDirectory.file("build/changed-groovy-files.txt"))
+  }
+  ```
+
 - Without a build-side set, the analyzer can compute it itself:
   `--changed-baseline origin/develop`, `--changed-since <ref>` or
   `--changed-commits <a,b>`. See

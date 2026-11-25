@@ -271,6 +271,52 @@ fn an_empty_changed_set_passes_without_reading_anything() {
 }
 
 #[test]
+fn a_changed_file_list_needs_no_git() {
+    // No git on PATH at all: the list is the only input the analyzer needs.
+    let repo = Repo::new(&[("src/main/groovy/A.groovy", PRINT)]);
+    std::fs::write(repo.root().join("rules.xml"), RULESET).expect("write ruleset");
+    std::fs::write(
+        repo.root().join("changed.txt"),
+        "src/main/groovy/A.groovy\n",
+    )
+    .expect("list");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_groovylint"))
+        .current_dir(repo.root())
+        .env("PATH", "")
+        .args([
+            "check",
+            "--config",
+            "rules.xml",
+            "--changed-files",
+            "changed.txt",
+            ".",
+        ])
+        .output()
+        .expect("run groovylint check");
+
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("A.groovy"), "{stdout}");
+}
+
+#[test]
+fn a_git_mode_without_git_explains_the_way_out() {
+    let repo = Repo::new(&[("src/main/groovy/A.groovy", PRINT)]);
+    let output = Command::new(env!("CARGO_BIN_EXE_groovylint"))
+        .current_dir(repo.root())
+        .env("PATH", "")
+        .args(["check", "--changed-since", "HEAD", "."])
+        .output()
+        .expect("run groovylint check");
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("git is not available"), "{stderr}");
+    assert!(stderr.contains("--changed-files"), "{stderr}");
+}
+
+#[test]
 fn an_unknown_ref_fails_instead_of_checking_nothing() {
     let repo = Repo::new(&[("src/main/groovy/A.groovy", PRINT)]);
     let output = repo.run(&["--changed-since", "no-such-branch", "."]);

@@ -134,6 +134,15 @@ public abstract class GroovyLintTask extends DefaultTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     public abstract ConfigurableFileCollection getChangedFiles();
 
+    /** A list of changed paths produced outside Gradle.
+     *
+     * @return the optional changed-file list
+     */
+    @InputFile
+    @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract RegularFileProperty getChangedFilesList();
+
     /** Exec operations used to launch the native analyzer.
      *
      * @return exec operations
@@ -164,14 +173,17 @@ public abstract class GroovyLintTask extends DefaultTask {
                 .map(File::getAbsolutePath)
                 .sorted()
                 .toList();
-        if (getChangedOnly().get() && changed.isEmpty()) {
+        if (getChangedOnly().get() && changed.isEmpty() && !getChangedFilesList().isPresent()) {
             getLogger().lifecycle("groovylint: no changed files, nothing to check");
             return;
         }
 
         List<String> arguments = new ArrayList<>();
         arguments.add(getCommand().get());
-        if (getChangedOnly().get()) {
+        if (getChangedFilesList().isPresent()) {
+            arguments.add("--changed-files");
+            arguments.add(getChangedFilesList().get().getAsFile().getAbsolutePath());
+        } else if (getChangedOnly().get()) {
             Path list = writeChangedFileList(changed);
             arguments.add("--changed-files");
             arguments.add(list.toAbsolutePath().toString());

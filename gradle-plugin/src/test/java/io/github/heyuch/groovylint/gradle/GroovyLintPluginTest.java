@@ -109,6 +109,26 @@ class GroovyLintPluginTest {
     }
 
     @Test
+    void acceptsAChangedFileListProducedOutsideGradle() throws IOException {
+        Files.writeString(projectDir.resolve("changed.txt"), "src/main/groovy/Example.groovy\n");
+        writeProjectFiles("""
+                groovylint {
+                    executable.set(layout.projectDirectory.file("fake-groovylint.sh"))
+                    changedFilesList.set(layout.projectDirectory.file("changed.txt"))
+                }
+                """);
+        writeFakeAnalyzer("0");
+
+        BuildResult result = run("groovylintMain");
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":groovylintMain").getOutcome());
+        List<String> args = Files.readAllLines(projectDir.resolve("args.txt"));
+        int index = args.indexOf("--changed-files");
+        assertTrue(index >= 0, "--changed-files should be passed: " + args);
+        assertTrue(args.get(index + 1).endsWith("changed.txt"), args.toString());
+    }
+
+    @Test
     void skipsTheTaskWhenNothingChanged() throws IOException {
         writeProjectFiles("""
                 groovylint {

@@ -65,6 +65,65 @@ not committed yet is still a change you want checked.
   passed through as an option.
 - The JSON output is unchanged; the counts are only added to the text summary.
 
+## When the environment has no git
+
+Nothing in the analysis path needs git: `--changed-files` reads a list and matches
+it against the files the arguments select. So the answer is to move *who computes
+the set* to wherever git does exist, and keep the analyzer git-free:
+
+| Environment | What computes the set | What the analyzer gets |
+|---|---|---|
+| Developer machine | the build (`changed-files.gradle`) or `git diff` | `--changed-files <file>` |
+| CI with a git checkout | the CI step, before the container starts | `--changed-files -` (piped) |
+| Container image without git | the CI runner or a previous job | list file mounted into the container, or stdin |
+| Source archive (no `.git`) | the SCM API that produced the archive | list file |
+| Maven/Gradle build on a fresh clone | the build script, if git is present; otherwise a file the CI wrote | `--changed-files <file>` |
+
+Two shapes cover all of them.
+
+Piped, when the runner has git but the analyzer runs in a container:
+
+```bash
+git diff --name-only --diff-filter=ACMR origin/develop...HEAD \
+  | docker run --rm -i -v "$PWD:/w" -w /w groovylint check --changed-files - .
+```
+
+A file written by an earlier step, when nothing has a repository:
+
+```bash
+# step 1 (has git or an SCM API)
+python3 ci/changed_files.py > build/changed-groovy-files.txt
+# step 2 (no git)
+groovylint check --changed-files build/changed-groovy-files.txt .
+```
+
+On the Gradle side the same thing is one property; the plugin does not run git
+either, so it never needs it:
+
+```groovy
+groovylint {
+    changedFilesList.set(layout.projectDirectory.file("build/changed-groovy-files.txt"))
+}
+```
+
+`changedFilesList` is passed to the analyzer unchanged and implies changed-only
+mode, so a build without git can still be a changed-only build.
+
+The failure mode is deliberate: asking for `--changed-baseline`,
+`--changed-since` or `--changed-commits` in an environment without git exits with
+code 2 and this message, rather than checking nothing and reporting success:
+
+```
+git is not available in this environment, so the changed set cannot be computed
+here; pass it explicitly with --changed-files <FILE|-> (…)
+```
+
+Related pitfall, same family: a **shallow clone** has git but not the history.
+`--changed-baseline origin/develop` then fails to resolve the ref (exit 2, "run
+`git fetch` first; a shallow clone needs `git fetch --deepen`"). CI checkouts
+default to `fetch-depth: 1`, so a changed-only gate needs `fetch-depth: 0` or an
+explicit `git fetch --deepen`.
+
 ## Not covered
 
 - **Architecture rules are project-wide** and ignore the filter: a rule about

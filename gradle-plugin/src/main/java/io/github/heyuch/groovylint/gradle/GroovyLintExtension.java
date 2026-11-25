@@ -70,4 +70,15 @@ public abstract class GroovyLintExtension {
      * @return the changed files
      */
     public abstract ConfigurableFileCollection getChangedFiles();
+
+    /**
+     * A file holding the changed paths, one per line, produced outside Gradle —
+     * for environments where the build cannot run {@code git} itself.
+     *
+     * <p>When set, it is passed to the analyzer unchanged and implies
+     * changed-only mode.
+     *
+     * @return the optional changed-file list
+     */
+    public abstract RegularFileProperty getChangedFilesList();
 }
