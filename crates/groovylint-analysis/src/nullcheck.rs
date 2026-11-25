@@ -474,6 +474,56 @@ impl Analyzer {
         values.into_iter().reduce(Nullness::join)
     }
 
+    /// Facts a filtering closure establishes about its element path.
+    fn filter_facts(receiver: Option<&Expr>, state: &State) -> Vec<(AccessPath, Nullness)> {
+        let Some(receiver) = receiver else {
+            return Vec::new();
+        };
+        let ExprKind::Call {
+            name,
+            args,
+            receiver: Some(_),
+            ..
+        } = &unparen(receiver).kind
+        else {
+            return Vec::new();
+        };
+        if !matches!(name.as_str(), "findAll" | "grep" | "filter") {
+            return Vec::new();
+        }
+        let Some(Expr {
+            kind: ExprKind::Closure { body, .. },
+            ..
+        }) = args.iter().map(unparen).next()
+        else {
+            return Vec::new();
+        };
+        let mut facts = Vec::new();
+        for statement in &body.statements {
+            let Stmt::Expr(expr) = statement else {
+                continue;
+            };
+            let ExprKind::Call {
+                receiver: Some(map),
+                name,
+                args,
+                ..
+            } = &unparen(expr).kind
+            else {
+                continue;
+            };
+            if name != "containsKey" {
+                continue;
+            }
+            let (Some(base), Some(key)) = (path_of_in(map, state), args.first().and_then(key_id))
+            else {
+                continue;
+            };
+            facts.push((AccessPath::Lookup(Box::new(base), key), Nullness::NonNull));
+        }
+        facts
+    }
+
     fn summarize_block(&self, body: &groovylint_syntax::ast::Block) -> Nullness {
         let mut values = Vec::new();
         for statement in &body.statements {
@@ -1030,6 +1080,18 @@ impl Analyzer {
                     }
                     state.restore_monotonic();
                 }
+                // shortcut: a filtering closure (`findAll`/`grep`/`filter`)
+                // guarantees its predicate for every element of the result, and
+                // elements share the same parameter path, so the facts it states
+                // are visible to a closure chained on the result. Only the
+                // statement-local chain is covered; a filter stored in a local and
+                // consumed later is still reported.
+                let filter_facts = Self::filter_facts(receiver.as_deref(), state);
+                let mut previous = Vec::new();
+                for (path, value) in &filter_facts {
+                    previous.push((path.clone(), state.store.values().get(path).copied()));
+                    state.store.set(path.clone(), *value);
+                }
                 let mut arg_values = Vec::new();
                 for arg in args {
                     let value = self.eval(arg, state);
@@ -1039,6 +1101,12 @@ impl Analyzer {
                         state.closures.remove(&path);
                     }
                     arg_values.push((arg, value));
+                }
+                for (path, value) in previous {
+                    match value {
+                        Some(value) => state.store.set(path, value),
+                        None => state.store.remove(&path),
+                    }
                 }
                 if receiver.is_none()
                     && let Some(primitives) = self

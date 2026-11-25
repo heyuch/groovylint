@@ -260,3 +260,41 @@ fn contract_condition_narrows_after_an_assertion_call() {
         serde_json::from_slice(&output.stdout).expect("valid JSON output");
     assert_eq!(json["summary"]["total"], 0);
 }
+
+#[test]
+fn find_all_guard_reaches_a_chained_collect() {
+    let temp = TempDir::new().expect("tempdir");
+    let guarded = temp.path().join("Guarded.groovy");
+    fs::write(
+        &guarded,
+        "class Guarded {\n    List<String> run(List<String> ids, Map<String, String> lookup) {\n        return ids\n            .findAll { lookup.containsKey(it) }\n            .collect { wrap(lookup[it]) }\n    }\n\n    static String wrap(String value) {\n        return value.trim()\n    }\n}\n",
+    )
+    .expect("write fixture");
+
+    let output = binary()
+        .arg("nullcheck")
+        .arg("--format")
+        .arg("json")
+        .arg(&guarded)
+        .output()
+        .expect("run nullcheck");
+    assert_eq!(output.status.code(), Some(0));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("valid JSON output");
+    assert_eq!(json["summary"]["total"], 0);
+
+    // Without the filter the same read is still reported.
+    let unguarded = temp.path().join("Unguarded.groovy");
+    fs::write(
+        &unguarded,
+        "class Unguarded {\n    List<String> run(List<String> ids, Map<String, String> lookup) {\n        return ids.collect { wrap(lookup[it]) }\n    }\n\n    static String wrap(String value) {\n        return value.trim()\n    }\n}\n",
+    )
+    .expect("write fixture");
+
+    let output = binary()
+        .arg("nullcheck")
+        .arg(&unguarded)
+        .output()
+        .expect("run nullcheck");
+    assert_eq!(output.status.code(), Some(1));
+}

@@ -62,10 +62,18 @@ both sides agree, and `field_expectations` joins the same way. A
 and `joins_reused_loop_variables_without_oscillating` asserts the step count stays
 small.
 
+### Filtered streams
+
+A closure passed to `findAll`, `grep` or `filter` guarantees its predicate for
+every element of the result, and chained closures see the same element path, so
+the guard facts it states are visible to a closure chained on the result
+(`xs.findAll { m.containsKey(it) }.collect { m[it] }` is not reported). The
+propagation is limited to one statement: a filtered collection stored in a local
+and consumed later is still reported, because that would need per-stream element
+facts.
+
 Still pending: generic annotations on fields/local variables, full closure
-element modeling, complete closure capture, complex `@Contract` shapes, and
-element-wise correlation between chained closures (`xs.findAll { m.containsKey(it) }
-.collect { m[it] }` is still reported).
+element modeling, complete closure capture, and complex `@Contract` shapes.
 For-each element nullness from `List<@Nullable T>` and `Map.Entry` values from
 nullable map value types is implemented. The design below remains the target.
 
