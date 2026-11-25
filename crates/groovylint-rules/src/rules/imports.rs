@@ -3,12 +3,15 @@
 use std::collections::BTreeSet;
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::ImportDecl;
+use groovylint_syntax::ast::{Annotation, ExprKind, ImportDecl, Literal, Script, Stmt};
+use groovylint_syntax::token::{Token, TokenKind};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
+use crate::rule::NodeRef;
 use crate::rule::{
     Category, DiagnosticSink, FileContext, FileRule, Rule, RuleMeta, RuleProperties,
 };
+use crate::traverse::{self, AstVisitor};
 
 /// Packages whose classes Groovy imports implicitly.
 const AUTO_IMPORTED_PACKAGES: &[&str] = &[
@@ -129,22 +132,30 @@ impl FileRule for ImportFromSunPackagesRule {
     }
 }
 
-/// Flags imports whose name never appears elsewhere in the file.
+/// Flags imports no reference in the file resolves to.
+///
+/// `CodeNarc` compares simple names textually, which counts a member call on
+/// another object (`order.verify(..)`) as a use of `import static ...verify` and
+/// misses property aliases. This resolves the identifiers the file actually
+/// binds instead: a name counts only where it is used as a type, a bare
+/// reference, or a member of an implicit receiver.
 pub struct UnusedImportRule;
 
 impl Rule for UnusedImportRule {}
 
 impl FileRule for UnusedImportRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
-        let lines: Vec<&str> = (1..=context.source.line_count())
-            .filter_map(|line| context.source.line_text(line))
-            .collect();
+        let mut collector = ReferenceCollector::default();
+        traverse::walk_script(context.script, &mut collector);
+        collector.collect_tokens(context.tokens, context.source.text(), context.script);
 
         for import in &context.script.imports {
+            // A wildcard can only be judged against the target's members, which
+            // a single file does not know about; `CodeNarc` skips them too.
             if is_wildcard(import) {
                 continue;
             }
-            if is_referenced(import, &lines) {
+            if is_resolved(import, &collector) {
                 continue;
             }
             sink.report(
@@ -155,63 +166,233 @@ impl FileRule for UnusedImportRule {
     }
 }
 
-fn is_referenced(import: &ImportDecl, lines: &[&str]) -> bool {
-    let alias = alias_of(import);
-    if referenced_name(&alias, lines) {
-        return true;
+/// Whether any name this import binds is referenced by the file.
+fn is_resolved(import: &ImportDecl, collector: &ReferenceCollector) -> bool {
+    let mut candidates = vec![alias_of(import)];
+    if import.is_static
+        && let Some(property) = accessor_property(&alias_of(import))
+    {
+        candidates.push(property);
     }
-    if !import.is_static {
-        return false;
+    candidates.iter().any(|candidate| {
+        // A local declaration of the same name makes the reference ambiguous;
+        // assuming the import is used keeps this rule free of false positives.
+        collector.references.contains(candidate) || collector.declarations.contains(candidate)
+    })
+}
+
+/// The names a file references and the names it declares.
+#[derive(Default)]
+struct ReferenceCollector {
+    references: BTreeSet<String>,
+    declarations: BTreeSet<String>,
+}
+
+impl ReferenceCollector {
+    fn reference(&mut self, name: &str) {
+        let name = name.trim();
+        if !name.is_empty() {
+            self.references.insert(name.to_string());
+        }
     }
-    match accessor_property(&alias) {
-        Some(property) => referenced_name(&property, lines),
-        None => false,
+
+    /// Records every identifier inside a written type or annotation argument.
+    fn reference_words(&mut self, text: &str) {
+        let words: Vec<String> = text
+            .split(|ch: char| !(ch.is_alphanumeric() || ch == '_' || ch == '$'))
+            .filter(|word| !word.is_empty())
+            .map(ToString::to_string)
+            .collect();
+        for word in words {
+            self.reference(&word);
+        }
+    }
+
+    /// Collects the identifiers the tree does not model, such as generic
+    /// arguments (`List<Foo>`) and DSL calls. Qualified member names
+    /// (`other.name`) and map keys are skipped: they never refer to an import.
+    fn collect_tokens(&mut self, tokens: &[Token], source: &str, script: &Script) {
+        let import_ranges: Vec<std::ops::Range<usize>> = script
+            .imports
+            .iter()
+            .map(|import| import.span.range())
+            .collect();
+        for (index, token) in tokens.iter().enumerate() {
+            if token.kind != TokenKind::Ident {
+                continue;
+            }
+            let range = token.span.range();
+            if import_ranges
+                .iter()
+                .any(|import_range| import_range.contains(&range.start))
+            {
+                continue;
+            }
+            let previous = index.checked_sub(1).map(|index| tokens[index].kind);
+            let next = tokens.get(index + 1).map(|token| token.kind);
+            if previous == Some(TokenKind::Dot) {
+                continue;
+            }
+            if next == Some(TokenKind::Colon)
+                && matches!(
+                    previous,
+                    Some(
+                        TokenKind::LeftBracket
+                            | TokenKind::LeftParen
+                            | TokenKind::Comma
+                            | TokenKind::Newline
+                    )
+                )
+            {
+                continue;
+            }
+            self.reference(&source[range]);
+        }
+    }
+
+    fn enter_annotations(&mut self, details: &[Annotation], names: &[String]) {
+        for annotation in names {
+            self.reference_words(annotation);
+        }
+        for annotation in details {
+            self.reference_words(&annotation.name);
+            if let Some(arguments) = &annotation.raw_arguments {
+                self.reference_words(arguments);
+            }
+        }
+    }
+
+    fn enter_stmt(&mut self, stmt: &Stmt) {
+        match stmt {
+            Stmt::VarDecl(decl) => {
+                self.declarations.insert(decl.name.clone());
+                if let Some(type_name) = &decl.type_name {
+                    self.reference_words(type_name);
+                }
+                self.enter_annotations(&decl.annotation_details, &decl.annotations);
+            }
+            Stmt::ForEach(for_each) => {
+                self.declarations.insert(for_each.var_name.clone());
+                if let Some(type_name) = &for_each.var_type {
+                    self.reference_words(type_name);
+                }
+            }
+            Stmt::Try(try_stmt) => {
+                for catch in &try_stmt.catches {
+                    if let Some(name) = &catch.param_name {
+                        self.declarations.insert(name.clone());
+                    }
+                    for type_name in &catch.type_names {
+                        self.reference_words(type_name);
+                    }
+                }
+            }
+            Stmt::Block(_)
+            | Stmt::DoWhile(_)
+            | Stmt::Expr(_)
+            | Stmt::If(_)
+            | Stmt::While(_)
+            | Stmt::For(_)
+            | Stmt::Synchronized(_)
+            | Stmt::Switch(_)
+            | Stmt::Return(_)
+            | Stmt::Throw(_)
+            | Stmt::Break(_)
+            | Stmt::Continue(_)
+            | Stmt::Assert(_)
+            | Stmt::Empty(_) => {}
+        }
+    }
+
+    fn enter_expr(&mut self, kind: &ExprKind) {
+        match kind {
+            ExprKind::Variable(name) => self.reference(name),
+            ExprKind::Call {
+                receiver: None,
+                name,
+                ..
+            } => self.reference(name.trim_start_matches('&')),
+            ExprKind::New { type_name, .. } | ExprKind::Cast { type_name, .. } => {
+                self.reference_words(type_name);
+            }
+            ExprKind::Closure { params, .. } => {
+                for param in params {
+                    self.declarations.insert(param.name.clone());
+                    if let Some(type_name) = &param.type_name {
+                        self.reference_words(type_name);
+                    }
+                }
+            }
+            // Only an interpolated string refers to names; plain text does not.
+            ExprKind::Literal(Literal::String(text)) if text.contains('$') => {
+                self.reference_words(text);
+            }
+            ExprKind::Literal(_)
+            | ExprKind::This
+            | ExprKind::Super
+            | ExprKind::Call { .. }
+            | ExprKind::Property { .. }
+            | ExprKind::Binary { .. }
+            | ExprKind::Unary { .. }
+            | ExprKind::Assign { .. }
+            | ExprKind::Ternary { .. }
+            | ExprKind::List(_)
+            | ExprKind::Map(_)
+            | ExprKind::Index { .. }
+            | ExprKind::NamedArg { .. }
+            | ExprKind::Paren(_)
+            | ExprKind::Switch { .. } => {}
+        }
     }
 }
 
-/// Finds `alias` outside import statements, ignoring `aliasLongerName` and
-/// `otherAlias`. This mirrors `CodeNarc`'s textual check, so a reference that
-/// only appears inside a longer word does not count.
-fn referenced_name(name: &str, lines: &[&str]) -> bool {
-    for line in lines {
-        if is_import_line(line) {
-            continue;
-        }
-        if contains_name(line, name) {
-            return true;
+impl AstVisitor for ReferenceCollector {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        match node {
+            NodeRef::Expr(expr) => self.enter_expr(&expr.kind),
+            NodeRef::Class(class) => {
+                self.declarations.insert(class.name.clone());
+                if let Some(parent) = &class.extends {
+                    self.reference_words(parent);
+                }
+                for interface in &class.implements {
+                    self.reference_words(interface);
+                }
+                self.enter_annotations(&class.annotation_details, &class.annotations);
+            }
+            NodeRef::Method(method) => {
+                self.declarations.insert(method.name.clone());
+                if let Some(return_type) = &method.return_type {
+                    self.reference_words(return_type);
+                }
+                for param in &method.params {
+                    self.declarations.insert(param.name.clone());
+                    if let Some(type_name) = &param.type_name {
+                        self.reference_words(type_name);
+                    }
+                    self.enter_annotations(&param.annotation_details, &param.annotations);
+                }
+                for thrown in &method.throws {
+                    self.reference_words(thrown);
+                }
+                self.enter_annotations(&method.annotation_details, &method.annotations);
+            }
+            NodeRef::Field(field) => {
+                self.declarations.insert(field.name.clone());
+                if let Some(type_name) = &field.type_name {
+                    self.reference_words(type_name);
+                }
+                self.enter_annotations(&field.annotation_details, &field.annotations);
+            }
+            NodeRef::Stmt(stmt) => self.enter_stmt(stmt),
+            NodeRef::Script(_)
+            | NodeRef::Initializer(_)
+            | NodeRef::Block(_)
+            | NodeRef::Finally(_) => {}
         }
     }
-    false
-}
 
-fn is_import_line(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    trimmed.starts_with("import ") || trimmed.starts_with("import\t")
-}
-
-fn contains_name(line: &str, name: &str) -> bool {
-    let mut offset = 0;
-    while let Some(index) = line[offset..].find(name) {
-        let start = offset + index;
-        let preceded_by_name_char = start
-            .checked_sub(1)
-            .and_then(|previous| line.as_bytes().get(previous))
-            .is_some_and(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'$'));
-        let followed_by_name_char = line
-            .as_bytes()
-            .get(start + name.len())
-            .is_some_and(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'$'));
-        // A qualified reference (`a.b.Foo`) does not need the import.
-        let qualified = start
-            .checked_sub(1)
-            .and_then(|previous| line.as_bytes().get(previous))
-            == Some(&b'.');
-        if !preceded_by_name_char && !followed_by_name_char && !qualified {
-            return true;
-        }
-        offset = start + name.len();
-    }
-    false
+    fn exit(&mut self, _node: NodeRef<'_>) {}
 }
 
 /// Maps a static import of a getter/setter back to the property it accesses.
@@ -430,7 +611,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
 
 #[cfg(test)]
 mod tests {
-    use super::{accessor_property, contains_name, is_auto_imported, package_name};
+    use super::{accessor_property, is_auto_imported, package_name};
 
     #[test]
     fn package_name_ignores_wildcards_and_classes() {
@@ -448,17 +629,19 @@ mod tests {
     }
 
     #[test]
-    fn name_matches_only_at_a_word_boundary() {
-        assert!(contains_name("def value = Bar.create()", "Bar"));
-        assert!(contains_name("def value = ${Bar.x}", "Bar"));
-        assert!(!contains_name("def value = BarFactory.create()", "Bar"));
-        assert!(!contains_name("def value = myBar.create()", "Bar"));
-    }
-
-    #[test]
     fn accessors_map_back_to_properties() {
         assert_eq!(accessor_property("getFoo"), Some("foo".to_string()));
         assert_eq!(accessor_property("isActive"), Some("active".to_string()));
         assert_eq!(accessor_property("run"), None);
+        // `Introspector.decapitalize` leaves an all-caps property alone.
+        assert_eq!(
+            accessor_property("getDATA_TYPE"),
+            Some("DATA_TYPE".to_string())
+        );
+        assert_eq!(
+            accessor_property("getPLACEHOLDER"),
+            Some("PLACEHOLDER".to_string())
+        );
+        assert_eq!(accessor_property("getXmlName"), Some("xmlName".to_string()));
     }
 }

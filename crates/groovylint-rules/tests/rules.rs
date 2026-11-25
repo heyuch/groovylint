@@ -231,3 +231,33 @@ fn static_getter_import_is_used_by_its_property() {
     );
     assert_eq!(unused.len(), 1, "{unused:?}");
 }
+
+#[test]
+fn unused_import_resolves_names_instead_of_matching_text() {
+    let unused_import = &["org.codenarc.rule.imports.UnusedImportRule"];
+
+    // A name only mentioned in a comment or a plain string does not use it.
+    let commented = lint(
+        "import a.b.Foo\n\nclass Example {\n    // Foo is great\n    String run() {\n        return 'Foo'\n    }\n}\n",
+        unused_import,
+    );
+    assert_eq!(commented.len(), 1, "{commented:?}");
+
+    // A member call on another object is not a use of a static import.
+    let member = lint(
+        "import static org.mockito.Mockito.verify\n\nclass Example {\n    void run() {\n        order.verify(attempts)\n    }\n}\n",
+        unused_import,
+    );
+    assert_eq!(member.len(), 1, "{member:?}");
+
+    // Generic arguments, annotations and interpolated strings do use names.
+    let resolved = lint(
+        "import a.b.Foo\nimport a.b.Anno\nimport a.b.Bar\n\nclass Example {\n    @Anno\n    List<Foo> run() {\n        return \"${Bar.NAME}\".length()\n    }\n}\n",
+        unused_import,
+    );
+    assert!(resolved.is_empty(), "{resolved:?}");
+
+    // A wildcard can be satisfied by any member of the target.
+    let wildcard = lint("import a.b.*\n\nclass Example {\n}\n", unused_import);
+    assert!(wildcard.is_empty(), "{wildcard:?}");
+}
