@@ -244,6 +244,10 @@ Exit criteria:
 
 ### M4 — Project graph and ArchUnit-like rules (0.6, deferred)
 
+**Status: proposal.** Rule families, DSL, phasing and open decisions are in
+[`docs/ARCHITECTURE-RULES.md`](docs/ARCHITECTURE-RULES.md), derived from a real
+project's ArchUnit catalog.
+
 Deliver the dependency graph and architecture rules.
 
 Components:
@@ -375,6 +379,9 @@ Exit criteria:
 - Consider LSP/auto-fix UI integration only after the core contracts are stable.
 
 ## 5. ArchUnit-like DSL proposal
+
+Superseded in detail by [`docs/ARCHITECTURE-RULES.md`](docs/ARCHITECTURE-RULES.md);
+the sketch below stays as the milestone's summary.
 
 Canonical configuration should be declarative and usable from the CLI. TOML is
 the current preference because the tool is Rust-native and the format is easy to
