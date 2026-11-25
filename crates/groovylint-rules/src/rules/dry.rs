@@ -100,8 +100,12 @@ fn render_constant(expr: &Expr, out: &mut String) -> bool {
     use groovylint_syntax::ast::Literal;
     match &expr.kind {
         ExprKind::Literal(Literal::String(text)) => {
+            // The token text keeps its delimiters; compare the value instead.
+            let value = text
+                .trim_start_matches(['\'', '"'])
+                .trim_end_matches(['\'', '"']);
             out.push('"');
-            out.push_str(text);
+            out.push_str(value);
             out.push('"');
             true
         }
@@ -142,7 +146,7 @@ fn render_constant(expr: &Expr, out: &mut String) -> bool {
                 if index > 0 {
                     out.push(',');
                 }
-                if !render_constant(key, out) || !render_constant(value, out) {
+                if !render_map_key(key, out) || !render_constant(value, out) {
                     return false;
                 }
             }
@@ -215,4 +219,17 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
             },
         ),
     ]
+}
+
+/// Renders a map key. A bare identifier key (`[a: 1]`) is a string constant.
+fn render_map_key(expr: &Expr, out: &mut String) -> bool {
+    match &expr.kind {
+        ExprKind::Variable(name) => {
+            out.push('"');
+            out.push_str(name);
+            out.push('"');
+            true
+        }
+        _ => render_constant(expr, out),
+    }
 }

@@ -63,7 +63,7 @@ impl Rule for UnnecessaryGroovyImportRule {}
 impl FileRule for UnnecessaryGroovyImportRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
         for import in &context.script.imports {
-            if import.is_static || is_wildcard(import) {
+            if import.is_static {
                 continue;
             }
             if !is_auto_imported(&import.path) {
@@ -201,7 +201,12 @@ fn contains_name(line: &str, name: &str) -> bool {
             .as_bytes()
             .get(start + name.len())
             .is_some_and(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'$'));
-        if !preceded_by_name_char && !followed_by_name_char {
+        // A qualified reference (`a.b.Foo`) does not need the import.
+        let qualified = start
+            .checked_sub(1)
+            .and_then(|previous| line.as_bytes().get(previous))
+            == Some(&b'.');
+        if !preceded_by_name_char && !followed_by_name_char && !qualified {
             return true;
         }
         offset = start + name.len();
@@ -279,7 +284,9 @@ impl FileRule for DuplicateImportRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
         let mut seen = BTreeSet::new();
         for import in &context.script.imports {
-            let key = (import.path.clone(), import.alias.clone(), import.is_static);
+            // `CodeNarc` compares the imported class, so two aliases of the same
+            // class are a duplicate too.
+            let key = (import.path.clone(), import.is_static);
             if seen.insert(key) {
                 continue;
             }

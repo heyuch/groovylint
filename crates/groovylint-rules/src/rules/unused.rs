@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{ClassDecl, ExprKind, Item, MethodDecl, Script, Stmt};
+use groovylint_syntax::ast::{ClassDecl, ClassKind, ExprKind, Item, MethodDecl, Script, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
@@ -13,11 +13,12 @@ use crate::rules::util::is_test_file;
 use crate::traverse::{self, AstVisitor};
 
 /// Collects every name that is read, called or assigned.
-struct NameCollector {
+struct NameCollector<'a> {
     names: BTreeSet<String>,
+    class_names: &'a BTreeSet<String>,
 }
 
-impl AstVisitor for NameCollector {
+impl AstVisitor for NameCollector<'_> {
     fn enter(&mut self, node: NodeRef<'_>) {
         let NodeRef::Expr(expr) = node else {
             return;
@@ -26,14 +27,35 @@ impl AstVisitor for NameCollector {
             ExprKind::Variable(name) => {
                 self.names.insert(name.clone());
             }
-            ExprKind::Property { name, .. } | ExprKind::Call { name, .. } => {
-                let bare = name.trim_start_matches('&');
-                self.names.insert(bare.to_string());
+            // `CodeNarc` only counts a member as used when it is reached through
+            // `this` (or implicitly) or through a class name declared in the file;
+            // `other.field` and `it.method()` do not count. Mirroring that keeps
+            // our findings a superset of CodeNarc's.
+            ExprKind::Property { receiver, name, .. } => {
+                if self.reaches_this(receiver) {
+                    self.names.insert(name.clone());
+                }
+            }
+            ExprKind::Call { receiver, name, .. } => {
+                let reaches = match receiver {
+                    None => true,
+                    Some(receiver) => self.reaches_this(receiver),
+                };
+                if reaches {
+                    self.names.insert(name.trim_start_matches('&').to_string());
+                } else {
+                    // A property access on another instance still counts as a
+                    // getter call: `x.value` uses `getValue`.
+                    let _ = name;
+                }
             }
             ExprKind::Literal(groovylint_syntax::ast::Literal::String(text)) => {
-                // Interpolated identifiers are part of the string token.
-                for name in identifier_words(text) {
-                    self.names.insert(name);
+                // Only interpolated strings reference names; a plain literal
+                // (`'HTTP-NATIVE-ATTEMPT'`) must not count as a use of `ATTEMPT`.
+                if text.contains('$') {
+                    for name in identifier_words(text) {
+                        self.names.insert(name);
+                    }
                 }
             }
             _ => {}
@@ -41,6 +63,18 @@ impl AstVisitor for NameCollector {
     }
 
     fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+impl NameCollector<'_> {
+    /// Whether an expression is `this`, a bare name bound to a class, or a
+    /// declared class reference.
+    fn reaches_this(&self, expr: &groovylint_syntax::ast::Expr) -> bool {
+        match &expr.kind {
+            ExprKind::This => true,
+            ExprKind::Variable(name) => name == "this" || self.class_names.contains(name.as_str()),
+            _ => false,
+        }
+    }
 }
 
 /// Splits identifier words out of a string literal. Interpolated expressions
@@ -53,21 +87,31 @@ fn identifier_words(text: &str) -> Vec<String> {
 }
 
 fn names_in_script(script: &Script) -> BTreeSet<String> {
+    let class_names = declared_class_names(script);
     let mut collector = NameCollector {
         names: BTreeSet::new(),
+        class_names: &class_names,
     };
     traverse::walk_script(script, &mut collector);
     collector.names
 }
 
-fn names_in_method(method: &MethodDecl) -> BTreeSet<String> {
+fn names_in_method(method: &MethodDecl, class_names: &BTreeSet<String>) -> BTreeSet<String> {
     let mut collector = NameCollector {
         names: BTreeSet::new(),
+        class_names,
     };
     if let Some(body) = &method.body {
         traverse::walk_block(body, &mut collector);
     }
     collector.names
+}
+
+fn declared_class_names(script: &Script) -> BTreeSet<String> {
+    classes_in_script(script)
+        .into_iter()
+        .map(|class| class.name.clone())
+        .collect()
 }
 
 fn classes_in_script(script: &Script) -> Vec<&ClassDecl> {
@@ -183,7 +227,13 @@ fn private_methods(class: &ClassDecl) -> Vec<&MethodDecl> {
         .members
         .iter()
         .filter_map(|member| match member {
-            Item::Method(method) if method.is_private && method.body.is_some() => Some(method),
+            Item::Method(method) => {
+                // A constructor without a modifier is private in Java semantics,
+                // which is what `CodeNarc` sees for enum constructors too.
+                let private = method.is_private
+                    || (method.name == class.name && class.kind == ClassKind::Enum);
+                (private && method.body.is_some()).then_some(method)
+            }
             _ => None,
         })
         .collect()
@@ -300,7 +350,7 @@ impl FileRule for UnusedPrivateMethodParameterRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
         for class in classes_in_script(context.script) {
             for method in private_methods(class) {
-                let used = names_in_method(method);
+                let used = names_in_method(method, &declared_class_names(context.script));
                 for param in &method.params {
                     if used.contains(&param.name) {
                         continue;
@@ -339,7 +389,58 @@ impl FileRule for UnusedObjectRule {
         for item in &context.script.items {
             self.check_item(item, sink);
         }
+        // `CodeNarc` sees a single-expression lambda body as a bare expression
+        // statement (not a block), so `() -> new X()` is reported as unused.
+        // Brace closures (`{ -> new X() }`) are blocks and are not reported.
+        if !self.is_array {
+            let mut collector = ArrowLambdaCollector {
+                spans: Vec::new(),
+                source: context.source.text(),
+            };
+            traverse::walk_script(context.script, &mut collector);
+            for span in collector.spans {
+                sink.report(span, "The instantiated object is not used");
+            }
+        }
     }
+}
+
+/// Finds constructor calls that are the sole statement of an arrow lambda.
+struct ArrowLambdaCollector<'a> {
+    spans: Vec<groovylint_core::Span>,
+    source: &'a str,
+}
+
+impl AstVisitor for ArrowLambdaCollector<'_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Closure {
+            body, has_arrow, ..
+        } = &expr.kind
+        else {
+            return;
+        };
+        if !*has_arrow {
+            return;
+        }
+        let is_lambda = self
+            .source
+            .get(expr.span.range())
+            .is_some_and(|text| !text.trim_start().starts_with('{'));
+        if !is_lambda {
+            return;
+        }
+        let [Stmt::Expr(inner)] = body.statements.as_slice() else {
+            return;
+        };
+        if matches!(inner.kind, ExprKind::New { .. }) {
+            self.spans.push(inner.span);
+        }
+    }
+
+    fn exit(&mut self, _node: NodeRef<'_>) {}
 }
 
 impl UnusedObjectRule {

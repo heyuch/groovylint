@@ -155,3 +155,62 @@ fn unsafe_implementation_as_map_skips_test_sources() {
     let main_file = SourceFile::new("src/main/groovy/Example.groovy", source);
     assert_eq!(engine.lint(&main_file, &parsed).len(), 1);
 }
+
+#[test]
+fn parity_regressions_from_the_corpus_comparison() {
+    // Map literals with shorthand keys (`[legacy: 'kept']`).
+    let duplicates = lint(
+        "class Example {\n    void run() {\n        def a = [legacy: 'kept']\n        def b = [legacy: 'kept']\n    }\n}\n",
+        &["org.codenarc.rule.dry.DuplicateMapLiteralRule"],
+    );
+    assert_eq!(duplicates.len(), 1, "{duplicates:?}");
+
+    // Wildcard imports of default packages are unnecessary.
+    let wildcard = lint(
+        "import java.util.*\n\nclass Example {\n}\n",
+        &["org.codenarc.rule.imports.UnnecessaryGroovyImportRule"],
+    );
+    assert_eq!(wildcard.len(), 1, "{wildcard:?}");
+
+    // Two aliases of one class are a duplicate import.
+    let aliased = lint(
+        "import a.Foo\nimport a.Foo as Bar\n\nclass Example {\n}\n",
+        &["org.codenarc.rule.imports.DuplicateImportRule"],
+    );
+    assert_eq!(aliased.len(), 1, "{aliased:?}");
+
+    // `super.finalize()` is a call to finalize().
+    let finalize = lint(
+        "class Example {\n    protected void finalize() {\n        super.finalize()\n    }\n}\n",
+        &["org.codenarc.rule.security.ObjectFinalizeRule"],
+    );
+    assert_eq!(finalize.len(), 1, "{finalize:?}");
+
+    // Abstract/interface methods without a return type use `def`.
+    let nodef = lint(
+        "interface Example {\n    toDO(@MappingTarget Object target, Object param)\n}\n",
+        &["org.codenarc.rule.convention.NoDefRule"],
+    );
+    assert_eq!(nodef.len(), 1, "{nodef:?}");
+
+    // Enum constructors are implicitly private.
+    let enum_ctor = lint(
+        "enum Example {\n    A('a', 'aa')\n\n    String value\n    String desc\n\n    Example(String value, String desc) {\n    }\n}\n",
+        &["org.codenarc.rule.unused.UnusedPrivateMethodParameterRule"],
+    );
+    assert!(!enum_ctor.is_empty(), "{enum_ctor:?}");
+
+    // A constructor call as the body of an arrow lambda is reported.
+    let lambda = lint(
+        "class Example {\n    void run() {\n        def f = () -> new RuntimeException('x')\n    }\n}\n",
+        &["org.codenarc.rule.unused.UnusedObjectRule"],
+    );
+    assert_eq!(lambda.len(), 1, "{lambda:?}");
+
+    // JDBC references include the import line.
+    let jdbc = lint(
+        "import java.sql.Connection\n\nclass Example {\n}\n",
+        &["org.codenarc.rule.jdbc.JdbcConnectionReferenceRule"],
+    );
+    assert_eq!(jdbc.len(), 1, "{jdbc:?}");
+}

@@ -842,68 +842,6 @@ impl AstRule for SerializableClassMustDefineSerialVersionUIDRule {
     }
 }
 
-/// Flags direct use of `java.sql.ResultSet`.
-pub struct JdbcResultSetReferenceRule;
-
-impl Rule for JdbcResultSetReferenceRule {}
-
-impl AstRule for JdbcResultSetReferenceRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Field).union(NodeMask::of(NodeKind::Method))
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        check_jdbc_type(node, sink, &["ResultSet"]);
-    }
-}
-
-/// Flags direct use of `java.sql.Statement` types.
-pub struct JdbcStatementReferenceRule;
-
-impl Rule for JdbcStatementReferenceRule {}
-
-impl AstRule for JdbcStatementReferenceRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Field).union(NodeMask::of(NodeKind::Method))
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        check_jdbc_type(
-            node,
-            sink,
-            &["Statement", "PreparedStatement", "CallableStatement"],
-        );
-    }
-}
-
-fn check_jdbc_type(node: NodeRef<'_>, sink: &mut DiagnosticSink<'_>, names: &[&str]) {
-    let (span, declared) = match node {
-        NodeRef::Field(field) => (field.span, field.type_name.clone()),
-        NodeRef::Method(method) => (method.span, method.return_type.clone()),
-        _ => return,
-    };
-    let Some(declared) = declared else {
-        return;
-    };
-    if !names.contains(&simple_name(&declared)) {
-        return;
-    }
-    sink.report(
-        span,
-        format!("Direct use of {declared} is discouraged; use the Groovy Sql facility"),
-    );
-}
-
 /// Flags unused parameters of non-private methods.
 pub struct UnusedMethodParameterRule;
 
@@ -1655,26 +1593,6 @@ pub fn misc_descriptors() -> Vec<RuleDescriptor> {
                 "SerializableClassMustDefineSerialVersionUID rule.",
             ),
             || RuleInstanceImpl::Ast(Box::new(SerializableClassMustDefineSerialVersionUIDRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "JdbcResultSetReference",
-                "org.codenarc.rule.jdbc.JdbcResultSetReferenceRule",
-                Category::Jdbc,
-                Severity::Info,
-                "JdbcResultSetReference rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(JdbcResultSetReferenceRule)),
-        ),
-        descriptor(
-            RuleMeta::new(
-                "JdbcStatementReference",
-                "org.codenarc.rule.jdbc.JdbcStatementReferenceRule",
-                Category::Jdbc,
-                Severity::Info,
-                "JdbcStatementReference rule.",
-            ),
-            || RuleInstanceImpl::Ast(Box::new(JdbcStatementReferenceRule)),
         ),
         descriptor(
             RuleMeta::new(

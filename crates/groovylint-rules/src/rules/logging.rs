@@ -430,6 +430,16 @@ impl AstRule for LoggerForDifferentClassRule {
                 let Some(first) = args.first() else {
                     return;
                 };
+                // A logger named by a string is not tied to this class either.
+                if let ExprKind::Literal(groovylint_syntax::ast::Literal::String(name)) =
+                    &first.kind
+                {
+                    sink.report(
+                        expr.span,
+                        format!("The logger for {name} should be created for the class it is declared in"),
+                    );
+                    return;
+                }
                 let ExprKind::Property {
                     receiver,
                     name: property,

@@ -123,7 +123,9 @@ impl NoDefRule {
 }
 
 fn report_dynamic_method(method: &MethodDecl, sink: &mut DiagnosticSink<'_>) {
-    if method.return_type.is_none() && method.body.is_some() {
+    // `CodeNarc` reports any method without a declared return type, including
+    // abstract/interface methods (`@MappingTarget void`-style declarations).
+    if method.return_type.is_none() {
         sink.report(method.span, "def for method return type should not be used");
     }
     report_dynamic_parameters(method, sink);

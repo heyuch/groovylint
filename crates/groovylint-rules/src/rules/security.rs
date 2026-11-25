@@ -170,6 +170,38 @@ impl FileRule for NonFinalPublicFieldRule {
     }
 }
 
+/// Flags calls to `finalize()`; only the JVM should call it.
+pub struct ObjectFinalizeCallRule;
+
+impl Rule for ObjectFinalizeCallRule {}
+
+impl AstRule for ObjectFinalizeCallRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Expr)
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        let ExprKind::Call { name, args, .. } = &expr.kind else {
+            return;
+        };
+        if name != "finalize" || !args.is_empty() {
+            return;
+        }
+        sink.report(
+            expr.span,
+            "The finalize() method should only be called by the JVM",
+        );
+    }
+}
+
 /// Flags `finalize()` methods, optionally only when they are public.
 pub struct FinalizeRule {
     require_not_private: bool,
@@ -201,10 +233,8 @@ impl FileRule for FinalizeRule {
                     continue;
                 }
                 if !self.require_not_private {
-                    sink.report(
-                        method.span,
-                        "The finalize() method should only be called by the JVM",
-                    );
+                    // The declaration check lives in `PublicFinalizeMethod`; this
+                    // rule reports calls, see `ObjectFinalizeCallRule`.
                 }
             }
         }
@@ -400,11 +430,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Warning,
                 "Checks for finalize() methods.",
             ),
-            || {
-                RuleInstanceImpl::File(Box::new(FinalizeRule {
-                    require_not_private: false,
-                }))
-            },
+            || RuleInstanceImpl::Ast(Box::new(ObjectFinalizeCallRule)),
         ),
         descriptor(
             RuleMeta::new(
