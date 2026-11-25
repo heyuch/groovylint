@@ -13,7 +13,7 @@ use anyhow::{Context, Result, bail};
 use clap::Args;
 
 /// Arguments that restrict the analyzed file set to what a branch changed.
-#[derive(Debug, Args)]
+#[derive(Debug, Default, Args)]
 #[allow(clippy::struct_field_names)]
 pub struct ChangedArgs {
     /// File containing a newline-separated list of paths to analyze (`-` reads stdin).
@@ -87,12 +87,28 @@ impl ChangedSet {
 }
 
 impl ChangedArgs {
+    /// Whether any changed-file option was given.
+    ///
+    /// A plain run must not touch `git` at all: asking for the repository root in a
+    /// directory that is not one turns every normal run outside a checkout into a
+    /// usage error.
+    #[must_use]
+    pub fn requested(&self) -> bool {
+        self.changed_files.is_some()
+            || self.changed_baseline.is_some()
+            || self.changed_since.is_some()
+            || self.changed_commits.is_some()
+    }
+
     /// Builds the changed-file set, if one of the options was given.
     ///
     /// `paths` scopes the `git` queries: asking git only about the directories
     /// being analyzed turns a whole-tree scan (tens of thousands of files) into a
     /// subtree scan.
     pub fn resolve(&self, paths: &[PathBuf]) -> Result<Option<ChangedSet>> {
+        if !self.requested() {
+            return Ok(None);
+        }
         if let Some(path) = &self.changed_files {
             return Ok(Some(read_list(path)?));
         }
@@ -351,8 +367,16 @@ fn validate_ref<'a>(reference: &'a str, option: &str) -> Result<&'a str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{absolute, validate_ref};
+    use super::{ChangedArgs, absolute, validate_ref};
     use std::path::Path;
+
+    #[test]
+    fn no_option_asked_for_no_set() {
+        let args = ChangedArgs::default();
+
+        assert!(!args.requested());
+        assert!(args.resolve(&[]).expect("no git needed").is_none());
+    }
 
     #[test]
     fn accepts_ordinary_refs() {
