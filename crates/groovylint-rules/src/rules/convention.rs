@@ -1,5 +1,7 @@
 //! `CodeNarc` convention rules about declarations and characters.
 
+use std::collections::BTreeSet;
+
 use groovylint_core::Severity;
 use groovylint_syntax::ast::{AssignOp, Expr, ExprKind, Literal, MethodDecl, Param, Stmt};
 
@@ -1145,7 +1147,11 @@ fn is_unary_negation(expr: &Expr) -> bool {
 }
 
 /// Flags `if (!condition) ... else ...` statements.
-pub struct InvertedIfElseRule;
+#[derive(Default)]
+pub struct InvertedIfElseRule {
+    /// Start offsets of the `else if` clauses, which `CodeNarc` never visits.
+    else_ifs: BTreeSet<usize>,
+}
 
 impl Rule for InvertedIfElseRule {}
 
@@ -1163,12 +1169,17 @@ impl AstRule for InvertedIfElseRule {
         let NodeRef::Stmt(Stmt::If(if_stmt)) = node else {
             return;
         };
-        // `CodeNarc` only looks at a literal `else` block: an `else if` is an
-        // `IfStatement`, not a `BlockStatement`, so it does not count.
+        // `CodeNarc` only looks at a literal `else` block and never visits the
+        // `else if` of a chain: an `else if` is an `IfStatement`, not a
+        // `BlockStatement`, so an inverted `else if` is not reported either.
         let Some(else_branch) = &if_stmt.else_branch else {
             return;
         };
         if matches!(**else_branch, Stmt::If(_)) {
+            self.else_ifs.insert(else_branch.span().start);
+            return;
+        }
+        if self.else_ifs.contains(&if_stmt.span.start) {
             return;
         }
         if !is_unary_negation(&if_stmt.condition) {
@@ -1276,7 +1287,7 @@ pub fn extra_descriptors() -> Vec<RuleDescriptor> {
                 Severity::Warning,
                 "Checks for inverted if-else statements.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(InvertedIfElseRule)),
+            || RuleInstanceImpl::Ast(Box::new(InvertedIfElseRule::default())),
         ),
         descriptor(
             RuleMeta::new(

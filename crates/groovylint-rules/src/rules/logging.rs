@@ -291,33 +291,31 @@ fn simple_name(name: &str) -> &str {
     name.rsplit('.').next().unwrap_or(name)
 }
 
-/// Returns whether a field looks like a logger.
-fn is_logger_field(field: &groovylint_syntax::ast::FieldDecl) -> bool {
-    if let Some(type_name) = &field.type_name {
-        let simple = simple_name(type_name);
-        if matches!(simple, "Logger" | "Log" | "Category") {
-            return true;
-        }
-    }
-    let Some(init) = &field.init else {
-        return false;
-    };
-    let ExprKind::Call { name, .. } = &init.kind else {
-        return false;
-    };
-    name == "getLogger" || name == "getLog"
-}
-
 /// Matches `Logger log = LoggerFactory.getLogger(...)` style declarations, the
-/// only ones `CodeNarc`'s `LogUtil` recognises.
+/// only ones `CodeNarc`'s `LogUtil` recognises: the initializer must be a
+/// direct call on a logger factory, so a cast or another receiver hides it.
 fn is_factory_logger(field: &groovylint_syntax::ast::FieldDecl) -> bool {
     let Some(init) = &field.init else {
         return false;
     };
-    let ExprKind::Call { name, .. } = &init.kind else {
+    let ExprKind::Call {
+        receiver: Some(receiver),
+        name,
+        ..
+    } = &init.kind
+    else {
         return false;
     };
-    name == "getLogger" || name == "getLog"
+    if name != "getLogger" && name != "getLog" {
+        return false;
+    }
+    let ExprKind::Variable(owner) = &receiver.kind else {
+        return false;
+    };
+    matches!(
+        simple_name(owner),
+        "Logger" | "LogFactory" | "LoggerFactory" | "Log"
+    )
 }
 
 fn logger_fields(class: &ClassDecl) -> Vec<&groovylint_syntax::ast::FieldDecl> {
@@ -325,7 +323,7 @@ fn logger_fields(class: &ClassDecl) -> Vec<&groovylint_syntax::ast::FieldDecl> {
         .members
         .iter()
         .filter_map(|member| match member {
-            Item::Field(field) if is_logger_field(field) => Some(field),
+            Item::Field(field) if is_factory_logger(field) => Some(field),
             _ => None,
         })
         .collect()
@@ -409,7 +407,7 @@ impl Rule for LoggerForDifferentClassRule {}
 
 impl AstRule for LoggerForDifferentClassRule {
     fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Expr).union(NodeMask::of(NodeKind::Class))
+        NodeMask::of(NodeKind::Field).union(NodeMask::of(NodeKind::Class))
     }
 
     fn enter(
@@ -420,13 +418,16 @@ impl AstRule for LoggerForDifferentClassRule {
     ) {
         match node {
             NodeRef::Class(_) => self.classes.enter(node),
-            NodeRef::Expr(expr) => {
-                let ExprKind::Call { name, args, .. } = &expr.kind else {
-                    return;
-                };
-                if name != "getLogger" && name != "getLog" {
+            NodeRef::Field(field) => {
+                if !is_factory_logger(field) {
                     return;
                 }
+                let Some(init) = &field.init else {
+                    return;
+                };
+                let ExprKind::Call { args, .. } = &init.kind else {
+                    return;
+                };
                 let Some(first) = args.first() else {
                     return;
                 };
@@ -435,7 +436,7 @@ impl AstRule for LoggerForDifferentClassRule {
                     &first.kind
                 {
                     sink.report(
-                        expr.span,
+                        init.span,
                         format!("The logger for {name} should be created for the class it is declared in"),
                     );
                     return;
@@ -458,7 +459,7 @@ impl AstRule for LoggerForDifferentClassRule {
                     return;
                 }
                 sink.report(
-                    expr.span,
+                    init.span,
                     format!(
                         "The logger for {owner} should be created for the class it is declared in"
                     ),

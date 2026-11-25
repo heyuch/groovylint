@@ -15,6 +15,9 @@ use crate::traverse::{self, AstVisitor};
 /// Collects every name that is read, called or assigned.
 struct NameCollector<'a> {
     names: BTreeSet<String>,
+    /// Every member name, whichever receiver it is reached through. `CodeNarc`
+    /// treats `getX`/`setX`/`isX` as used when `x` appears anywhere.
+    member_names: BTreeSet<String>,
     class_names: &'a BTreeSet<String>,
 }
 
@@ -35,12 +38,14 @@ impl AstVisitor for NameCollector<'_> {
         match &expr.kind {
             ExprKind::Variable(name) => {
                 self.names.insert(name.clone());
+                self.member_names.insert(name.clone());
             }
             // `CodeNarc` only counts a member as used when it is reached through
             // `this` (or implicitly) or through a class name declared in the file;
             // `other.field` and `it.method()` do not count. Mirroring that keeps
             // our findings a superset of CodeNarc's.
             ExprKind::Property { receiver, name, .. } => {
+                self.member_names.insert(member_name(name).to_string());
                 if self.reaches_this(receiver) {
                     self.names.insert(member_name(name).to_string());
                 }
@@ -50,12 +55,9 @@ impl AstVisitor for NameCollector<'_> {
                     None => true,
                     Some(receiver) => self.reaches_this(receiver),
                 };
+                self.member_names.insert(member_name(name).to_string());
                 if reaches {
                     self.names.insert(member_name(name).to_string());
-                } else {
-                    // A property access on another instance still counts as a
-                    // getter call: `x.value` uses `getValue`.
-                    let _ = name;
                 }
             }
             ExprKind::Literal(groovylint_syntax::ast::Literal::String(text)) => {
@@ -150,18 +152,25 @@ fn identifier_words(text: &str) -> Vec<String> {
 }
 
 fn names_in_script(script: &Script) -> BTreeSet<String> {
+    collect_names(script).0
+}
+
+/// The names reached through `this`/a class, and every member name.
+fn collect_names(script: &Script) -> (BTreeSet<String>, BTreeSet<String>) {
     let class_names = declared_class_names(script);
     let mut collector = NameCollector {
         names: BTreeSet::new(),
+        member_names: BTreeSet::new(),
         class_names: &class_names,
     };
     traverse::walk_script(script, &mut collector);
-    collector.names
+    (collector.names, collector.member_names)
 }
 
 fn names_in_method(method: &MethodDecl, class_names: &BTreeSet<String>) -> BTreeSet<String> {
     let mut collector = NameCollector {
         names: BTreeSet::new(),
+        member_names: BTreeSet::new(),
         class_names,
     };
     if let Some(body) = &method.body {
@@ -329,7 +338,7 @@ impl Rule for UnusedPrivateMethodRule {
 
 impl FileRule for UnusedPrivateMethodRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
-        let used = names_in_script(context.script);
+        let (used, member_names) = collect_names(context.script);
         let mut reported = BTreeSet::new();
         for class in classes_in_script(context.script) {
             for method in private_methods(class) {
@@ -342,7 +351,7 @@ impl FileRule for UnusedPrivateMethodRule {
                 if self.is_ignored(method) {
                     continue;
                 }
-                if used.contains(&method.name) || Self::is_used_as_property(method, &used) {
+                if used.contains(&method.name) || Self::is_used_as_property(method, &member_names) {
                     continue;
                 }
                 reported.insert(method.name.clone());
