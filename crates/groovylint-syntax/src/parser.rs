@@ -2772,10 +2772,10 @@ fn combine_declarations(mut declarations: Vec<Stmt>) -> Stmt {
     };
     if let Some(type_name) = shared_type {
         for declaration in &mut declarations {
-            if let Stmt::VarDecl(declaration) = declaration {
-                if declaration.type_name.is_none() {
-                    declaration.type_name = Some(type_name.clone());
-                }
+            if let Stmt::VarDecl(declaration) = declaration
+                && declaration.type_name.is_none()
+            {
+                declaration.type_name = Some(type_name.clone());
             }
         }
     }
