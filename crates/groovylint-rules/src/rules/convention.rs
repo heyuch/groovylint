@@ -1163,7 +1163,12 @@ impl AstRule for InvertedIfElseRule {
         let NodeRef::Stmt(Stmt::If(if_stmt)) = node else {
             return;
         };
-        if if_stmt.else_branch.is_none() {
+        // `CodeNarc` only looks at a literal `else` block: an `else if` is an
+        // `IfStatement`, not a `BlockStatement`, so it does not count.
+        let Some(else_branch) = &if_stmt.else_branch else {
+            return;
+        };
+        if matches!(**else_branch, Stmt::If(_)) {
             return;
         }
         if !is_unary_negation(&if_stmt.condition) {

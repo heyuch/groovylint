@@ -57,6 +57,11 @@ fn walk_class(class: &ClassDecl, visitor: &mut impl AstVisitor) {
 fn walk_method(method: &MethodDecl, visitor: &mut impl AstVisitor) {
     let node = NodeRef::Method(method);
     visitor.enter(node);
+    for param in &method.params {
+        if let Some(default_value) = &param.default_value {
+            walk_expr(default_value, visitor);
+        }
+    }
     if let Some(body) = &method.body {
         walk_block(body, visitor);
     }
@@ -276,7 +281,14 @@ pub fn walk_expr(expr: &Expr, visitor: &mut impl AstVisitor) {
             walk_expr(target, visitor);
             walk_expr(index, visitor);
         }
-        ExprKind::Closure { body, .. } => walk_block(body, visitor),
+        ExprKind::Closure { params, body, .. } => {
+            for param in params {
+                if let Some(default_value) = &param.default_value {
+                    walk_expr(default_value, visitor);
+                }
+            }
+            walk_block(body, visitor);
+        }
         ExprKind::Cast { expr, .. } => walk_expr(expr, visitor),
         ExprKind::NamedArg { value, .. } => walk_expr(value, visitor),
         ExprKind::Switch { scrutinee, cases } => {

@@ -167,6 +167,8 @@ pub struct Param {
     pub annotation_details: Vec<Annotation>,
     /// Annotations on generic type arguments, if any.
     pub type_annotations: Vec<String>,
+    /// Default value, for a parameter of a method or closure.
+    pub default_value: Option<Expr>,
     /// Source span.
     pub span: Span,
 }

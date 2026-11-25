@@ -1056,6 +1056,7 @@ mod tests {
                     annotations: Vec::new(),
                     annotation_details: Vec::new(),
                     type_annotations: Vec::new(),
+                    default_value: None,
                     span: Span::empty(0),
                 },
                 Param {
@@ -1064,6 +1065,7 @@ mod tests {
                     annotations: Vec::new(),
                     annotation_details: Vec::new(),
                     type_annotations: Vec::new(),
+                    default_value: None,
                     span: Span::empty(0),
                 },
             ],

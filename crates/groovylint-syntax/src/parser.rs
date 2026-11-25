@@ -464,6 +464,7 @@ impl<'a> Parser<'a> {
                     annotations: param_prefix.annotations,
                     annotation_details: param_prefix.annotation_details,
                     type_annotations: Vec::new(),
+                    default_value: None,
                     span: token.span,
                 });
             } else {
@@ -481,12 +482,16 @@ impl<'a> Parser<'a> {
                     annotations: param_prefix.annotations,
                     annotation_details: param_prefix.annotation_details,
                     type_annotations,
+                    default_value: None,
                     span: token.span,
                 });
             }
 
             if self.eat(TokenKind::Assign) {
-                let _ = self.parse_expression()?;
+                let default_value = self.parse_expression()?;
+                if let Some(param) = params.last_mut() {
+                    param.default_value = Some(default_value);
+                }
             }
             self.skip_newlines();
             if !self.eat(TokenKind::Comma) {
@@ -1707,6 +1712,7 @@ impl<'a> Parser<'a> {
                         annotations: Vec::new(),
                         annotation_details: Vec::new(),
                         type_annotations: Vec::new(),
+                        default_value: None,
                         span: token.span,
                     };
                     return self.parse_lambda_body(start, vec![param]);
@@ -1812,6 +1818,7 @@ impl<'a> Parser<'a> {
                 annotations: prefix.annotations,
                 annotation_details: prefix.annotation_details,
                 type_annotations: self.last_type_annotations.clone(),
+                default_value: None,
                 span: token.span,
             });
             self.skip_newlines();
@@ -2163,6 +2170,7 @@ impl<'a> Parser<'a> {
                     annotations: prefix.annotations,
                     annotation_details: prefix.annotation_details,
                     type_annotations: self.last_type_annotations.clone(),
+                    default_value: None,
                     span: token.span,
                 });
                 if self.eat(TokenKind::Assign) {

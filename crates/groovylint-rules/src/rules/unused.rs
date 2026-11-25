@@ -102,6 +102,17 @@ fn annotation_arguments(node: NodeRef<'_>) -> String {
             arguments.push_str(raw);
         }
     }
+    // A parameter annotation references names too: `@RequestHeader(HEADER) String x`.
+    if let NodeRef::Method(method) = node {
+        for param in &method.params {
+            for annotation in &param.annotation_details {
+                if let Some(raw) = &annotation.raw_arguments {
+                    arguments.push(' ');
+                    arguments.push_str(raw);
+                }
+            }
+        }
+    }
     arguments
 }
 
@@ -351,20 +362,10 @@ impl FileRule for UnusedPrivateMethodRule {
 impl UnusedPrivateMethodRule {
     /// Groovy property syntax calls `getX`/`setX`/`isX` through `x`.
     fn is_used_as_property(method: &MethodDecl, used: &BTreeSet<String>) -> bool {
-        let prefix_length = if method.name.starts_with("get") || method.name.starts_with("set") {
-            3
-        } else if method.name.starts_with("is") {
-            2
-        } else {
-            return false;
-        };
-        let property = &method.name[prefix_length..];
-        let mut chars = property.chars();
-        let Some(first) = chars.next() else {
-            return false;
-        };
-        let derived = format!("{}{}", first.to_ascii_lowercase(), chars.as_str());
-        used.contains(&derived)
+        match super::imports::accessor_property(&method.name) {
+            Some(property) => used.contains(&property),
+            None => false,
+        }
     }
 
     fn is_ignored(&self, method: &MethodDecl) -> bool {

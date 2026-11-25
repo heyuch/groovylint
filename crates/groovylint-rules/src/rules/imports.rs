@@ -396,7 +396,7 @@ impl AstVisitor for ReferenceCollector {
 }
 
 /// Maps a static import of a getter/setter back to the property it accesses.
-fn accessor_property(alias: &str) -> Option<String> {
+pub(crate) fn accessor_property(alias: &str) -> Option<String> {
     let getter = alias.strip_prefix("get");
     let setter = alias.strip_prefix("set");
     let test = alias.strip_prefix("is");
