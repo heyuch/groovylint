@@ -186,6 +186,7 @@ cargo doc-all
 - [Incremental analysis and caching](docs/PERFORMANCE.md)
 - [CodeNarc rule coverage](docs/COVERAGE.md)
 - [Gradle plugin](gradle-plugin/README.md)
+- [Distribution: Gradle and Maven](docs/DISTRIBUTION.md)
 - [Benchmark methodology](benchmarks/README.md) and [local results](benchmarks/RESULTS.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)

@@ -32,7 +32,9 @@ not to build.
 - Grails rules: all 12 Grails rule classes.
 - Jenkins rules: all 7 Jenkins rule classes.
 - Spock rules: all 3 Spock rule classes.
-- Windows and Intel macOS distribution for now.
+- Windows and Intel macOS distribution for now (see
+  [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md) for the platform matrix that
+  replaces this restriction once the binary ships as its own artifact).
 - A full Groovy compiler, bytecode generator, or complete nominal type system.
 - Exact ArchUnit bytecode-level semantics in the first architecture release.
 - Whole-program sound nullness for dynamic Groovy and external libraries.
