@@ -48,6 +48,37 @@ Deleted files are dropped (`--diff-filter=ACMR`), renamed files count as the new
 path, and untracked files are included in the first two modes — a new file that is
 not committed yet is still a change you want checked.
 
+## Cost
+
+A changed-only run must be cheaper than a full run, otherwise it is only a
+reporting filter. It is, but the first implementation was not, and the reason is
+worth keeping in mind when extending this code:
+
+| Cost | Full run (24k files) | Walk-then-filter (first attempt) |
+|---|---:|---:|
+| enumerate the tree | paid | paid anyway |
+| resolve every path (symlinks) to match the changed set | — | paid |
+| `git ls-files --others` (whole tree, honours .gitignore) | — | paid |
+| parse | 24k files | 1 file |
+
+So the run that checked one file spent *more* time than the run that checked all of
+them: it paid the enumeration and the `git` walk and saved only the parsing. Two
+changes fixed it:
+
+1. **Resolve the changed set instead of walking.** A changed set is small, so each
+   entry is canonicalized once and checked against the requested paths; the tree is
+   never enumerated. This alone took 1.1 s to 0.24 s.
+2. **Scope `git` to the analyzed paths.** The paths on the command line are passed
+   as pathspecs (`git diff … -- <paths>`), so `git` walks the requested subtree
+   instead of the repository. A module-scoped run drops to ~60 ms.
+
+Measured on a 24,596-file project with a warm cache: full 700–950 ms, changed over
+the whole repository ~245 ms, changed within one module ~60 ms, list of one file
+~6 ms. The remaining cost of the whole-repository mode is `git ls-files --others`
+(~190 ms): finding untracked files requires walking the working tree. That is the
+price of "a new file I have not added yet is part of my change"; a module scope or a
+list file avoids it.
+
 ## Behaviour
 
 - The filter intersects the changed set with the files the arguments select, so

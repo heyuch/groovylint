@@ -67,12 +67,6 @@ pub struct ChangedSet {
 }
 
 impl ChangedSet {
-    /// Whether the file is part of the changed set.
-    #[must_use]
-    pub fn contains(&self, path: &Path) -> bool {
-        self.files.contains(&absolute(path))
-    }
-
     /// Human-readable description of how the set was produced.
     #[must_use]
     pub fn description(&self) -> &str {
@@ -84,15 +78,26 @@ impl ChangedSet {
     pub const fn is_git_range(&self) -> bool {
         self.from_git
     }
+
+    /// The absolute, canonical paths in the set.
+    #[must_use]
+    pub fn files(&self) -> &BTreeSet<PathBuf> {
+        &self.files
+    }
 }
 
 impl ChangedArgs {
     /// Builds the changed-file set, if one of the options was given.
-    pub fn resolve(&self) -> Result<Option<ChangedSet>> {
+    ///
+    /// `paths` scopes the `git` queries: asking git only about the directories
+    /// being analyzed turns a whole-tree scan (tens of thousands of files) into a
+    /// subtree scan.
+    pub fn resolve(&self, paths: &[PathBuf]) -> Result<Option<ChangedSet>> {
         if let Some(path) = &self.changed_files {
             return Ok(Some(read_list(path)?));
         }
         let root = repository_root()?;
+        let scope = pathspecs(&root, paths);
         if let Some(baseline) = &self.changed_baseline {
             let reference = validate_ref(baseline, "--changed-baseline")?;
             require_ref(&root, reference)?;
@@ -104,8 +109,9 @@ impl ChangedArgs {
                     "--diff-filter=ACMR",
                     &format!("{reference}...HEAD"),
                 ],
+                &scope,
             )?;
-            paths.extend(uncommitted_paths(&root)?);
+            paths.extend(uncommitted_paths(&root, &scope)?);
             return Ok(Some(set_from_root(
                 &root,
                 paths,
@@ -118,8 +124,9 @@ impl ChangedArgs {
             let mut paths = git_paths(
                 &root,
                 &["diff", "--name-only", "--diff-filter=ACMR", reference],
+                &scope,
             )?;
-            paths.extend(uncommitted_paths(&root)?);
+            paths.extend(uncommitted_paths(&root, &scope)?);
             return Ok(Some(set_from_root(
                 &root,
                 paths,
@@ -130,11 +137,13 @@ impl ChangedArgs {
             return Ok(None);
         };
         let mut paths = Vec::new();
+        let mut seen = 0;
         for reference in commits
             .split(',')
             .map(str::trim)
             .filter(|ref_| !ref_.is_empty())
         {
+            seen += 1;
             let reference = validate_ref(reference, "--changed-commits")?;
             require_ref(&root, reference)?;
             paths.extend(git_paths(
@@ -148,9 +157,10 @@ impl ChangedArgs {
                     "--diff-filter=ACMR",
                     reference,
                 ],
+                &scope,
             )?);
         }
-        if paths.is_empty() {
+        if seen == 0 {
             bail!("--changed-commits did not contain a valid commit");
         }
         Ok(Some(set_from_root(&root, paths, commits.clone())))
@@ -201,13 +211,41 @@ fn set_from_root(root: &Path, paths: Vec<String>, description: String) -> Change
 }
 
 /// Files changed between `HEAD` and the working tree, plus untracked files.
-fn uncommitted_paths(root: &Path) -> Result<Vec<String>> {
-    let mut paths = git_paths(root, &["diff", "--name-only", "--diff-filter=ACMR", "HEAD"])?;
+fn uncommitted_paths(root: &Path, scope: &[String]) -> Result<Vec<String>> {
+    let mut paths = git_paths(
+        root,
+        &["diff", "--name-only", "--diff-filter=ACMR", "HEAD"],
+        scope,
+    )?;
     paths.extend(git_paths(
         root,
         &["ls-files", "--others", "--exclude-standard"],
+        scope,
     )?);
     Ok(paths)
+}
+
+/// Repository-relative pathspecs for the analyzed paths.
+///
+/// An empty result means "the whole repository": it is used when a path cannot be
+/// resolved, because under-scoping would hide changes instead of only reading more.
+fn pathspecs(root: &Path, paths: &[PathBuf]) -> Vec<String> {
+    let mut specs = Vec::new();
+    for path in paths {
+        let Ok(canonical) = std::fs::canonicalize(path) else {
+            return Vec::new();
+        };
+        let Ok(relative) = canonical.strip_prefix(root) else {
+            continue;
+        };
+        let text = relative.to_string_lossy().to_string();
+        specs.push(if text.is_empty() {
+            ".".to_string()
+        } else {
+            text
+        });
+    }
+    specs
 }
 
 /// What to tell the user when `git` cannot be executed at all.
@@ -263,22 +301,19 @@ fn require_ref(root: &Path, reference: &str) -> Result<()> {
     );
 }
 
-fn git_paths(root: &Path, args: &[&str]) -> Result<Vec<String>> {
-    let text = run_git(Some(root), args)?;
+fn git_paths(root: &Path, args: &[&str], scope: &[String]) -> Result<Vec<String>> {
+    let mut command: Vec<&str> = args.to_vec();
+    if !scope.is_empty() {
+        command.push("--");
+        command.extend(scope.iter().map(String::as_str));
+    }
+    let text = run_git(Some(root), &command)?;
     Ok(text
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
         .map(ToString::to_string)
         .collect())
-}
-
-/// Keeps only the files the branch changed, preserving the original order.
-pub fn filter(files: Vec<PathBuf>, changed: &ChangedSet) -> Vec<PathBuf> {
-    files
-        .into_iter()
-        .filter(|path| changed.contains(path))
-        .collect()
 }
 
 /// Absolute form of a path, with symlinks resolved when the file exists.

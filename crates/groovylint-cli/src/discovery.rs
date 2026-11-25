@@ -52,6 +52,49 @@ fn is_groovy_file(path: &Path) -> bool {
         })
 }
 
+/// Collects the changed files directly, without walking the tree.
+///
+/// Walking 24,000 files to keep three of them is where a changed-only run lost its
+/// advantage: the walk and the per-file path resolution cost more than parsing the
+/// whole project would. A changed set is small, so it is resolved directly: keep
+/// the entries that are Groovy files, still exist, and live under one of the
+/// requested paths.
+pub fn collect_changed(
+    paths: &[PathBuf],
+    files: impl Iterator<Item = PathBuf>,
+) -> Result<Vec<PathBuf>> {
+    let mut roots = Vec::new();
+    for path in paths {
+        if !path.exists() {
+            bail!("path does not exist: {}", path.display());
+        }
+        roots.push(std::fs::canonicalize(path).unwrap_or_else(|_| path.clone()));
+    }
+
+    let cwd = std::env::current_dir().ok();
+    let mut selected = Vec::new();
+    for file in files {
+        let resolved = std::fs::canonicalize(&file).unwrap_or_else(|_| file.clone());
+        if !is_groovy_file(&resolved) || !resolved.is_file() {
+            continue;
+        }
+        if !roots.is_empty() && !roots.iter().any(|root| resolved.starts_with(root)) {
+            continue;
+        }
+        let displayed = match &cwd {
+            Some(cwd) => resolved
+                .strip_prefix(cwd)
+                .map_or_else(|_| resolved.clone(), PathBuf::from),
+            None => resolved,
+        };
+        selected.push(displayed);
+    }
+
+    selected.sort();
+    selected.dedup();
+    Ok(selected)
+}
+
 #[cfg(test)]
 mod tests {
     use super::is_groovy_file;

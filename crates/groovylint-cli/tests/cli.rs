@@ -210,7 +210,8 @@ fn changed_baseline_checks_only_the_branch_changes() {
     assert!(stdout.contains("B.groovy"), "{stdout}");
     assert!(!stdout.contains("A.groovy"), "{stdout}");
     let stderr = String::from_utf8_lossy(&changed.stderr);
-    assert!(stderr.contains("1 of 2 file(s) checked"), "{stderr}");
+    assert!(stderr.contains("1 file(s) checked"), "{stderr}");
+    assert!(stderr.contains("2 path(s) in the set"), "{stderr}");
 }
 
 #[test]

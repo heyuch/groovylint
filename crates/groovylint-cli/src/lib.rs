@@ -167,25 +167,29 @@ fn select_files(
     paths: &[std::path::PathBuf],
     changed: &changed::ChangedArgs,
 ) -> Result<(Vec<std::path::PathBuf>, Option<String>)> {
-    let files = discovery::collect_files(paths)?;
-    let Some(set) = changed.resolve()? else {
+    let Some(set) = changed.resolve(paths)? else {
+        let files = discovery::collect_files(paths)?;
         if files.is_empty() {
             eprintln!("no Groovy source files found");
         }
         return Ok((files, None));
     };
 
-    let total = files.len();
+    // Resolve the changed set instead of walking the project: enumerating every
+    // file to keep a handful costs more than parsing them all.
+    let selected = discovery::collect_changed(paths, set.files().iter().cloned())?;
     let source = if set.is_git_range() {
         "changed since"
     } else {
         "listed by"
     };
-    let description = set.description().to_string();
-    let selected = changed::filter(files, &set);
-    let checked = selected.len();
-    let note = format!("{checked} of {total} file(s) checked, {source} {description}");
-    if checked == 0 {
+    let note = format!(
+        "{checked} file(s) checked, {source} {description} ({listed} path(s) in the set)",
+        checked = selected.len(),
+        description = set.description(),
+        listed = set.files().len(),
+    );
+    if selected.is_empty() {
         eprintln!("no Groovy source files to check ({note}); nothing to do");
     }
     Ok((selected, Some(note)))
