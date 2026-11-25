@@ -298,3 +298,45 @@ fn find_all_guard_reaches_a_chained_collect() {
         .expect("run nullcheck");
     assert_eq!(output.status.code(), Some(1));
 }
+
+#[test]
+fn toml_value_uses_the_contract_annotation_syntax() {
+    let temp = TempDir::new().expect("tempdir");
+    let contracts = temp.path().join("contracts.toml");
+    fs::write(
+        &contracts,
+        "[[contracts]]\nmethod = \"com.acme.ParamAssert.notNull\"\narity = 2\nvalue = \"null, _ -> fail\"\n\n[[contracts]]\nmethod = \"com.acme.SysParamAssert.isTrue\"\narity = 2\nvalue = \"false, _ -> fail\"\n",
+    )
+    .expect("write contracts");
+    let file = temp.path().join("Guard.groovy");
+    fs::write(
+        &file,
+        "class Guard {\n    void run(@Nullable String text) {\n        ParamAssert.notNull(text, 'required')\n        println text.length()\n    }\n\n    void check(@Nullable String other) {\n        SysParamAssert.isTrue(other != null, 'required')\n        println other.length()\n    }\n}\n",
+    )
+    .expect("write fixture");
+
+    let without = binary()
+        .arg("nullcheck")
+        .arg("--mode")
+        .arg("inferred")
+        .arg(&file)
+        .output()
+        .expect("run nullcheck");
+    assert_eq!(without.status.code(), Some(1));
+
+    let output = binary()
+        .arg("nullcheck")
+        .arg("--mode")
+        .arg("inferred")
+        .arg("--contracts")
+        .arg(&contracts)
+        .arg("--format")
+        .arg("json")
+        .arg(&file)
+        .output()
+        .expect("run nullcheck");
+    assert_eq!(output.status.code(), Some(0));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("valid JSON output");
+    assert_eq!(json["summary"]["total"], 0);
+}

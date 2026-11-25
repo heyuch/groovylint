@@ -79,6 +79,39 @@ nullable map value types is implemented. The design below remains the target.
 
 ### Contract DSL
 
+The DSL accepts the same clause syntax as JetBrains `@Contract`, so a contract
+copied from an annotation works unchanged:
+
+```toml
+# ParamAssert.notNull(value, message) throws when value is null,
+# so `value` is non-null after the call.
+[[contracts]]
+method = "com.acme.ParamAssert.notNull"
+arity = 2
+value = "null, _ -> fail"
+
+# SysParamAssert.isTrue(condition, message) throws when the condition is false.
+[[contracts]]
+method = "com.acme.SysParamAssert.isTrue"
+arity = 2
+value = "false, _ -> fail"
+
+# A predicate: `if (x.isNull()) ...` narrows x in the else branch.
+[[contracts]]
+method = "com.acme.Objects.isNull"
+arity = 1
+value = "null -> true"
+```
+
+Supported left-hand patterns are `_`, `null` and `!null` (`true`/`false` for
+boolean parameters) and right-hand outcomes are `fail`/`never`, `null`, `!null`,
+`true`, `false`, `this` and `paramN`; clauses are separated by `;`. Shapes the
+analysis cannot express are ignored, not rejected. `null, _ -> fail`,
+`false, _ -> fail` and `null -> true` cover the guard, assertion and predicate
+forms used in practice.
+
+The explicit keys remain available for cases the clause syntax does not cover:
+
 ```toml
 [[contracts]]
 method = "com.acme.Utils.maybe"
@@ -100,17 +133,12 @@ returns = "nullable"
 `#1` is a one-based parameter path. `this.field`, `this`, `returns`, and
 nullable/non-null values use the same domain for all three sources.
 
-Guard-style helpers are declared with `condition` (one-based parameter that is
-asserted when the call returns) and `receiver` (a receiver expression that is
-non-null afterwards):
+`condition` (one-based parameter asserted when the call returns) and `receiver`
+(a receiver argument that is non-null afterwards) are equivalent low-level keys
+for the fluent forms:
 
 ```toml
-# assertTrue(x != null) narrows x
-[[contracts]]
-method = "com.acme.Assert.isTrue"
-condition = 1
-
-# assertThat(optional).isPresent() narrows optional
+# assertThat(optional).isNotNull() narrows optional
 [[contracts]]
 method = "com.acme.Assert.that"
 receiver = 1

@@ -140,6 +140,9 @@ struct ContractFile {
 struct ContractSpec {
     method: String,
     arity: Option<usize>,
+    /// A `@Contract`-style value, e.g. `"null, _ -> fail"` or
+    /// `"null -> false; !null -> true"`.
+    value: Option<String>,
     returns: Option<String>,
     #[serde(default)]
     params: Vec<String>,
@@ -211,6 +214,9 @@ impl ContractSpec {
             receiver_param: self.receiver.map(|index| index.saturating_sub(1)),
             origin: self.origin.unwrap_or_else(|| "dsl".to_string()),
         };
+        if let Some(value) = &self.value {
+            parse_contract_value(value, &mut contract);
+        }
         for (index, value) in self.params.iter().enumerate() {
             match parse_nullness(value)? {
                 Nullness::NonNull => contract.required_params.push(index),
@@ -528,7 +534,7 @@ fn contract_from_method(method: &groovylint_syntax::ast::MethodDecl) -> Contract
                     });
                 }
             }
-            "Contract" => parse_contract_clause(raw, &mut contract),
+            "Contract" => parse_contract_value(raw, &mut contract),
             _ => {}
         }
     }
@@ -553,34 +559,84 @@ fn parse_ensures_if(raw: &str) -> Option<(String, bool)> {
     Some((expression?, result?))
 }
 
+/// Applies a `@Contract`-style value, e.g. `"null -> fail"` or
+/// `"null -> false; !null -> true"`. Clauses are separated by `;`.
+fn parse_contract_value(value: &str, contract: &mut Contract) {
+    for clause in value.split(';') {
+        parse_contract_clause(clause, contract);
+    }
+}
+
+/// Applies one `@Contract` clause.
+///
+/// The left-hand side holds one pattern per parameter (`_`, `null`, `!null`,
+/// `true`, `false`) and the right-hand side the outcome (`fail`, `null`,
+/// `!null`, `true`, `false`, `this`, `param1`). Only the shapes the analysis can
+/// express are recorded; the rest is ignored rather than rejected.
 fn parse_contract_clause(raw: &str, contract: &mut Contract) {
     let raw = raw.trim().trim_matches('"').trim_matches('\'');
     let Some((lhs, rhs)) = raw.split_once("->") else {
         return;
     };
-    let lhs = lhs.trim();
+    let patterns: Vec<&str> = lhs.split(',').map(str::trim).collect();
     let rhs = rhs.trim();
-    if rhs == "fail" && lhs.split(',').all(|part| matches!(part.trim(), "" | "_")) {
-        contract.never_returns = true;
+    let concrete = patterns
+        .iter()
+        .position(|pattern| !pattern.is_empty() && *pattern != "_");
+
+    if rhs == "fail" || rhs == "never" {
+        let Some(index) = concrete else {
+            contract.never_returns = true;
+            return;
+        };
+        match patterns[index] {
+            // `null -> fail`: the argument is non-null after a normal return.
+            "null" => contract.ensures.push(ContractPath::Param(index)),
+            // `false -> fail`: the argument is true after a normal return.
+            "false" => contract.condition_param = Some((index, true)),
+            // `true -> fail`: the argument is false after a normal return.
+            "true" => contract.condition_param = Some((index, false)),
+            _ => {}
+        }
         return;
     }
-    if lhs == "null" && rhs == "fail" {
-        contract.ensures.push(ContractPath::Param(0));
-        return;
-    }
-    if lhs == "!null" && rhs == "!null" {
-        contract.return_nonnull_if_param = Some(0);
-        return;
-    }
-    if (lhs == "false" || lhs == "true") && rhs == "fail" {
-        contract.condition_param = Some((0, lhs == "false"));
-        return;
-    }
-    if lhs == "null" && (rhs == "true" || rhs == "false") {
-        contract.ensures_if.push(ConditionalEnsures {
-            result: rhs == "false",
-            paths: vec![ContractPath::Param(0)],
-        });
+
+    match rhs {
+        // `_ -> !null` / `_ -> null`: the result is fixed.
+        "!null" if concrete.is_none() => contract.returns = Some(Nullness::NonNull),
+        "null" if concrete.is_none() => contract.returns = Some(Nullness::MaybeNull),
+        // `!null -> !null`: a non-null argument produces a non-null result.
+        "!null" => {
+            if let Some(index) = concrete
+                && patterns[index] == "!null"
+            {
+                contract.return_nonnull_if_param = Some(index);
+            }
+        }
+        // `_ -> this` is always non-null.
+        "this" => contract.returns = Some(Nullness::NonNull),
+        // `_ -> param1` returns that argument unchanged.
+        "true" | "false" => {
+            let Some(index) = concrete else {
+                return;
+            };
+            if patterns[index] == "null" {
+                // `null -> true`: a normal return of the other value proves the
+                // argument was non-null.
+                contract.ensures_if.push(ConditionalEnsures {
+                    result: rhs == "false",
+                    paths: vec![ContractPath::Param(index)],
+                });
+            }
+        }
+        _ => {
+            if let Some(rest) = rhs.strip_prefix("param")
+                && let Ok(position) = rest.trim().parse::<usize>()
+                && position > 0
+            {
+                contract.returns_param = Some(position - 1);
+            }
+        }
     }
 }
 
@@ -610,4 +666,89 @@ fn annotation_nullness(annotations: &[String]) -> Option<Nullness> {
         return Some(Nullness::NonNull);
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Contract, ContractPath, ContractRegistry, Nullness, parse_contract_value};
+
+    fn contract(value: &str) -> Contract {
+        let mut contract = Contract {
+            method: "m".to_string(),
+            arity: Some(2),
+            ..Contract::default()
+        };
+        parse_contract_value(value, &mut contract);
+        contract
+    }
+
+    #[test]
+    fn parses_guard_clauses() {
+        let null_fail = contract("null, _ -> fail");
+        assert_eq!(null_fail.ensures, vec![ContractPath::Param(0)]);
+        assert!(!null_fail.never_returns);
+
+        let second_null = contract("_, null -> fail");
+        assert_eq!(second_null.ensures, vec![ContractPath::Param(1)]);
+
+        let always_fails = contract("_, _ -> fail");
+        assert!(always_fails.never_returns);
+
+        assert_eq!(
+            contract("null -> fail").ensures,
+            vec![ContractPath::Param(0)]
+        );
+    }
+
+    #[test]
+    fn parses_boolean_guard_clauses() {
+        assert_eq!(
+            contract("false, _ -> fail").condition_param,
+            Some((0, true))
+        );
+        assert_eq!(
+            contract("true, _ -> fail").condition_param,
+            Some((0, false))
+        );
+        assert_eq!(
+            contract("_, false -> fail").condition_param,
+            Some((1, true))
+        );
+    }
+
+    #[test]
+    fn parses_result_clauses() {
+        let predicate = contract("null -> false; !null -> true");
+        assert_eq!(predicate.ensures_if.len(), 1);
+        assert!(predicate.ensures_if[0].result);
+        assert_eq!(predicate.ensures_if[0].paths, vec![ContractPath::Param(0)]);
+
+        let negated = contract("null -> true");
+        assert!(!negated.ensures_if[0].result);
+
+        assert_eq!(
+            contract("!null, _ -> !null").return_nonnull_if_param,
+            Some(0)
+        );
+        assert_eq!(contract("_, _ -> !null").returns, Some(Nullness::NonNull));
+        assert_eq!(contract("_ -> param2").returns_param, Some(1));
+        assert_eq!(contract("_, _ -> this").returns, Some(Nullness::NonNull));
+    }
+
+    #[test]
+    fn toml_value_matches_annotation_syntax() {
+        let mut registry = ContractRegistry::new();
+        let spec: Contract = {
+            let mut contract = Contract {
+                method: "com.acme.Guard.notNull".to_string(),
+                arity: Some(2),
+                ..Contract::default()
+            };
+            parse_contract_value("null, _ -> fail", &mut contract);
+            contract
+        };
+        registry.push(spec);
+        let found = registry.find("notNull", 2).expect("contract matches");
+        assert_eq!(found.ensures, vec![ContractPath::Param(0)]);
+    }
 }
