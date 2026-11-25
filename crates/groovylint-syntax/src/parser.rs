@@ -344,7 +344,7 @@ impl<'a> Parser<'a> {
         self.skip_separators();
 
         if kind == ClassKind::Enum {
-            self.parse_enum_constants();
+            members = self.parse_enum_constants(&name);
             self.skip_separators();
         }
 
@@ -380,15 +380,18 @@ impl<'a> Parser<'a> {
     /// Consumes the enum constant list. Constants are `NAME`, `NAME(args)` or
     /// `NAME { ... }`, separated by commas and optionally terminated by `;`.
     /// Everything after them is parsed as regular class members.
-    fn parse_enum_constants(&mut self) {
+    /// Parses the enum constant list and models each constant as a field.
+    /// Groovy represents them as `public static final` fields of the enum type.
+    fn parse_enum_constants(&mut self, enum_name: &str) -> Vec<Item> {
+        let mut constants = Vec::new();
         loop {
             self.skip_separators();
             // Constants may be annotated; rewind when what follows is a member.
             let checkpoint = self.pos;
-            let _ = self.parse_prefix();
+            let prefix = self.parse_prefix().unwrap_or_default();
             if !self.at_ident_like() {
                 self.pos = checkpoint;
-                return;
+                return constants;
             }
             let next = self.peek_kind(1);
             let is_constant = matches!(
@@ -404,19 +407,36 @@ impl<'a> Parser<'a> {
             );
             if !is_constant {
                 self.pos = checkpoint;
-                return;
+                return constants;
             }
 
-            self.advance();
+            let token = self.advance();
+            let start = token.span.start;
             if self.at(TokenKind::LeftParen) {
                 let _ = self.skip_balanced(TokenKind::LeftParen, TokenKind::RightParen);
             }
             if self.at(TokenKind::LeftBrace) {
                 let _ = self.skip_balanced(TokenKind::LeftBrace, TokenKind::RightBrace);
             }
+            constants.push(Item::Field(FieldDecl {
+                name: token.text(self.source).to_string(),
+                type_name: Some(enum_name.to_string()),
+                annotations: prefix.annotations.clone(),
+                annotation_details: prefix.annotation_details.clone(),
+                suppressed_rules: prefix.suppressed_rules.clone(),
+                is_static: true,
+                is_final: true,
+                is_private: false,
+                is_public: true,
+                is_protected: false,
+                is_transient: false,
+                is_volatile: false,
+                init: None,
+                span: Span::new(start, self.previous_span().end),
+            }));
             if !self.eat(TokenKind::Comma) {
                 self.eat(TokenKind::Semicolon);
-                return;
+                return constants;
             }
         }
     }
