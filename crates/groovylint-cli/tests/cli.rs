@@ -129,3 +129,163 @@ fn missing_path_is_a_usage_error() {
     let output = run_check(&["/definitely/not/a/real/path"]);
     assert_eq!(output.status.code(), Some(2));
 }
+
+/// A throwaway git repository with one file per source, each containing a `Println`.
+struct Repo {
+    dir: tempfile::TempDir,
+}
+
+impl Repo {
+    fn new(sources: &[(&str, &str)]) -> Self {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let repo = Self { dir };
+        repo.git(&["init", "--quiet", "--initial-branch=develop"]);
+        repo.git(&["config", "user.email", "test@example.com"]);
+        repo.git(&["config", "user.name", "test"]);
+        for (path, body) in sources {
+            repo.write(path, body);
+        }
+        repo.git(&["add", "--all"]);
+        repo.git(&["commit", "--quiet", "-m", "init"]);
+        repo
+    }
+
+    fn root(&self) -> &std::path::Path {
+        self.dir.path()
+    }
+
+    fn write(&self, path: &str, body: &str) {
+        let target = self.root().join(path);
+        std::fs::create_dir_all(target.parent().expect("parent")).expect("create dirs");
+        std::fs::write(target, body).expect("write source");
+    }
+
+    fn git(&self, args: &[&str]) -> String {
+        let output = Command::new("git")
+            .current_dir(self.root())
+            .args(args)
+            .output()
+            .expect("run git");
+        assert!(
+            output.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
+
+    fn run(&self, args: &[&str]) -> Output {
+        binary()
+            .current_dir(self.root())
+            .arg("check")
+            .args(args)
+            .output()
+            .expect("run groovylint check")
+    }
+}
+
+const RULESET: &str = "<ruleset><rule class='org.codenarc.rule.logging.PrintlnRule'/></ruleset>";
+const PRINT: &str = "class Example {\n    void run() {\n        println 1\n    }\n}\n";
+const CLEAN: &str = "class Example {\n    void run() {\n        assert 1 == 1\n    }\n}\n";
+
+#[test]
+fn changed_baseline_checks_only_the_branch_changes() {
+    let repo = Repo::new(&[
+        ("module-a/src/main/groovy/A.groovy", CLEAN),
+        ("module-a/src/main/groovy/B.groovy", CLEAN),
+    ]);
+    let ruleset = repo.root().join("rules.xml");
+    std::fs::write(&ruleset, RULESET).expect("write ruleset");
+
+    repo.git(&["checkout", "--quiet", "-b", "feature"]);
+    repo.write("module-a/src/main/groovy/B.groovy", PRINT);
+
+    let ruleset = ruleset.to_str().expect("utf-8 path");
+    let all = repo.run(&["--config", ruleset, "."]);
+    assert_eq!(all.status.code(), Some(1));
+
+    let changed = repo.run(&["--config", ruleset, "--changed-baseline", "develop", "."]);
+    assert_eq!(changed.status.code(), Some(1));
+    let stdout = String::from_utf8_lossy(&changed.stdout);
+    assert!(stdout.contains("B.groovy"), "{stdout}");
+    assert!(!stdout.contains("A.groovy"), "{stdout}");
+    let stderr = String::from_utf8_lossy(&changed.stderr);
+    assert!(stderr.contains("1 of 2 file(s) checked"), "{stderr}");
+}
+
+#[test]
+fn changed_commits_ignores_uncommitted_work() {
+    let repo = Repo::new(&[("src/main/groovy/A.groovy", CLEAN)]);
+    let ruleset = repo.root().join("rules.xml");
+    std::fs::write(&ruleset, RULESET).expect("write ruleset");
+
+    repo.write("src/main/groovy/A.groovy", PRINT);
+    repo.git(&["commit", "--quiet", "--all", "-m", "print"]);
+    repo.write("src/main/groovy/New.groovy", PRINT);
+
+    let ruleset = ruleset.to_str().expect("utf-8 path");
+    let commits = repo.run(&["--config", ruleset, "--changed-commits", "HEAD", "."]);
+    assert_eq!(commits.status.code(), Some(1));
+    let stdout = String::from_utf8_lossy(&commits.stdout);
+    assert!(stdout.contains("A.groovy"), "{stdout}");
+    assert!(
+        !stdout.contains("New.groovy"),
+        "untracked file must be ignored: {stdout}"
+    );
+}
+
+#[test]
+fn changed_files_list_selects_exactly_those_files() {
+    let repo = Repo::new(&[
+        ("src/main/groovy/A.groovy", PRINT),
+        ("src/main/groovy/B.groovy", PRINT),
+    ]);
+    let ruleset = repo.root().join("rules.xml");
+    std::fs::write(&ruleset, RULESET).expect("write ruleset");
+
+    std::fs::write(
+        repo.root().join("changed.txt"),
+        "src/main/groovy/A.groovy\n",
+    )
+    .expect("list");
+
+    let ruleset = ruleset.to_str().expect("utf-8 path");
+    let output = repo.run(&["--config", ruleset, "--changed-files", "changed.txt", "."]);
+    assert_eq!(output.status.code(), Some(1));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("A.groovy"), "{stdout}");
+    assert!(!stdout.contains("B.groovy"), "{stdout}");
+}
+
+#[test]
+fn an_empty_changed_set_passes_without_reading_anything() {
+    let repo = Repo::new(&[("src/main/groovy/A.groovy", PRINT)]);
+    let ruleset = repo.root().join("rules.xml");
+    std::fs::write(&ruleset, RULESET).expect("write ruleset");
+
+    let ruleset = ruleset.to_str().expect("utf-8 path");
+    let output = repo.run(&["--config", ruleset, "--changed-baseline", "HEAD", "."]);
+    assert_eq!(output.status.code(), Some(0));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("nothing to do"), "{stderr}");
+}
+
+#[test]
+fn an_unknown_ref_fails_instead_of_checking_nothing() {
+    let repo = Repo::new(&[("src/main/groovy/A.groovy", PRINT)]);
+    let output = repo.run(&["--changed-since", "no-such-branch", "."]);
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("cannot resolve no-such-branch"), "{stderr}");
+}
+
+#[test]
+fn a_ref_that_looks_like_an_option_is_rejected() {
+    let repo = Repo::new(&[("src/main/groovy/A.groovy", PRINT)]);
+    let output = repo.run(&["--changed-since=--output=/tmp/x", "."]);
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("not a valid git ref"), "{stderr}");
+}

@@ -27,6 +27,7 @@ public final class GroovyLintPlugin implements Plugin<Project> {
         extension.getThreads().convention(Math.max(1, Runtime.getRuntime().availableProcessors()));
         extension.getIgnoreFailures().convention(false);
         extension.getNullcheckMode().convention("conservative");
+        extension.getChangedOnly().convention(false);
         String nativeVersion = pluginVersion();
 
         TaskProvider<Task> aggregate = project.getTasks().register(AGGREGATE_TASK, task -> {
@@ -64,6 +65,8 @@ public final class GroovyLintPlugin implements Plugin<Project> {
                         lint.getIgnoreFailures().set(extension.getIgnoreFailures());
                         lint.getNativeVersion().set(nativeVersion);
                         lint.getExecutable().set(extension.getExecutable());
+                        lint.getChangedOnly().set(extension.getChangedOnly());
+                        lint.getChangedFiles().from(extension.getChangedFiles());
                         lint.getWorkingDirectory().set(project.getLayout().getProjectDirectory());
                         lint.getNativeCacheDirectory().set(
                                 new java.io.File(project.getGradle().getGradleUserHomeDir(), "caches/groovylint"));
@@ -86,6 +89,8 @@ public final class GroovyLintPlugin implements Plugin<Project> {
                         lint.getIgnoreFailures().set(extension.getIgnoreFailures());
                         lint.getNativeVersion().set(nativeVersion);
                         lint.getExecutable().set(extension.getExecutable());
+                        lint.getChangedOnly().set(extension.getChangedOnly());
+                        lint.getChangedFiles().from(extension.getChangedFiles());
                         lint.getWorkingDirectory().set(project.getLayout().getProjectDirectory());
                         lint.getNativeCacheDirectory().set(
                                 new java.io.File(project.getGradle().getGradleUserHomeDir(), "caches/groovylint"));

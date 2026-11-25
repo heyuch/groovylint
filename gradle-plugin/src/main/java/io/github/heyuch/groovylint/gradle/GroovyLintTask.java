@@ -1,6 +1,10 @@
 package io.github.heyuch.groovylint.gradle;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -115,6 +119,21 @@ public abstract class GroovyLintTask extends DefaultTask {
     @Internal
     public abstract DirectoryProperty getNativeCacheDirectory();
 
+    /** Whether to check only the changed files.
+     *
+     * @return the changed-only flag
+     */
+    @Input
+    public abstract Property<Boolean> getChangedOnly();
+
+    /** Files changed by this branch, produced by the build.
+     *
+     * @return the changed files
+     */
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract ConfigurableFileCollection getChangedFiles();
+
     /** Exec operations used to launch the native analyzer.
      *
      * @return exec operations
@@ -141,8 +160,22 @@ public abstract class GroovyLintTask extends DefaultTask {
             throw new GradleException("groovylint executable does not exist: " + binary);
         }
 
+        List<String> changed = getChangedFiles().getFiles().stream()
+                .map(File::getAbsolutePath)
+                .sorted()
+                .toList();
+        if (getChangedOnly().get() && changed.isEmpty()) {
+            getLogger().lifecycle("groovylint: no changed files, nothing to check");
+            return;
+        }
+
         List<String> arguments = new ArrayList<>();
         arguments.add(getCommand().get());
+        if (getChangedOnly().get()) {
+            Path list = writeChangedFileList(changed);
+            arguments.add("--changed-files");
+            arguments.add(list.toAbsolutePath().toString());
+        }
         arguments.add("--threads");
         arguments.add(Integer.toString(Math.max(1, getThreads().get())));
         if ("nullcheck".equals(getCommand().get())) {
@@ -178,5 +211,15 @@ public abstract class GroovyLintTask extends DefaultTask {
         if (exitCode != 0) {
             throw new GradleException("groovylint failed with exit code " + exitCode);
         }
+    }
+
+    private Path writeChangedFileList(List<String> changed) {
+        Path list = getTemporaryDir().toPath().resolve("changed-files.txt");
+        try {
+            Files.write(list, changed, StandardCharsets.UTF_8);
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Unable to write the changed-file list", exception);
+        }
+        return list;
     }
 }

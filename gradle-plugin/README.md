@@ -29,6 +29,33 @@ groovylint {
 }
 ```
 
+### Checking only the files a branch changed
+
+On a large project, linting every file on every build reports debt the author did
+not create. Hand the plugin the changed set once — the same set other static tools
+use — and the analyzer checks only those files:
+
+```groovy
+// build.gradle (any script that already computes the set, e.g. a shared
+// changed-files.gradle script that returns Set<File>)
+apply from: "$rootDir/buildScript/changed-groovy-files.gradle"
+
+groovylint {
+    changedOnly = true
+    changedFiles.from(changedGroovyFiles('main'))   // 'main' | 'test' | 'all'
+}
+```
+
+- With `changedOnly = true` and an empty set, the task is skipped and the build
+  stays green (`groovylint: no changed files, nothing to check`).
+- The plugin writes the set to a file inside the task's temporary directory and
+  passes `--changed-files`, so the analyzer owns the matching rules and the log
+  stays consistent with CLI usage.
+- Without a build-side set, the analyzer can compute it itself:
+  `--changed-baseline origin/develop`, `--changed-since <ref>` or
+  `--changed-commits <a,b>`. See
+  [Changed files only](../docs/CHANGED-FILES.md).
+
 Tasks:
 
 - `groovylintMain` — lint the `main` source set.

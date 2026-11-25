@@ -38,6 +38,16 @@ class GroovyLintPluginTest {
                 PosixFilePermission.OWNER_EXECUTE));
     }
 
+    private void writeFakeAnalyzer(String scriptExitCode) throws IOException {
+        Path script = projectDir.resolve("fake-groovylint.sh");
+        Files.writeString(script, "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PWD/args.txt\"\nexit "
+                + scriptExitCode + "\n");
+        Files.setPosixFilePermissions(script, EnumSet.of(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE,
+                PosixFilePermission.OWNER_EXECUTE));
+    }
+
     private void writeProjectFiles(String extensionBlock) throws IOException {
         Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"sample\"\n");
         Files.writeString(projectDir.resolve("codenarc.xml"), "<ruleset/>\n");
@@ -74,6 +84,45 @@ class GroovyLintPluginTest {
         assertTrue(args.contains("--threads"));
         assertTrue(args.contains("2"));
         assertTrue(args.stream().anyMatch(arg -> arg.endsWith("src/main/groovy")));
+    }
+
+    @Test
+    void passesTheChangedFileListToTheAnalyzer() throws IOException {
+        writeProjectFiles("""
+                groovylint {
+                    executable.set(layout.projectDirectory.file("fake-groovylint.sh"))
+                    threads.set(2)
+                    changedOnly.set(true)
+                    changedFiles.from(file("src/main/groovy/Example.groovy"))
+                }
+                """);
+        writeFakeAnalyzer("0");
+
+        BuildResult result = run("groovylintMain");
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":groovylintMain").getOutcome());
+        List<String> args = Files.readAllLines(projectDir.resolve("args.txt"));
+        int index = args.indexOf("--changed-files");
+        assertTrue(index >= 0, "--changed-files should be passed: " + args);
+        List<String> listed = Files.readAllLines(Path.of(args.get(index + 1)));
+        assertTrue(listed.stream().anyMatch(path -> path.endsWith("Example.groovy")), listed.toString());
+    }
+
+    @Test
+    void skipsTheTaskWhenNothingChanged() throws IOException {
+        writeProjectFiles("""
+                groovylint {
+                    executable.set(layout.projectDirectory.file("fake-groovylint.sh"))
+                    changedOnly.set(true)
+                }
+                """);
+        writeFakeAnalyzer("0");
+
+        BuildResult result = run("groovylintMain");
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":groovylintMain").getOutcome());
+        assertTrue(result.getOutput().contains("no changed files"), result.getOutput());
+        assertTrue(Files.notExists(projectDir.resolve("args.txt")), "the analyzer must not run");
     }
 
     @Test

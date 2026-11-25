@@ -1,5 +1,6 @@
 //! Command-line interface for `groovylint`.
 
+mod changed;
 mod cli;
 mod discovery;
 mod report;
@@ -64,9 +65,8 @@ fn run_check(args: &cli::CheckArgs) -> Result<ExitCode> {
         );
     }
 
-    let files = discovery::collect_files(&args.paths)?;
+    let (files, filter) = select_files(&args.paths, &args.changed)?;
     if files.is_empty() {
-        eprintln!("no Groovy source files found");
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -93,7 +93,7 @@ fn run_check(args: &cli::CheckArgs) -> Result<ExitCode> {
     match args.format {
         cli::OutputFormat::Text => {
             write_text(&reports);
-            eprintln!("{}", summary_line(summary));
+            eprintln!("{}{}", summary_line(summary), filter_note(filter.as_ref()));
         }
         cli::OutputFormat::Json => {
             print!("{}", write_json(&reports, summary)?);
@@ -108,9 +108,8 @@ fn run_check(args: &cli::CheckArgs) -> Result<ExitCode> {
 }
 
 fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
-    let files = discovery::collect_files(&args.paths)?;
+    let (files, filter) = select_files(&args.paths, &args.changed)?;
     if files.is_empty() {
-        eprintln!("no Groovy source files found");
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -151,7 +150,7 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
     match args.format {
         cli::OutputFormat::Text => {
             write_text(&reports);
-            eprintln!("{}", summary_line(summary));
+            eprintln!("{}{}", summary_line(summary), filter_note(filter.as_ref()));
         }
         cli::OutputFormat::Json => print!("{}", write_json(&reports, summary)?),
     }
@@ -159,6 +158,43 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
         Ok(ExitCode::from(1))
     } else {
         Ok(ExitCode::SUCCESS)
+    }
+}
+
+/// Collects the files to analyze and, when a filter was requested, the summary
+/// note that says how many files were checked out of how many.
+fn select_files(
+    paths: &[std::path::PathBuf],
+    changed: &changed::ChangedArgs,
+) -> Result<(Vec<std::path::PathBuf>, Option<String>)> {
+    let files = discovery::collect_files(paths)?;
+    let Some(set) = changed.resolve()? else {
+        if files.is_empty() {
+            eprintln!("no Groovy source files found");
+        }
+        return Ok((files, None));
+    };
+
+    let total = files.len();
+    let source = if set.is_git_range() {
+        "changed since"
+    } else {
+        "listed by"
+    };
+    let description = set.description().to_string();
+    let selected = changed::filter(files, &set);
+    let checked = selected.len();
+    let note = format!("{checked} of {total} file(s) checked, {source} {description}");
+    if checked == 0 {
+        eprintln!("no Groovy source files to check ({note}); nothing to do");
+    }
+    Ok((selected, Some(note)))
+}
+
+fn filter_note(filter: Option<&String>) -> String {
+    match filter {
+        Some(note) => format!(" ({note})"),
+        None => String::new(),
     }
 }
 

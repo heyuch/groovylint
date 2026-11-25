@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use crate::changed::ChangedArgs;
+
 /// Static analysis for Groovy, inspired by `CodeNarc` and Checker Framework.
 #[derive(Debug, Parser)]
 #[command(name = "groovylint", version, about, long_about = None)]
@@ -40,6 +42,10 @@ pub struct CheckArgs {
     /// Number of worker threads. Defaults to available parallelism.
     #[arg(long, value_name = "N")]
     pub threads: Option<usize>,
+
+    /// Restrict the analysis to files the branch changed.
+    #[command(flatten)]
+    pub changed: ChangedArgs,
 }
 
 /// Arguments for `groovylint nullcheck`.
@@ -79,6 +85,10 @@ pub struct NullcheckArgs {
     /// Number of worker threads. Defaults to available parallelism.
     #[arg(long, value_name = "N")]
     pub threads: Option<usize>,
+
+    /// Restrict the analysis to files the branch changed.
+    #[command(flatten)]
+    pub changed: ChangedArgs,
 }
 
 /// Nullness analysis modes exposed by the CLI.

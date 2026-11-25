@@ -1,5 +1,6 @@
 package io.github.heyuch.groovylint.gradle;
 
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 
@@ -50,4 +51,23 @@ public abstract class GroovyLintExtension {
      * @return the optional executable
      */
     public abstract RegularFileProperty getExecutable();
+
+    /**
+     * Whether to check only {@link #getChangedFiles() changed files}.
+     *
+     * <p>When enabled and the changed set is empty, the task is skipped and the
+     * build stays green — that is what a pull request with no Groovy change needs.
+     *
+     * @return the changed-only flag
+     */
+    public abstract Property<Boolean> getChangedOnly();
+
+    /**
+     * The files this branch changed, produced by the build (for example from a
+     * {@code changed-files.gradle} script). Only read when
+     * {@link #getChangedOnly()} is enabled.
+     *
+     * @return the changed files
+     */
+    public abstract ConfigurableFileCollection getChangedFiles();
 }

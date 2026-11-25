@@ -87,7 +87,17 @@ cargo run -p groovylint -- check \
 
 # Parallelism is explicit; output remains deterministic
 cargo run -p groovylint -- check --threads 4 .
+
+# Only the files this branch changed (three-point diff + working tree)
+cargo run -p groovylint -- check --changed-baseline origin/develop .
+
+# Only the files a build already computed, one path per line
+cargo run -p groovylint -- check --changed-files build/changed-groovy-files.txt .
 ```
+
+Restricting the analysis to changed files is what makes the tool usable as a
+pre-push gate on a large repository: see
+[Changed files only](docs/CHANGED-FILES.md).
 
 Exit codes:
 
@@ -187,6 +197,7 @@ cargo doc-all
 - [CodeNarc rule coverage](docs/COVERAGE.md)
 - [Gradle plugin](gradle-plugin/README.md)
 - [Distribution: Gradle and Maven](docs/DISTRIBUTION.md)
+- [Changed files only](docs/CHANGED-FILES.md)
 - [Benchmark methodology](benchmarks/README.md) and [local results](benchmarks/RESULTS.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
