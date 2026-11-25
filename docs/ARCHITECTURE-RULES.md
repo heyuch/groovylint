@@ -49,6 +49,12 @@ With source analysis we can do better, but only if the dependency extraction
 records *declared* types even when the call itself is dynamic. That is a
 deliberate, documented behaviour difference.
 
+The module-structure and dependency subset — the project model, the four rule
+kinds and the executor behind them — is designed in
+[`ARCH-MODULE-RULES.md`](./ARCH-MODULE-RULES.md), grounded in the measured shape of
+the target project (41 modules, 208 sub-modules, 19,465 classes whose role is
+derived from the Gradle path).
+
 ## 3. Rule model
 
 One declarative model, two front ends (TOML for the CLI, a Gradle DSL facade that
