@@ -219,9 +219,16 @@ fn has_annotation(annotations: &[String], name: &str) -> bool {
 }
 
 /// Flags private fields that are never referenced in the file.
+#[allow(clippy::struct_field_names)]
 pub struct UnusedPrivateFieldRule {
     ignored_names: Vec<String>,
     ignored_class_annotations: Vec<String>,
+    /// Annotations that mark a field the framework fills in, not the code.
+    ///
+    /// `CodeNarc` has no such property: any `@Mock`, `@InjectMocks` or
+    /// `@Autowired` field it sees as unreferenced is reported. Leave it unset to
+    /// keep `CodeNarc` behavior.
+    ignored_field_annotations: Vec<String>,
 }
 
 impl Default for UnusedPrivateFieldRule {
@@ -229,6 +236,7 @@ impl Default for UnusedPrivateFieldRule {
         Self {
             ignored_names: vec!["serialVersionUID".to_string()],
             ignored_class_annotations: vec!["Entity".to_string()],
+            ignored_field_annotations: Vec::new(),
         }
     }
 }
@@ -240,6 +248,9 @@ impl Rule for UnusedPrivateFieldRule {
         }
         if let Some(value) = properties.get("ignoreClassesAnnotatedWithNames") {
             self.ignored_class_annotations = split_names(value);
+        }
+        if let Some(value) = properties.get("ignoreFieldsAnnotatedWith") {
+            self.ignored_field_annotations = split_names(value);
         }
         Ok(())
     }
@@ -257,6 +268,13 @@ impl FileRule for UnusedPrivateFieldRule {
                     continue;
                 }
                 if has_annotation(&field.annotations, "Delegate") {
+                    continue;
+                }
+                let injected = self
+                    .ignored_field_annotations
+                    .iter()
+                    .any(|name| has_annotation(&field.annotations, name));
+                if injected {
                     continue;
                 }
                 if used.contains(&field.name) {

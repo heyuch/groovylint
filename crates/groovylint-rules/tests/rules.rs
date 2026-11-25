@@ -1,15 +1,26 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use groovylint_core::SourceFile;
 use groovylint_rules::{Engine, RuleRegistry};
 use groovylint_syntax::parser::parse;
 
 fn lint(source: &str, classes: &[&str]) -> Vec<groovylint_core::Diagnostic> {
+    lint_with_properties(source, classes, &BTreeMap::new())
+}
+
+fn lint_with_properties(
+    source: &str,
+    classes: &[&str],
+    properties: &BTreeMap<String, String>,
+) -> Vec<groovylint_core::Diagnostic> {
     let source_file = SourceFile::new("Example.groovy", source);
     let parsed = parse(source).expect("source should parse");
     let registry = RuleRegistry::builtin();
-    let class_names: Vec<String> = classes.iter().map(ToString::to_string).collect();
-    let engine = Engine::from_codenarc_classes(&registry, &class_names);
+    let entries: Vec<(String, BTreeMap<String, String>)> = classes
+        .iter()
+        .map(|class| ((*class).to_string(), properties.clone()))
+        .collect();
+    let engine = Engine::from_codenarc_entries(&registry, &entries);
     engine.lint(&source_file, &parsed)
 }
 
@@ -304,4 +315,25 @@ fn references_groovylint_used_to_miss() {
         &["org.codenarc.rule.logging.LoggerForDifferentClassRule"],
     );
     assert_eq!(direct.len(), 1, "{direct:?}");
+}
+
+#[test]
+fn injected_fields_can_be_ignored_by_annotation() {
+    let source = "class Example {\n    @Mock\n    private Repository repository\n\n    @Autowired\n    private Service service\n}\n";
+
+    // Unset: CodeNarc behavior, both fields are reported.
+    let default = lint(source, &["org.codenarc.rule.unused.UnusedPrivateFieldRule"]);
+    assert_eq!(default.len(), 2, "{default:?}");
+
+    // Configured: only the annotations listed are ignored.
+    let mut properties = BTreeMap::new();
+    properties.insert("ignoreFieldsAnnotatedWith".to_string(), "Mock".to_string());
+    let configured = lint_with_properties(
+        source,
+        &["org.codenarc.rule.unused.UnusedPrivateFieldRule"],
+        &properties,
+    );
+    let messages: Vec<&str> = configured.iter().map(|d| d.message.as_str()).collect();
+    assert_eq!(configured.len(), 1, "{messages:?}");
+    assert!(messages[0].contains("service"), "{messages:?}");
 }

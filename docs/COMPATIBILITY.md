@@ -21,6 +21,22 @@ Rulesets are read with their `<property>` values, so configured rule variants
 work (`groovylint check --config codenarc.xml`). Lookarounds in configured
 patterns are supported through a backtracking regex engine.
 
+### groovylint-only rule properties
+
+A few properties exist that CodeNarc does not have. They are **off unless the
+ruleset sets them**, so a ruleset that does not mention them behaves exactly like
+CodeNarc:
+
+| Rule | Property | Effect |
+|---|---|---|
+| `UnusedPrivateField` | `ignoreFieldsAnnotatedWith` | Comma-separated annotation simple names whose fields are never reported, because the framework fills them in rather than the code: `Mock,InjectMocks,Autowired,Value`. |
+
+The motivating case: a Mockito test declares ten `private X x` fields annotated
+`@Mock`, uses none of them directly, and gets ten findings from CodeNarc and from
+groovylint. On a real 354-file branch diff that was 41 of 47 `UnusedPrivateField`
+findings; with the property set, the 6 genuinely unused fields remain, so the gate
+stays useful without hiding real dead fields.
+
 87 rules have a minimal Groovy fixture at
 `crates/groovylint-cli/tests/fixtures/rules/<Rule>.groovy`; the rest are covered
 by the corpus comparison above. The end-to-end test
