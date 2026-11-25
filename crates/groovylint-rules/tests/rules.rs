@@ -214,3 +214,20 @@ fn parity_regressions_from_the_corpus_comparison() {
     );
     assert_eq!(jdbc.len(), 1, "{jdbc:?}");
 }
+
+#[test]
+fn static_getter_import_is_used_by_its_property() {
+    // `getDATA_TYPE` is the property `DATA_TYPE` (JavaBeans does not
+    // decapitalize when the second character is uppercase).
+    let findings = lint(
+        "import static a.Consts.getDATA_TYPE\n\nclass Example {\n    String run() {\n        return message(DATA_TYPE)\n    }\n}\n",
+        &["org.codenarc.rule.imports.UnusedImportRule"],
+    );
+    assert!(findings.is_empty(), "{findings:?}");
+
+    let unused = lint(
+        "import static a.Consts.getDATA_TYPE\n\nclass Example {\n}\n",
+        &["org.codenarc.rule.imports.UnusedImportRule"],
+    );
+    assert_eq!(unused.len(), 1, "{unused:?}");
+}

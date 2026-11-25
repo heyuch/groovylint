@@ -222,7 +222,15 @@ fn accessor_property(alias: &str) -> Option<String> {
     let property = getter.or(setter).or(test)?;
     let mut chars = property.chars();
     let first = chars.next()?;
-    Some(format!("{}{}", first.to_ascii_lowercase(), chars.as_str()))
+    let rest = chars.as_str();
+    // `Introspector.decapitalize`: `getDATA_TYPE` is the property `DATA_TYPE`,
+    // `getValue` is `value`. Decapitalizing blindly turns the first into
+    // `dATA_TYPE` and hides every use of the property.
+    let second_is_uppercase = rest.chars().next().is_some_and(char::is_uppercase);
+    if first.is_uppercase() && second_is_uppercase {
+        return Some(property.to_string());
+    }
+    Some(format!("{}{}", first.to_ascii_lowercase(), rest))
 }
 
 fn alias_of(import: &ImportDecl) -> String {
