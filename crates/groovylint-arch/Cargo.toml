@@ -1,0 +1,16 @@
+[package]
+name = "groovylint-arch"
+description = "Architecture rule model and TOML parser for groovylint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+toml.workspace = true
+
+[lints]
+workspace = true

@@ -377,6 +377,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "groovylint-arch"
+version = "0.1.0"
+dependencies = [
+ "toml",
+]
+
+[[package]]
 name = "groovylint-config"
 version = "0.1.0"
 dependencies = [

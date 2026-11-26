@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/groovylint-analysis",
+    "crates/groovylint-arch",
     "crates/groovylint-cli",
     "crates/groovylint-config",
     "crates/groovylint-core",
