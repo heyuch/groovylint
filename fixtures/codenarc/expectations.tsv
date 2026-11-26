@@ -1,15 +1,15 @@
 AbcMetric	AbcMetric/000.groovy		-	
-AbcMetric	AbcMetric/001.groovy		-	maxClassAverageMethodAbcScore=2,maxMethodAbcScore=2
+AbcMetric	AbcMetric/001.groovy		-	maxClassAverageMethodAbcScore=2maxMethodAbcScore=2
 AbcMetric	AbcMetric/002.groovy		3	maxMethodAbcScore=2
 AbcMetric	AbcMetric/003.groovy		3	maxMethodAbcScore=1
 AbcMetric	AbcMetric/004.groovy		3,9	maxMethodAbcScore=2
 AbcMetric	AbcMetric/005.groovy		2	maxClassAverageMethodAbcScore=5
 AbcMetric	AbcMetric/006.groovy		-	maxClassAverageMethodAbcScore=0
-AbcMetric	AbcMetric/007.groovy		2,8	maxClassAbcScore=6.0,maxClassAverageMethodAbcScore=1.9,maxMethodAbcScore=4.5
-AbcMetric	AbcMetric/008.groovy		3	ignoreMethodNames=otherMethod,maxMethodAbcScore=1
-AbcMetric	AbcMetric/009.groovy		6	ignoreMethodNames=myM*d*,otherC??su*,maxMethodAbcScore=1
-AbcMetric	AbcMetric/010.groovy		2	maxClassAverageMethodAbcScore=1,maxMethodAbcScore=1
-AbcMetric	AbcMetric/011.groovy			maxClassAverageMethodAbcScore=1,maxMethodAbcScore=1
+AbcMetric	AbcMetric/007.groovy		2,8	maxClassAbcScore=6.0maxClassAverageMethodAbcScore=1.9maxMethodAbcScore=4.5
+AbcMetric	AbcMetric/008.groovy		3	ignoreMethodNames=otherMethodmaxMethodAbcScore=1
+AbcMetric	AbcMetric/009.groovy		6	ignoreMethodNames=myM*d*,otherC??su*maxMethodAbcScore=1
+AbcMetric	AbcMetric/010.groovy		2	maxClassAverageMethodAbcScore=1maxMethodAbcScore=1
+AbcMetric	AbcMetric/011.groovy			maxClassAverageMethodAbcScore=1maxMethodAbcScore=1
 AbstractClassName	AbstractClassName/000.groovy		-	
 AbstractClassName	AbstractClassName/001.groovy		-	regex=[A-Z].*
 AbstractClassName	AbstractClassName/002.groovy		1	regex=z.*
@@ -187,16 +187,16 @@ BracesForMethod	BracesForMethod/022.groovy		-
 BracesForMethod	BracesForMethod/023.groovy		-	sameLine=false
 BracesForMethod	BracesForMethod/024.groovy		3	
 BracesForMethod	BracesForMethod/025.groovy		-	
-BracesForMethod	BracesForMethod/026.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/027.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/028.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/029.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/030.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
-BracesForMethod	BracesForMethod/031.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
+BracesForMethod	BracesForMethod/026.groovy		-	allowBraceOnNextLineForMultilineDeclarations=truesameLine=true
+BracesForMethod	BracesForMethod/027.groovy		-	allowBraceOnNextLineForMultilineDeclarations=truesameLine=true
+BracesForMethod	BracesForMethod/028.groovy		-	allowBraceOnNextLineForMultilineDeclarations=truesameLine=true
+BracesForMethod	BracesForMethod/029.groovy		-	allowBraceOnNextLineForMultilineDeclarations=truesameLine=true
+BracesForMethod	BracesForMethod/030.groovy		3	allowBraceOnNextLineForMultilineDeclarations=falsesameLine=true
+BracesForMethod	BracesForMethod/031.groovy		3	allowBraceOnNextLineForMultilineDeclarations=falsesameLine=true
 BracesForTryCatchFinally	BracesForTryCatchFinally/000.groovy		9,12	sameLine=false
 BracesForTryCatchFinally	BracesForTryCatchFinally/001.groovy		-	
 BracesForTryCatchFinally	BracesForTryCatchFinally/002.groovy		-	
-BracesForTryCatchFinally	BracesForTryCatchFinally/003.groovy		-	catchOnSameLineAsClosingBrace=false,validateCatch=true,validateFinally=true
+BracesForTryCatchFinally	BracesForTryCatchFinally/003.groovy		-	catchOnSameLineAsClosingBrace=falsevalidateCatch=truevalidateFinally=true
 BrokenNullCheck	BrokenNullCheck/000.groovy		-	
 BrokenNullCheck	BrokenNullCheck/001.groovy		-	
 BrokenNullCheck	BrokenNullCheck/002.groovy		2,3,4,5,6,7	
@@ -262,9 +262,9 @@ ClassEndsWithBlankLine	ClassEndsWithBlankLine/014.groovy		-	blankLineRequired=tr
 ClassEndsWithBlankLine	ClassEndsWithBlankLine/015.groovy		-	blankLineRequired=false
 ClassEndsWithBlankLine	ClassEndsWithBlankLine/016.groovy		13,14	blankLineRequired=true
 ClassEndsWithBlankLine	ClassEndsWithBlankLine/017.groovy		14,16	blankLineRequired=false
-ClassEndsWithBlankLine	ClassEndsWithBlankLine/018.groovy		-	blankLineRequired=true,ignoreSingleLineClasses=true
-ClassEndsWithBlankLine	ClassEndsWithBlankLine/019.groovy		3,5,6	blankLineRequired=true,ignoreSingleLineClasses=false
-ClassEndsWithBlankLine	ClassEndsWithBlankLine/020.groovy		-	blankLineRequired=false,ignoreSingleLineClasses=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/018.groovy		-	blankLineRequired=trueignoreSingleLineClasses=true
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/019.groovy		3,5,6	blankLineRequired=trueignoreSingleLineClasses=false
+ClassEndsWithBlankLine	ClassEndsWithBlankLine/020.groovy		-	blankLineRequired=falseignoreSingleLineClasses=false
 ClassEndsWithBlankLine	ClassEndsWithBlankLine/021.groovy		-	blankLineRequired=true
 ClassEndsWithBlankLine	ClassEndsWithBlankLine/022.groovy		-	blankLineRequired=false
 ClassEndsWithBlankLine	ClassEndsWithBlankLine/023.groovy		9	blankLineRequired=true
@@ -338,9 +338,9 @@ ClassStartsWithBlankLine	ClassStartsWithBlankLine/018.groovy		-	blankLineRequire
 ClassStartsWithBlankLine	ClassStartsWithBlankLine/019.groovy		-	blankLineRequired=false
 ClassStartsWithBlankLine	ClassStartsWithBlankLine/020.groovy		3,9	blankLineRequired=true
 ClassStartsWithBlankLine	ClassStartsWithBlankLine/021.groovy		9	blankLineRequired=false
-ClassStartsWithBlankLine	ClassStartsWithBlankLine/022.groovy		-	blankLineRequired=true,ignoreSingleLineClasses=true
-ClassStartsWithBlankLine	ClassStartsWithBlankLine/023.groovy		3,5,6	blankLineRequired=true,ignoreSingleLineClasses=false
-ClassStartsWithBlankLine	ClassStartsWithBlankLine/024.groovy		-	blankLineRequired=false,ignoreSingleLineClasses=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/022.groovy		-	blankLineRequired=trueignoreSingleLineClasses=true
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/023.groovy		3,5,6	blankLineRequired=trueignoreSingleLineClasses=false
+ClassStartsWithBlankLine	ClassStartsWithBlankLine/024.groovy		-	blankLineRequired=falseignoreSingleLineClasses=false
 ClassStartsWithBlankLine	ClassStartsWithBlankLine/025.groovy		-	blankLineRequired=true
 ClassStartsWithBlankLine	ClassStartsWithBlankLine/026.groovy		-	blankLineRequired=false
 ClassStartsWithBlankLine	ClassStartsWithBlankLine/027.groovy		5	blankLineRequired=true
@@ -541,7 +541,7 @@ CrapMetric	CrapMetric/003.groovy		-	maxMethodCrapScore=1.0
 CrapMetric	CrapMetric/004.groovy		-	maxMethodCrapScore=1.0
 CrapMetric	CrapMetric/005.groovy		-	maxMethodCrapScore=1.0
 CrapMetric	CrapMetric/006.groovy		3	maxClassAverageMethodCrapScore=1.0
-CrapMetric	CrapMetric/007.groovy		3,4	maxClassAverageMethodCrapScore=1.0,maxClassCrapScore=5.9,maxMethodCrapScore=1.0
+CrapMetric	CrapMetric/007.groovy		3,4	maxClassAverageMethodCrapScore=1.0maxClassCrapScore=5.9maxMethodCrapScore=1.0
 CyclomaticComplexity	CyclomaticComplexity/000.groovy		-	
 CyclomaticComplexity	CyclomaticComplexity/001.groovy		-	maxMethodComplexity=5
 CyclomaticComplexity	CyclomaticComplexity/002.groovy		3	maxMethodComplexity=5
@@ -550,11 +550,11 @@ CyclomaticComplexity	CyclomaticComplexity/004.groovy		3	maxMethodComplexity=2
 CyclomaticComplexity	CyclomaticComplexity/005.groovy		3,9	maxMethodComplexity=2
 CyclomaticComplexity	CyclomaticComplexity/006.groovy		2	maxClassAverageMethodComplexity=5
 CyclomaticComplexity	CyclomaticComplexity/007.groovy		-	maxClassAverageMethodComplexity=0
-CyclomaticComplexity	CyclomaticComplexity/008.groovy		2,8	maxClassAverageMethodComplexity=3,maxClassComplexity=9,maxMethodComplexity=5
-CyclomaticComplexity	CyclomaticComplexity/009.groovy		-	maxClassAverageMethodComplexity=3,maxClassComplexity=9,maxMethodComplexity=3
-CyclomaticComplexity	CyclomaticComplexity/010.groovy		6	ignoreMethodNames=myM*d*,otherC??su*,maxMethodComplexity=1
-CyclomaticComplexity	CyclomaticComplexity/011.groovy		2	maxClassAverageMethodComplexity=1,maxMethodComplexity=1
-CyclomaticComplexity	CyclomaticComplexity/012.groovy			maxClassAverageMethodComplexity=1,maxMethodComplexity=1
+CyclomaticComplexity	CyclomaticComplexity/008.groovy		2,8	maxClassAverageMethodComplexity=3maxClassComplexity=9maxMethodComplexity=5
+CyclomaticComplexity	CyclomaticComplexity/009.groovy		-	maxClassAverageMethodComplexity=3maxClassComplexity=9maxMethodComplexity=3
+CyclomaticComplexity	CyclomaticComplexity/010.groovy		6	ignoreMethodNames=myM*d*,otherC??su*maxMethodComplexity=1
+CyclomaticComplexity	CyclomaticComplexity/011.groovy		2	maxClassAverageMethodComplexity=1maxMethodComplexity=1
+CyclomaticComplexity	CyclomaticComplexity/012.groovy			maxClassAverageMethodComplexity=1maxMethodComplexity=1
 DeadCode	DeadCode/000.groovy		-	
 DeadCode	DeadCode/001.groovy		4,8	
 DeadCode	DeadCode/002.groovy		4,8	
@@ -667,12 +667,12 @@ DuplicateStringLiteral	DuplicateStringLiteral/013.groovy		3
 DuplicateStringLiteral	DuplicateStringLiteral/014.groovy		3	ignoreStrings=xyz
 DuplicateStringLiteral	DuplicateStringLiteral/015.groovy		-	ignoreStrings=xyz,foo
 DuplicateStringLiteral	DuplicateStringLiteral/016.groovy		-	ignoreStrings=,xyz,foo
-DuplicateStringLiteral	DuplicateStringLiteral/017.groovy		-	ignoreStrings=|xyz|1,2|123,ignoreStringsDelimiter=|
+DuplicateStringLiteral	DuplicateStringLiteral/017.groovy		-	ignoreStrings=|xyz|1,2|123ignoreStringsDelimiter=|
 DuplicateStringLiteral	DuplicateStringLiteral/018.groovy		-	ignoreStrings= xyz ,foo
 DuplicateStringLiteral	DuplicateStringLiteral/019.groovy		-	duplicateStringMinimumLength=4
 DuplicateStringLiteral	DuplicateStringLiteral/020.groovy		2	duplicateStringMinimumLength=3
 DuplicateStringLiteral	DuplicateStringLiteral/021.groovy		-	
-DuplicateStringLiteral	DuplicateStringLiteral/022.groovy		-	ignoreStrings=-|_|/|$|.|:| |,,ignoreStringsDelimiter=|
+DuplicateStringLiteral	DuplicateStringLiteral/022.groovy		-	ignoreStrings=-|_|/|$|.|:| |,ignoreStringsDelimiter=|
 DuplicateStringLiteral	DuplicateStringLiteral/023.groovy		-	
 ElseBlockBraces	ElseBlockBraces/000.groovy		4,6	
 ElseBlockBraces	ElseBlockBraces/001.groovy		-	
@@ -849,9 +849,9 @@ FieldName	FieldName/008.groovy		3
 FieldName	FieldName/009.groovy		-	finalRegex=z.*
 FieldName	FieldName/010.groovy		-	staticRegex=C.*
 FieldName	FieldName/011.groovy		3	
-FieldName	FieldName/012.groovy		-	finalRegex=X.*,staticFinalRegex=C.*,staticRegex=Z.*
-FieldName	FieldName/013.groovy		3	finalRegex=X.*,privateStaticFinalRegex=[a-z][a-zA-Z0-9]*,staticFinalRegex=C.*,staticRegex=Z.*
-FieldName	FieldName/014.groovy		3	finalRegex=X.*,staticRegex=C.*
+FieldName	FieldName/012.groovy		-	finalRegex=X.*staticFinalRegex=C.*staticRegex=Z.*
+FieldName	FieldName/013.groovy		3	finalRegex=X.*privateStaticFinalRegex=[a-z][a-zA-Z0-9]*staticFinalRegex=C.*staticRegex=Z.*
+FieldName	FieldName/014.groovy		3	finalRegex=X.*staticRegex=C.*
 FieldName	FieldName/015.groovy		-	staticRegex=C.*
 FieldName	FieldName/016.groovy		-	regex=C.*
 FieldName	FieldName/017.groovy		-	
@@ -1004,7 +1004,7 @@ GrailsStatelessService	GrailsStatelessService/009.groovy		-	ignoreFieldNames=oth
 GrailsStatelessService	GrailsStatelessService/010.groovy		5	ignoreFieldNames=oth*,deposit??ount
 GrailsStatelessService	GrailsStatelessService/011.groovy		4	ignoreFieldTypes=BigDecimal
 GrailsStatelessService	GrailsStatelessService/012.groovy		4,6	ignoreFieldTypes=*Decimal,java.lang.Object,l?n?
-GrailsStatelessService	GrailsStatelessService/013.groovy		-	ignoreFieldNames=oth*,XXX,ignoreFieldTypes=*Decimal,YYY,int,l?n?
+GrailsStatelessService	GrailsStatelessService/013.groovy		-	ignoreFieldNames=oth*,XXXignoreFieldTypes=*Decimal,YYY,int,l?n?
 GrailsStatelessService	GrailsStatelessService/014.groovy		-	
 GrailsStatelessService	GrailsStatelessService/015.groovy		-	
 GrailsStatelessService	GrailsStatelessService/016.groovy		-	
@@ -1052,12 +1052,12 @@ IllegalClassMember	IllegalClassMember/003.groovy		4	illegalPropertyModifiers=fin
 IllegalClassMember	IllegalClassMember/004.groovy		3,4	allowedPropertyModifiers=static
 IllegalClassMember	IllegalClassMember/005.groovy		4,6	illegalMethodModifiers=public static, protected
 IllegalClassMember	IllegalClassMember/006.groovy		3,4	allowedMethodModifiers=public final, private, protected static
-IllegalClassMember	IllegalClassMember/007.groovy		-	ignoreMethodNames=method1,illegalMethodModifiers=public
-IllegalClassMember	IllegalClassMember/008.groovy		3	ignoreMethodNames=method2,illegalMethodModifiers=public
-IllegalClassMember	IllegalClassMember/009.groovy		4	allowedMethodModifiers=protected,ignoreMethodNames=meth?d?,x*, badM*
-IllegalClassMember	IllegalClassMember/010.groovy		-	ignoreMethodsWithAnnotationNames=Override,illegalMethodModifiers=public
-IllegalClassMember	IllegalClassMember/011.groovy		4	ignoreMethodsWithAnnotationNames=Test,illegalMethodModifiers=public
-IllegalClassMember	IllegalClassMember/012.groovy		5	allowedMethodModifiers=protected,ignoreMethodsWithAnnotationNames=Over?ide,Other,Supp*Warnings
+IllegalClassMember	IllegalClassMember/007.groovy		-	ignoreMethodNames=method1illegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/008.groovy		3	ignoreMethodNames=method2illegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/009.groovy		4	allowedMethodModifiers=protectedignoreMethodNames=meth?d?,x*, badM*
+IllegalClassMember	IllegalClassMember/010.groovy		-	ignoreMethodsWithAnnotationNames=OverrideillegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/011.groovy		4	ignoreMethodsWithAnnotationNames=TestillegalMethodModifiers=public
+IllegalClassMember	IllegalClassMember/012.groovy		5	allowedMethodModifiers=protectedignoreMethodsWithAnnotationNames=Over?ide,Other,Supp*Warnings
 IllegalPackageReference	IllegalPackageReference/000.groovy		-	
 IllegalPackageReference	IllegalPackageReference/001.groovy		3	packageNames=java.math
 IllegalPackageReference	IllegalPackageReference/002.groovy		2,3,4	packageNames=org.bad
@@ -1503,8 +1503,8 @@ LineLength	LineLength/003.groovy		2	ignoreImportStatements=false
 LineLength	LineLength/004.groovy		-	
 LineLength	LineLength/005.groovy		2	ignorePackageStatements=false
 LineLength	LineLength/006.groovy		3	
-LineLength	LineLength/007.groovy		-	ignoreLineRegex=.*name.*,length=30
-LineLength	LineLength/008.groovy		3	ignoreLineRegex=.*xxx.*,length=30
+LineLength	LineLength/007.groovy		-	ignoreLineRegex=.*name.*length=30
+LineLength	LineLength/008.groovy		3	ignoreLineRegex=.*xxx.*length=30
 LocaleSetDefault	LocaleSetDefault/000.groovy		-	
 LocaleSetDefault	LocaleSetDefault/001.groovy		2,3,4	
 LocaleSetDefault	LocaleSetDefault/002.groovy		2,3	
@@ -1534,11 +1534,11 @@ LoggerWithWrongModifiers	LoggerWithWrongModifiers/000.groovy		-
 LoggerWithWrongModifiers	LoggerWithWrongModifiers/001.groovy		3	
 LoggerWithWrongModifiers	LoggerWithWrongModifiers/002.groovy		3	
 LoggerWithWrongModifiers	LoggerWithWrongModifiers/003.groovy		3	
-LoggerWithWrongModifiers	LoggerWithWrongModifiers/004.groovy		-	allowNonStaticLogger=true,allowProtectedLogger=true
-LoggerWithWrongModifiers	LoggerWithWrongModifiers/005.groovy		3	allowNonStaticLogger=true,allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/004.groovy		-	allowNonStaticLogger=trueallowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/005.groovy		3	allowNonStaticLogger=trueallowProtectedLogger=true
 LoggerWithWrongModifiers	LoggerWithWrongModifiers/006.groovy		3	allowProtectedLogger=true
-LoggerWithWrongModifiers	LoggerWithWrongModifiers/007.groovy		-	allowNonStaticLogger=true,allowProtectedLogger=true
-LoggerWithWrongModifiers	LoggerWithWrongModifiers/008.groovy		-	allowNonStaticLogger=true,allowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/007.groovy		-	allowNonStaticLogger=trueallowProtectedLogger=true
+LoggerWithWrongModifiers	LoggerWithWrongModifiers/008.groovy		-	allowNonStaticLogger=trueallowProtectedLogger=true
 LoggerWithWrongModifiers	LoggerWithWrongModifiers/009.groovy		3	allowProtectedLogger=true
 LoggingSwallowsStacktrace	LoggingSwallowsStacktrace/000.groovy		-	
 LoggingSwallowsStacktrace	LoggingSwallowsStacktrace/001.groovy		13,14	
@@ -1571,9 +1571,9 @@ MethodSize	MethodSize/002.groovy		3	maxLines=2
 MethodSize	MethodSize/003.groovy		-	
 MethodSize	MethodSize/004.groovy		-	
 MethodSize	MethodSize/005.groovy		3	maxLines=3
-MethodSize	MethodSize/006.groovy		-	ignoreMethodNames=myMethod,maxLines=2
-MethodSize	MethodSize/007.groovy		4	ignoreMethodNames=otherMethod,maxLines=2
-MethodSize	MethodSize/008.groovy		4,9	ignoreMethodNames=init*ze,doO??erSt*ff,other,maxLines=1
+MethodSize	MethodSize/006.groovy		-	ignoreMethodNames=myMethodmaxLines=2
+MethodSize	MethodSize/007.groovy		4	ignoreMethodNames=otherMethodmaxLines=2
+MethodSize	MethodSize/008.groovy		4,9	ignoreMethodNames=init*ze,doO??erSt*ff,othermaxLines=1
 MisorderedStaticImports	MisorderedStaticImports/000.groovy		-	
 MisorderedStaticImports	MisorderedStaticImports/001.groovy		-	
 MisorderedStaticImports	MisorderedStaticImports/002.groovy		-	
@@ -1697,7 +1697,7 @@ NoWildcardImports	NoWildcardImports/000.groovy		-
 NoWildcardImports	NoWildcardImports/001.groovy		2,3,5,6	
 NoWildcardImports	NoWildcardImports/002.groovy		3	ignoreImports=true
 NoWildcardImports	NoWildcardImports/003.groovy		-	ignoreStaticImports=true
-NoWildcardImports	NoWildcardImports/004.groovy		-	ignoreImports=true,ignoreStaticImports=true
+NoWildcardImports	NoWildcardImports/004.groovy		-	ignoreImports=trueignoreStaticImports=true
 NonFinalPublicField	NonFinalPublicField/000.groovy		-	
 NonFinalPublicField	NonFinalPublicField/001.groovy		3	
 NonFinalSubclassOfSensitiveInterface	NonFinalSubclassOfSensitiveInterface/000.groovy		-	
@@ -1846,7 +1846,7 @@ PropertyName	PropertyName/007.groovy		3
 PropertyName	PropertyName/008.groovy		-	finalRegex=z.*
 PropertyName	PropertyName/009.groovy		-	staticRegex=C.*
 PropertyName	PropertyName/010.groovy		3	
-PropertyName	PropertyName/011.groovy		-	finalRegex=X.*,staticFinalRegex=C.*,staticRegex=Z.*
+PropertyName	PropertyName/011.groovy		-	finalRegex=X.*staticFinalRegex=C.*staticRegex=Z.*
 PropertyName	PropertyName/012.groovy		3	staticRegex=C.*
 PropertyName	PropertyName/013.groovy		-	staticRegex=C.*
 PropertyName	PropertyName/014.groovy		-	ignorePropertyNames=Count
@@ -2085,7 +2085,7 @@ SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/001.groovy		-	characterBeforeC
 SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/002.groovy		-	characterAfterColonRegex=\s
 SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/003.groovy		-	characterAfterColonRegex=\s
 SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/004.groovy		-	characterAfterColonRegex=\s
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/005.groovy		-	characterAfterColonRegex=\s,characterBeforeColonRegex=.
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/005.groovy		-	characterAfterColonRegex=\scharacterBeforeColonRegex=.
 SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/006.groovy		-	characterAfterColonRegex=\s
 SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/007.groovy		-	characterAfterColonRegex=\s
 SpaceAroundOperator	SpaceAroundOperator/000.groovy		-	
@@ -2216,11 +2216,11 @@ StatelessClass	StatelessClass/004.groovy		-	applyToClassNames=*
 StatelessClass	StatelessClass/005.groovy		-	applyToFileNames=*
 StatelessClass	StatelessClass/006.groovy		3,4	applyToFilesMatching=.*
 StatelessClass	StatelessClass/007.groovy		-	applyToClassNames=*
-StatelessClass	StatelessClass/008.groovy		3	applyToClassNames=*,ignoreFieldNames=other
-StatelessClass	StatelessClass/009.groovy		5	addToIgnoreFieldNames=yyy,deposit??ount,applyToClassNames=*,ignoreFieldNames=oth*,xxxx
-StatelessClass	StatelessClass/010.groovy		4	applyToClassNames=*,ignoreFieldTypes=BigDecimal
-StatelessClass	StatelessClass/011.groovy		5,7	applyToClassNames=*,ignoreFieldTypes=*Decimal,java.lang.Object,l?n?
-StatelessClass	StatelessClass/012.groovy		-	applyToClassNames=*,ignoreFieldNames=oth*,XXX,ignoreFieldTypes=*Decimal,YYY,int,l?n?
+StatelessClass	StatelessClass/008.groovy		3	applyToClassNames=*ignoreFieldNames=other
+StatelessClass	StatelessClass/009.groovy		5	addToIgnoreFieldNames=yyy,deposit??ountapplyToClassNames=*ignoreFieldNames=oth*,xxxx
+StatelessClass	StatelessClass/010.groovy		4	applyToClassNames=*ignoreFieldTypes=BigDecimal
+StatelessClass	StatelessClass/011.groovy		5,7	applyToClassNames=*ignoreFieldTypes=*Decimal,java.lang.Object,l?n?
+StatelessClass	StatelessClass/012.groovy		-	applyToClassNames=*ignoreFieldNames=oth*,XXXignoreFieldTypes=*Decimal,YYY,int,l?n?
 StatelessClass	StatelessClass/013.groovy		-	applyToFileNames=*
 StatelessClass	StatelessClass/014.groovy		-	applyToClassNames=*
 StatelessSingleton	StatelessSingleton/000.groovy		-	

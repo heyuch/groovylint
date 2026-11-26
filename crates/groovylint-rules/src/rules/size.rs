@@ -1,7 +1,7 @@
 //! `CodeNarc` size and complexity metrics.
 
 use groovylint_core::{Severity, Span};
-use groovylint_syntax::ast::{ClassDecl, Item, MethodDecl, Stmt};
+use groovylint_syntax::ast::{BinaryOp, ClassDecl, Expr, ExprKind, Item, MethodDecl, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
@@ -40,89 +40,297 @@ fn methods(class: &ClassDecl) -> Vec<&MethodDecl> {
         .collect()
 }
 
-fn count_branches(method: &MethodDecl) -> usize {
-    let Some(body) = &method.body else {
-        return 0;
-    };
-    let mut counter = BranchCounter { count: 1 };
-    crate::traverse::walk_block(body, &mut counter);
-    counter.count
+/// One thing a method metric measures: a method, a closure field or a script body.
+struct Unit {
+    name: String,
+    span: Span,
+    body: groovylint_syntax::ast::Block,
 }
 
-struct BranchCounter {
-    count: usize,
-}
-
-impl crate::traverse::AstVisitor for BranchCounter {
-    fn enter(&mut self, node: NodeRef<'_>) {
-        match node {
-            NodeRef::Stmt(
-                Stmt::If(_)
-                | Stmt::While(_)
-                | Stmt::DoWhile(_)
-                | Stmt::For(_)
-                | Stmt::ForEach(_)
-                | Stmt::Try(_)
-                | Stmt::Switch(_),
-            ) => self.count += 1,
-            NodeRef::Expr(expr) => {
-                if matches!(
-                    expr.kind,
-                    groovylint_syntax::ast::ExprKind::Binary {
-                        op: groovylint_syntax::ast::BinaryOp::And
-                            | groovylint_syntax::ast::BinaryOp::Or,
-                        ..
-                    }
-                ) {
-                    self.count += 1;
+/// The measurable units of a class, including closures stored in fields.
+fn class_units(class: &ClassDecl) -> Vec<Unit> {
+    let mut units = Vec::new();
+    for member in &class.members {
+        match member {
+            Item::Method(method) => {
+                if let Some(body) = &method.body {
+                    units.push(Unit {
+                        name: method.name.clone(),
+                        span: method.span,
+                        body: body.clone(),
+                    });
+                }
+            }
+            Item::Field(field) => {
+                if let Some(init) = &field.init
+                    && let ExprKind::Closure { body, .. } = &init.kind
+                {
+                    units.push(Unit {
+                        name: field.name.clone(),
+                        span: field.span,
+                        body: body.clone(),
+                    });
                 }
             }
             _ => {}
         }
     }
-    fn exit(&mut self, _node: NodeRef<'_>) {}
+    units
 }
 
-fn count_abc(method: &MethodDecl) -> usize {
-    let Some(body) = &method.body else {
-        return 0;
-    };
-    let mut counter = AbcCounter { count: 0 };
-    crate::traverse::walk_block(body, &mut counter);
-    counter.count
-}
-
-struct AbcCounter {
-    count: usize,
-}
-
-impl crate::traverse::AstVisitor for AbcCounter {
-    fn enter(&mut self, node: NodeRef<'_>) {
-        match node {
-            NodeRef::Stmt(Stmt::VarDecl(_)) => self.count += 1,
-            NodeRef::Expr(expr) => match &expr.kind {
-                groovylint_syntax::ast::ExprKind::Assign { .. } => self.count += 1,
-                groovylint_syntax::ast::ExprKind::Binary { op, .. } => {
-                    if matches!(
-                        op,
-                        groovylint_syntax::ast::BinaryOp::And
-                            | groovylint_syntax::ast::BinaryOp::Or
-                            | groovylint_syntax::ast::BinaryOp::Eq
-                            | groovylint_syntax::ast::BinaryOp::NotEq
-                            | groovylint_syntax::ast::BinaryOp::Lt
-                            | groovylint_syntax::ast::BinaryOp::Le
-                            | groovylint_syntax::ast::BinaryOp::Gt
-                            | groovylint_syntax::ast::BinaryOp::Ge
-                    ) {
-                        self.count += 1;
-                    }
+/// The measurable units of a script: its methods, closure-valued variables and the
+/// script body itself, which Groovy compiles into a `run()` method.
+fn script_units(script: &groovylint_syntax::ast::Script) -> Vec<Unit> {
+    let mut units = Vec::new();
+    let statements: Vec<Stmt> = script
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            Item::Statement(statement) => Some(statement.clone()),
+            _ => None,
+        })
+        .collect();
+    if let (Some(first), Some(last)) = (statements.first(), statements.last()) {
+        let span = Span::new(first.span().start, last.span().end);
+        units.push(Unit {
+            name: "run".to_string(),
+            span,
+            body: groovylint_syntax::ast::Block { span, statements },
+        });
+    }
+    for item in &script.items {
+        match item {
+            Item::Method(method) => {
+                if let Some(body) = &method.body {
+                    units.push(Unit {
+                        name: method.name.clone(),
+                        span: method.span,
+                        body: body.clone(),
+                    });
                 }
-                _ => {}
-            },
+            }
+            Item::Statement(Stmt::VarDecl(decl)) => {
+                if let Some(init) = &decl.init
+                    && let ExprKind::Closure { body, .. } = &init.kind
+                {
+                    units.push(Unit {
+                        name: decl.name.clone(),
+                        span: decl.span,
+                        body: body.clone(),
+                    });
+                }
+            }
             _ => {}
         }
     }
+    units
+}
+
+/// The three ABC vectors of one method.
+#[derive(Default)]
+struct Counts {
+    assignments: usize,
+    branches: usize,
+    conditions: usize,
+}
+
+impl Counts {
+    /// `|ABC| = sqrt(A*A + B*B + C*C)`, rounded to one decimal like `GMetrics`.
+    fn magnitude(&self) -> f64 {
+        let sum = self.assignments * self.assignments
+            + self.branches * self.branches
+            + self.conditions * self.conditions;
+        // The counts are small integers; the conversion cannot lose anything here.
+        let magnitude = f64::from(u32::try_from(sum).unwrap_or(u32::MAX)).sqrt();
+        (magnitude * 10.0).floor() / 10.0
+    }
+}
+
+/// Counts assignments, branches and conditions the way `GMetrics` does.
+fn abc_counts(body: &groovylint_syntax::ast::Block) -> Counts {
+    let mut counter = MetricCounter::default();
+    crate::traverse::walk_block(body, &mut counter);
+    counter.counts
+}
+
+/// Counts decision points the way `GMetrics`' cyclomatic metric does.
+fn cyclomatic(body: &groovylint_syntax::ast::Block) -> usize {
+    let mut counter = MetricCounter::default();
+    crate::traverse::walk_block(body, &mut counter);
+    1 + counter.decisions
+}
+
+#[derive(Default)]
+struct MetricCounter {
+    counts: Counts,
+    decisions: usize,
+}
+
+impl crate::traverse::AstVisitor for MetricCounter {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        match node {
+            NodeRef::Stmt(Stmt::If(statement)) => {
+                self.decisions += 1;
+                if statement.else_branch.is_some() {
+                    self.counts.conditions += 1;
+                }
+            }
+            NodeRef::Stmt(Stmt::While(_) | Stmt::DoWhile(_) | Stmt::For(_) | Stmt::ForEach(_)) => {
+                self.decisions += 1;
+            }
+            NodeRef::Stmt(Stmt::Switch(statement)) => {
+                let labels = statement
+                    .cases
+                    .iter()
+                    .filter(|case| case.label.is_some())
+                    .count();
+                self.decisions += labels;
+                self.counts.conditions += labels;
+                if statement.cases.iter().any(|case| case.label.is_none()) {
+                    self.counts.conditions += 1;
+                }
+            }
+            NodeRef::Stmt(Stmt::Try(statement)) => {
+                self.decisions += statement.catches.len();
+                self.counts.conditions += 1 + statement.catches.len();
+            }
+            NodeRef::Expr(expr) => self.count_expression(expr),
+            _ => {}
+        }
+    }
+
     fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+impl MetricCounter {
+    fn count_expression(&mut self, expr: &Expr) {
+        match &expr.kind {
+            ExprKind::Call { safe, .. } | ExprKind::Property { safe, .. } => {
+                self.counts.branches += 1;
+                if *safe {
+                    self.decisions += 1;
+                }
+            }
+            ExprKind::New { .. } => self.counts.branches += 1,
+            ExprKind::Assign { .. } => self.counts.assignments += 1,
+            ExprKind::Ternary { .. } => {
+                self.decisions += 1;
+                self.counts.conditions += 1;
+            }
+            ExprKind::Unary { op, .. } => {
+                if matches!(
+                    op,
+                    groovylint_syntax::ast::UnaryOp::PreInc
+                        | groovylint_syntax::ast::UnaryOp::PreDec
+                        | groovylint_syntax::ast::UnaryOp::PostInc
+                        | groovylint_syntax::ast::UnaryOp::PostDec
+                ) {
+                    self.counts.assignments += 1;
+                }
+            }
+            ExprKind::Binary { op, left, right } => {
+                if matches!(op, BinaryOp::And | BinaryOp::Or) {
+                    self.decisions += 1;
+                    if is_single_variable(left) {
+                        self.counts.conditions += 1;
+                    }
+                    if is_single_variable(right) {
+                        self.counts.conditions += 1;
+                    }
+                } else if is_comparison(*op) {
+                    self.counts.conditions += 1;
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn is_single_variable(expr: &Expr) -> bool {
+    matches!(expr.kind, ExprKind::Variable(_))
+}
+
+fn is_comparison(op: BinaryOp) -> bool {
+    matches!(
+        op,
+        BinaryOp::Eq
+            | BinaryOp::NotEq
+            | BinaryOp::Lt
+            | BinaryOp::Le
+            | BinaryOp::Gt
+            | BinaryOp::Ge
+            | BinaryOp::RegexFind
+            | BinaryOp::RegexMatch
+            | BinaryOp::InstanceOf
+    )
+}
+
+fn split_list(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn is_ignored(patterns: &[String], name: &str) -> bool {
+    patterns
+        .iter()
+        .any(|pattern| crate::rules::types::wildcard_matches(name, pattern))
+}
+
+/// Reports on the declaration line itself, which is where `GMetrics` points.
+fn report_plain(
+    context: &FileContext<'_>,
+    sink: &mut DiagnosticSink<'_>,
+    span: Span,
+    message: String,
+) {
+    let line = context.source.line_col(span.start).line;
+    let Some(span) = context.source.line_span(line) else {
+        return;
+    };
+    sink.report(span, message);
+}
+
+/// A span that reports nothing useful, for group-level metrics on a script.
+const fn default_span() -> Span {
+    Span::new(0, 0)
+}
+
+/// The start of a declaration, including the annotations written above it.
+fn declaration_start(context: &FileContext<'_>, span: Span) -> usize {
+    let mut start = span.start;
+    let mut line = context.source.line_col(span.start).line;
+    while line > 1 {
+        let Some(previous) = context.source.line_text(line - 1) else {
+            break;
+        };
+        if !previous.trim_start().starts_with('@') {
+            break;
+        }
+        line -= 1;
+        if let Some(span) = context.source.line_span(line) {
+            start = span.start;
+        }
+    }
+    start
+}
+
+/// Reports on the declaration's first line, annotations included.
+fn report_at_declaration(
+    context: &FileContext<'_>,
+    sink: &mut DiagnosticSink<'_>,
+    span: Span,
+    message: String,
+) {
+    let start = declaration_start(context, span);
+    let line = context.source.line_col(start).line;
+    let Some(span) = context.source.line_span(line) else {
+        return;
+    };
+    sink.report(span, message);
 }
 
 /// Flags classes that exceed a line-count limit.
@@ -206,11 +414,15 @@ impl FileRule for MethodCountRule {
 /// Flags methods that exceed a line-count limit.
 pub struct MethodSizeRule {
     max_lines: usize,
+    ignored: Vec<String>,
 }
 
 impl Default for MethodSizeRule {
     fn default() -> Self {
-        Self { max_lines: 100 }
+        Self {
+            max_lines: 100,
+            ignored: Vec::new(),
+        }
     }
 }
 
@@ -221,6 +433,9 @@ impl Rule for MethodSizeRule {
                 .parse()
                 .map_err(|_| "maxLines must be a number".to_string())?;
         }
+        if let Some(value) = properties.get("ignoreMethodNames") {
+            self.ignored = split_list(value);
+        }
         Ok(())
     }
 }
@@ -229,16 +444,26 @@ impl FileRule for MethodSizeRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
         for class in classes(context.script) {
             for method in methods(class) {
-                let lines = line_span(context, method.span);
-                if lines > self.max_lines {
-                    sink.report(
-                        method.span,
-                        format!(
-                            "The method {} has {lines} lines (maximum {})",
-                            method.name, self.max_lines
-                        ),
-                    );
+                if is_ignored(&self.ignored, &method.name) {
+                    continue;
                 }
+                // Annotations belong to the method: CodeNarc counts and reports
+                // from the first annotation line.
+                let start = declaration_start(context, method.span);
+                let span = Span::new(start, method.span.end);
+                let lines = line_span(context, span);
+                if lines <= self.max_lines {
+                    continue;
+                }
+                report_at_declaration(
+                    context,
+                    sink,
+                    span,
+                    format!(
+                        "The method {} has {lines} lines (maximum {})",
+                        method.name, self.max_lines
+                    ),
+                );
             }
         }
     }
@@ -289,12 +514,18 @@ impl FileRule for ParameterCountRule {
 /// Flags methods with high cyclomatic complexity.
 pub struct CyclomaticComplexityRule {
     max_method_complexity: usize,
+    max_class_complexity: Option<usize>,
+    max_class_average: Option<f64>,
+    ignored: Vec<String>,
 }
 
 impl Default for CyclomaticComplexityRule {
     fn default() -> Self {
         Self {
             max_method_complexity: 20,
+            max_class_complexity: None,
+            max_class_average: None,
+            ignored: Vec::new(),
         }
     }
 }
@@ -306,38 +537,104 @@ impl Rule for CyclomaticComplexityRule {
                 .parse()
                 .map_err(|_| "maxMethodComplexity must be a number".to_string())?;
         }
+        if let Some(value) = properties.get("maxClassComplexity") {
+            self.max_class_complexity = Some(
+                value
+                    .parse()
+                    .map_err(|_| "maxClassComplexity must be a number".to_string())?,
+            );
+        }
+        if let Some(value) = properties.get("maxClassAverageMethodComplexity") {
+            self.max_class_average = Some(
+                value
+                    .parse()
+                    .map_err(|_| "maxClassAverageMethodComplexity must be a number".to_string())?,
+            );
+        }
+        if let Some(value) = properties.get("ignoreMethodNames") {
+            self.ignored = split_list(value);
+        }
         Ok(())
     }
 }
 
 impl FileRule for CyclomaticComplexityRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut groups: Vec<(&str, Span, bool, Vec<Unit>)> = Vec::new();
         for class in classes(context.script) {
-            for method in methods(class) {
-                let complexity = count_branches(method);
-                if complexity > self.max_method_complexity {
-                    sink.report(
-                        method.span,
-                        format!(
-                            "The method {} has cyclomatic complexity {complexity} (maximum {})",
-                            method.name, self.max_method_complexity
-                        ),
-                    );
+            groups.push((class.name.as_str(), class.span, false, class_units(class)));
+        }
+        let units = script_units(context.script);
+        if !units.is_empty() {
+            // A script has no class of its own to measure: CodeNarc skips it.
+            groups.push(("script", default_span(), true, units));
+        }
+
+        for (name, span, is_script, units) in groups {
+            let mut total = 0;
+            let mut measured = 0;
+            for unit in &units {
+                if is_ignored(&self.ignored, &unit.name) {
+                    continue;
                 }
+                let complexity = cyclomatic(&unit.body);
+                total += complexity;
+                measured += 1;
+                if complexity <= self.max_method_complexity {
+                    continue;
+                }
+                report_plain(
+                    context,
+                    sink,
+                    unit.span,
+                    format!(
+                        "The method {} has cyclomatic complexity {complexity} (maximum {})",
+                        unit.name, self.max_method_complexity
+                    ),
+                );
             }
+            if measured == 0 || is_script {
+                continue;
+            }
+            let average = f64::from(u32::try_from(total).unwrap_or(u32::MAX))
+                / f64::from(u32::try_from(measured).unwrap_or(u32::MAX));
+            // CodeNarc reads the class thresholds as Groovy truth, so 0 disables them.
+            let over_class = self
+                .max_class_complexity
+                .is_some_and(|limit| limit > 0 && total > limit);
+            let over_average = self
+                .max_class_average
+                .is_some_and(|limit| limit > 0.0 && average > limit);
+            if !over_class && !over_average {
+                continue;
+            }
+            report_at_declaration(
+                context,
+                sink,
+                span,
+                format!(
+                    "The class {name} has cyclomatic complexity {total} (average {average:.1})"
+                ),
+            );
         }
     }
 }
 
 /// Flags methods with a high assignment/branch/condition score.
 pub struct AbcMetricRule {
-    max_method_score: usize,
+    max_method_score: f64,
+    max_class_score: Option<f64>,
+    max_class_average: Option<f64>,
+    ignored: Vec<String>,
 }
 
 impl Default for AbcMetricRule {
     fn default() -> Self {
         Self {
-            max_method_score: 60,
+            max_method_score: 60.0,
+            max_class_score: None,
+            max_class_average: None,
+            ignored: Vec::new(),
         }
     }
 }
@@ -349,25 +646,86 @@ impl Rule for AbcMetricRule {
                 .parse()
                 .map_err(|_| "maxMethodAbcScore must be a number".to_string())?;
         }
+        if let Some(value) = properties.get("maxClassAbcScore") {
+            self.max_class_score = Some(
+                value
+                    .parse()
+                    .map_err(|_| "maxClassAbcScore must be a number".to_string())?,
+            );
+        }
+        if let Some(value) = properties.get("maxClassAverageMethodAbcScore") {
+            self.max_class_average = Some(
+                value
+                    .parse()
+                    .map_err(|_| "maxClassAverageMethodAbcScore must be a number".to_string())?,
+            );
+        }
+        if let Some(value) = properties.get("ignoreMethodNames") {
+            self.ignored = split_list(value);
+        }
         Ok(())
     }
 }
 
 impl FileRule for AbcMetricRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut groups: Vec<(&str, Span, bool, Vec<Unit>)> = Vec::new();
         for class in classes(context.script) {
-            for method in methods(class) {
-                let score = count_abc(method);
-                if score > self.max_method_score {
-                    sink.report(
-                        method.span,
-                        format!(
-                            "The method {} has ABC score {score} (maximum {})",
-                            method.name, self.max_method_score
-                        ),
-                    );
+            groups.push((class.name.as_str(), class.span, false, class_units(class)));
+        }
+        let units = script_units(context.script);
+        if !units.is_empty() {
+            // A script has no class of its own to measure: CodeNarc skips it.
+            groups.push(("script", default_span(), true, units));
+        }
+
+        for (name, span, is_script, units) in groups {
+            let mut totals = Counts::default();
+            let mut scores: Vec<f64> = Vec::new();
+            for unit in &units {
+                if is_ignored(&self.ignored, &unit.name) {
+                    continue;
                 }
+                let counts = abc_counts(&unit.body);
+                let score = counts.magnitude();
+                totals.assignments += counts.assignments;
+                totals.branches += counts.branches;
+                totals.conditions += counts.conditions;
+                scores.push(score);
+                if score <= self.max_method_score {
+                    continue;
+                }
+                report_plain(
+                    context,
+                    sink,
+                    unit.span,
+                    format!(
+                        "The method {} has ABC score {score} (maximum {})",
+                        unit.name, self.max_method_score
+                    ),
+                );
             }
+            if scores.is_empty() || is_script {
+                continue;
+            }
+            let class_score = totals.magnitude();
+            let count = f64::from(u32::try_from(scores.len()).unwrap_or(u32::MAX));
+            let average = scores.iter().sum::<f64>() / count;
+            let over_class = self
+                .max_class_score
+                .is_some_and(|limit| limit > 0.0 && class_score > limit);
+            let over_average = self
+                .max_class_average
+                .is_some_and(|limit| limit > 0.0 && average > limit);
+            if !over_class && !over_average {
+                continue;
+            }
+            report_at_declaration(
+                context,
+                sink,
+                span,
+                format!("The class {name} has ABC score {class_score} (average {average:.1})"),
+            );
         }
     }
 }

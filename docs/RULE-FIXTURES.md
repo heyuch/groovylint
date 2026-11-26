@@ -55,7 +55,7 @@ What the harvester has to undo, because the tests are Groovy rather than plain t
 
 ```
 2959 cases (1565 expected violations, 1394 expected silence) over 398 rules
-2173 match CodeNarc      643 recorded as known differences      143 for rules out of scope
+2199 match CodeNarc      617 recorded as known differences      143 for rules out of scope
 ```
 
 Of the 382 rules this project registers, 378 have fixtures. The 20 corpus rules without
@@ -66,9 +66,9 @@ Known differences, by cause:
 
 | Cause | Cases | What it means |
 |---|---|---|
-| `missed` | 268 | the rule does not report a case CodeNarc reports |
-| `false-positive` | 206 | the rule reports a case CodeNarc allows |
-| `other-line` | 113 | the rule fires, but points at a different line |
+| `missed` | 256 | the rule does not report a case CodeNarc reports |
+| `false-positive` | 201 | the rule reports a case CodeNarc allows |
+| `other-line` | 104 | the rule fires, but points at a different line |
 | `ours-parser` | 56 | the snippet uses syntax our parser rejects |
 
 The `ours-parser` cases are a parser work list, not a rule work list. The first pass
@@ -79,13 +79,19 @@ declarations (`def (a, b) = ...`), `{ -> ... }` as a statement, labels
 `PARSER_BUDGET` in the test, so a parser regression fails the build instead of quietly
 joining the ledger.
 
+`MethodSize`, `ClassSize`, `AbcMetric` and `CyclomaticComplexity` now use `GMetrics`'
+definitions: assignment/branch/condition vectors for ABC (magnitude rounded to one
+decimal), decision points for cyclomatic, closure fields and the script body measured as
+methods, class thresholds of 0 disabled the way Groovy truth disables them, and
+`ignoreMethodNames` read as wildcards.
+
 The rules with the most failing cases, and why they are worth starting with:
 
 | Rule | Failing | Cause |
 |---|---|---|
 | `Indentation` | 8 | CodeNarc's indentation state machine differs on nested blocks |
-| `AbcMetric`, `CyclomaticComplexity`, `MethodSize`, `ClassSize`, `CrapMetric` | 5 + 4 + … | how a metric is counted |
-| `IllegalClassMember`, `ImplementationAsType`, `MissingOverrideAnnotation` | 5 each | need type resolution, which we do not have |
+| `CrapMetric` | 3 | needs cyclomatic complexity plus test coverage per method |
+| `IllegalClassMember`, `ImplementationAsType`, `MissingOverrideAnnotation` | 5 each | need type resolution; see `ROADMAP.md` §7.5 |
 | `NestedBlockDepth` | 5 | which statements count as a block |
 | `Space*Brace` | 4 each | the character-level skipping rules |
 | `IllegalPackageReference` | 4 | line attribution inside multi-line declarations |

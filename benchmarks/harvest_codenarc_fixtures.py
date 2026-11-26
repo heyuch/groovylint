@@ -472,12 +472,17 @@ def harvest(project: pathlib.Path, output: pathlib.Path) -> dict[str, int]:
             lines = '-'
             if case['kind'] != 'none':
                 lines = ','.join(str(line) for line in numbers)
+            # A unit separator keeps values that contain commas (ignoreStrings,
+            # packageNames, ...) unambiguous.
+            properties = PROPERTY_SEPARATOR.join(
+                f'{key}={value}' for key, value in sorted(case['properties'].items())
+            )
             rows.append([
                 rule_name,
                 f'{rule_name}/{name}',
                 case['path'] or '',
                 lines,
-                ','.join(f'{key}={value}' for key, value in sorted(case['properties'].items())),
+                properties,
             ])
             counters['cases'] += 1
             counters['positive' if case['kind'] != 'none' else 'negative'] += 1
@@ -490,6 +495,7 @@ def harvest(project: pathlib.Path, output: pathlib.Path) -> dict[str, int]:
 
 
 LEDGER = 'known-differences.tsv'
+PROPERTY_SEPARATOR = '\u001f'
 
 NOTICE = """\
 The Groovy snippets in this directory are copied from CodeNarc's rule tests

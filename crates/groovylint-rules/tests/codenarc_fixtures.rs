@@ -108,7 +108,9 @@ fn parse_expected(field: &str) -> Expected {
 
 fn parse_properties(field: &str) -> RuleProperties {
     let mut properties = RuleProperties::new();
-    for pair in field.split(',').filter(|part| !part.is_empty()) {
+    // Values may themselves contain commas, so the harvester separates pairs with
+    // U+001F instead.
+    for pair in field.split('\u{1f}').filter(|part| !part.is_empty()) {
         if let Some((key, value)) = pair.split_once('=') {
             properties.insert(key.to_string(), value.to_string());
         }

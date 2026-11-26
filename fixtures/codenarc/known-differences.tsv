@@ -9,13 +9,6 @@
 # difference is kept rather than fixed. Regenerate with
 # benchmarks/refresh_known_differences.py.
 #
-AbcMetric/003.groovy	missed: we do not report this case yet
-AbcMetric/004.groovy	other-line: the rule fires but on a different line
-AbcMetric/005.groovy	missed: we do not report this case yet
-AbcMetric/007.groovy	missed: we do not report this case yet
-AbcMetric/009.groovy	other-line: the rule fires but on a different line
-AbcMetric/010.groovy	missed: we do not report this case yet
-AbcMetric/011.groovy	missed: we do not report this case yet
 AbstractClassName/*	false-positive: we report a case CodeNarc allows
 AbstractClassWithoutAbstractMethod/*	false-positive: we report a case CodeNarc allows
 AddEmptyString/*	missed: we do not report this case yet
@@ -77,12 +70,6 @@ ConstantTernaryExpression/005.groovy	other-line: the rule fires but on a differe
 ConstantTernaryExpression/006.groovy	other-line: the rule fires but on a different line
 ConstantTernaryExpression/007.groovy	false-positive: we report a case CodeNarc allows
 CrapMetric/*	missed: we do not report this case yet
-CyclomaticComplexity/004.groovy	missed: we do not report this case yet
-CyclomaticComplexity/006.groovy	missed: we do not report this case yet
-CyclomaticComplexity/008.groovy	other-line: the rule fires but on a different line
-CyclomaticComplexity/010.groovy	other-line: the rule fires but on a different line
-CyclomaticComplexity/011.groovy	missed: we do not report this case yet
-CyclomaticComplexity/012.groovy	missed: we do not report this case yet
 DirectConnectionManagement/*	other-line: the rule fires but on a different line
 DoubleCheckedLocking/*	missed: we do not report this case yet
 DuplicateCaseStatement/*	other-line: the rule fires but on a different line
@@ -91,7 +78,6 @@ DuplicateListLiteral/*	other-line: the rule fires but on a different line
 DuplicateMapLiteral/008.groovy	other-line: the rule fires but on a different line
 DuplicateMapLiteral/013.groovy	missed: we do not report this case yet
 DuplicateNumberLiteral/002.groovy	other-line: the rule fires but on a different line
-DuplicateNumberLiteral/005.groovy	false-positive: we report a case CodeNarc allows
 DuplicateNumberLiteral/015.groovy	false-positive: we report a case CodeNarc allows
 DuplicateStringLiteral/*	false-positive: we report a case CodeNarc allows
 EmptyForStatement/*	ours-parser: our parser rejects this syntax
@@ -147,20 +133,15 @@ IllegalClassMember/001.groovy	missed: we do not report this case yet
 IllegalClassMember/002.groovy	missed: we do not report this case yet
 IllegalClassMember/003.groovy	missed: we do not report this case yet
 IllegalClassMember/004.groovy	missed: we do not report this case yet
-IllegalClassMember/005.groovy	missed: we do not report this case yet
+IllegalClassMember/005.groovy	other-line: the rule fires but on a different line
 IllegalClassMember/007.groovy	false-positive: we report a case CodeNarc allows
 IllegalClassMember/009.groovy	other-line: the rule fires but on a different line
 IllegalClassMember/010.groovy	false-positive: we report a case CodeNarc allows
 IllegalClassMember/012.groovy	other-line: the rule fires but on a different line
-IllegalPackageReference/002.groovy	other-line: the rule fires but on a different line
-IllegalPackageReference/014.groovy	other-line: the rule fires but on a different line
-IllegalPackageReference/016.groovy	missed: we do not report this case yet
-IllegalPackageReference/017.groovy	other-line: the rule fires but on a different line
-IllegalPackageReference/018.groovy	other-line: the rule fires but on a different line
+IllegalPackageReference/*	other-line: the rule fires but on a different line
 IllegalRegex/*	missed: we do not report this case yet
 IllegalString/*	missed: we do not report this case yet
-IllegalSubclass/002.groovy	other-line: the rule fires but on a different line
-IllegalSubclass/003.groovy	missed: we do not report this case yet
+IllegalSubclass/*	missed: we do not report this case yet
 ImplementationAsType/003.groovy	missed: we do not report this case yet
 ImplementationAsType/004.groovy	missed: we do not report this case yet
 ImplementationAsType/005.groovy	ours-parser: our parser rejects this syntax
@@ -247,11 +228,7 @@ LoggerWithWrongModifiers/008.groovy	false-positive: we report a case CodeNarc al
 LoggingSwallowsStacktrace/*	missed: we do not report this case yet
 MethodCount/*	ours-parser: our parser rejects this syntax
 MethodName/*	other-line: the rule fires but on a different line
-MethodSize/000.groovy	ours-parser: our parser rejects this syntax
-MethodSize/004.groovy	ours-parser: our parser rejects this syntax
-MethodSize/005.groovy	missed: we do not report this case yet
-MethodSize/006.groovy	false-positive: we report a case CodeNarc allows
-MethodSize/008.groovy	other-line: the rule fires but on a different line
+MethodSize/*	ours-parser: our parser rejects this syntax
 MissingBlankLineAfterImports/000.groovy	false-positive: we report a case CodeNarc allows
 MissingBlankLineAfterImports/001.groovy	other-line: the rule fires but on a different line
 MissingBlankLineAfterImports/004.groovy	missed: we do not report this case yet
@@ -298,7 +275,6 @@ PrivateFieldCouldBeFinal/013.groovy	missed: we do not report this case yet
 PrivateFieldCouldBeFinal/014.groovy	missed: we do not report this case yet
 PrivateFieldCouldBeFinal/015.groovy	other-line: the rule fires but on a different line
 PrivateFieldCouldBeFinal/023.groovy	missed: we do not report this case yet
-PrivateFieldCouldBeFinal/024.groovy	false-positive: we report a case CodeNarc allows
 PropertyName/013.groovy	false-positive: we report a case CodeNarc allows
 PropertyName/016.groovy	other-line: the rule fires but on a different line
 PropertyName/018.groovy	false-positive: we report a case CodeNarc allows
@@ -481,8 +457,7 @@ UnusedMethodParameter/004.groovy	false-positive: we report a case CodeNarc allow
 UnusedMethodParameter/005.groovy	false-positive: we report a case CodeNarc allows
 UnusedMethodParameter/015.groovy	missed: we do not report this case yet
 UnusedObject/*	missed: we do not report this case yet
-UnusedPrivateMethod/015.groovy	false-positive: we report a case CodeNarc allows
-UnusedPrivateMethod/029.groovy	missed: we do not report this case yet
+UnusedPrivateMethod/*	missed: we do not report this case yet
 UnusedPrivateMethodParameter/*	false-positive: we report a case CodeNarc allows
 UnusedVariable/002.groovy	missed: we do not report this case yet
 UnusedVariable/005.groovy	missed: we do not report this case yet

@@ -533,6 +533,40 @@ These are intentionally outside the current CodeNarc-completion goal:
 - **ArchUnit-style architecture rules**: deferred pending the real-project
   feature survey.
 
+## 7.5 A Groovy type system, for the rules that need one
+
+Measured against `fixtures/codenarc/` (see
+[`docs/RULE-FIXTURES.md`](docs/RULE-FIXTURES.md)), a group of rules stays out of
+reach because they need to know what a name *means*, not only where it is written:
+
+| Rule | What it needs |
+|---|---|
+| `MissingOverrideAnnotation` | whether a method overrides a supertype method |
+| `ImplementationAsType` | whether a declared type is an interface |
+| `IllegalClassMember` | member names of a configured class |
+| `JdbcConnectionReference`, `IllegalPackageReference` | the type a variable actually holds |
+| `UnusedImport`, `UnnecessaryPackageReference` | what an import binds, and what shadows it |
+| `CrapMetric` | cyclomatic complexity plus test coverage of the method |
+
+Today those rules work on written names, which is why they over- and under-report
+in the fixture corpus. Closing that gap means a tiered type model, cheapest first:
+
+1. **Local inference** — literals, `new`, casts, declared types on fields, params,
+   locals and returns. No classpath. Resolves most of the "what type is this
+   variable" questions inside one file.
+2. **Project index** — parse every Groovy source in the repository once, index
+   declared types, their supertypes, members and static imports. Still no
+   bytecode, but enough for `MissingOverrideAnnotation` and `ImplementationAsType`
+   within the project.
+3. **Optional classpath** — accept a compile classpath (Gradle hands one over
+   easily) and resolve library types by reading signatures from jars. This is the
+   only tier that answers questions about Spring, JDK and third-party types.
+
+Each tier must degrade to the previous one: a rule that cannot resolve a name
+reports nothing rather than guessing, which keeps the "no new false positives"
+promise. Nothing here is scheduled; it is the largest single piece of work left and
+it should be designed before it is built.
+
 ## 8. Non-goals and anti-goals
 
 - Do not implement Grails, Jenkins, or Spock rules.
