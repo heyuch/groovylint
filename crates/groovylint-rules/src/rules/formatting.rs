@@ -4,7 +4,7 @@
 //! implemented on the raw text rather than the AST.
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{ClassDecl, ExprKind};
+use groovylint_syntax::ast::{Block, ClassDecl, ExprKind, MethodDecl, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use groovylint_syntax::token::TokenKind;
@@ -564,12 +564,64 @@ impl AstRule for SpaceAroundClosureArrowRule {
 }
 
 /// Flags whitespace between a method call name and its arguments.
+#[derive(Default)]
 pub struct SpaceAfterMethodCallNameRule;
 
 impl Rule for SpaceAfterMethodCallNameRule {}
 
-impl FileRule for SpaceAfterMethodCallNameRule {
-    fn check(&mut self, _context: &FileContext<'_>, _sink: &mut DiagnosticSink<'_>) {}
+impl TokenRule for SpaceAfterMethodCallNameRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let tokens = context.tokens;
+        for window in tokens.windows(2) {
+            let [name, open] = window else {
+                continue;
+            };
+            if name.kind != TokenKind::Ident || open.kind != TokenKind::LeftParen {
+                continue;
+            }
+            let gap = &context.source.text()[name.span.end..open.span.start];
+            if gap.is_empty() || gap.contains('\n') {
+                continue;
+            }
+            if is_declaration_name(tokens, name) {
+                continue;
+            }
+            report_line(
+                context,
+                sink,
+                line_of(context, name.span.start),
+                "There is whitespace between the method name and parenthesis in a method call",
+            );
+        }
+    }
+}
+
+/// Whether the identifier is the name in a declaration rather than in a call.
+fn is_declaration_name(
+    tokens: &[groovylint_syntax::token::Token],
+    name: &groovylint_syntax::token::Token,
+) -> bool {
+    let position = tokens
+        .iter()
+        .position(|token| token.span.start == name.span.start);
+    let Some(position) = position else {
+        return false;
+    };
+    let previous = position.checked_sub(1).and_then(|index| tokens.get(index));
+    matches!(
+        previous.map(|token| token.kind),
+        Some(
+            TokenKind::Def
+                | TokenKind::Void
+                | TokenKind::Public
+                | TokenKind::Private
+                | TokenKind::Protected
+                | TokenKind::Static
+                | TokenKind::Final
+                | TokenKind::Abstract
+                | TokenKind::Synchronized
+        )
+    )
 }
 
 /// Flags whitespace between a method declaration name and its parameter list.
@@ -577,97 +629,234 @@ pub struct SpaceAfterMethodDeclarationNameRule;
 
 impl Rule for SpaceAfterMethodDeclarationNameRule {}
 
-impl FileRule for SpaceAfterMethodDeclarationNameRule {
-    fn check(&mut self, _context: &FileContext<'_>, _sink: &mut DiagnosticSink<'_>) {}
-}
+impl AstRule for SpaceAfterMethodDeclarationNameRule {
+    fn interests(&self) -> NodeMask {
+        NodeMask::of(NodeKind::Method)
+    }
 
-macro_rules! brace_placement_rule {
-    ($struct_name:ident, $rule:literal, $class:literal, $description:literal, $kinds:expr) => {
-        #[doc = $description]
-        pub struct $struct_name;
-
-        impl Rule for $struct_name {}
-
-        impl AstRule for $struct_name {
-            fn interests(&self) -> NodeMask {
-                $kinds
-            }
-
-            fn enter(
-                &mut self,
-                node: NodeRef<'_>,
-                context: &FileContext<'_>,
-                sink: &mut DiagnosticSink<'_>,
-            ) {
-                let span = match node {
-                    NodeRef::Class(class) => Some(class.span),
-                    NodeRef::Method(method) => Some(method.span),
-                    NodeRef::Stmt(stmt) => Some(stmt.span()),
-                    _ => None,
-                };
-                let Some(span) = span else {
-                    return;
-                };
-                let text = context.source.text();
-                let start = line_of(context, span.start);
-                let end = line_of(context, span.end);
-                for line in start..=end {
-                    let Some(content) = context.source.line_text(line) else {
-                        break;
-                    };
-                    let trimmed = content.trim_start();
-                    if !trimmed.starts_with('{') || line == start {
-                        continue;
-                    }
-                    let _ = text;
-                    report_line(
-                        context,
-                        sink,
-                        line,
-                        "Opening brace should be on the same line as the declaration",
-                    );
-                    break;
-                }
-            }
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let NodeRef::Method(method) = node else {
+            return;
+        };
+        let line = line_of(context, method.span.start);
+        let Some(text) = context.source.line_text(line) else {
+            return;
+        };
+        let Some(index) = text.find('(') else {
+            return;
+        };
+        let before = &text[..index];
+        if before.trim_end().len() == before.len() {
+            return;
         }
-    };
+        if !before.trim_end().ends_with(&method.name) {
+            return;
+        }
+        report_line(
+            context,
+            sink,
+            line,
+            "There is trailing whitespace in the method name declaration",
+        );
+    }
 }
 
-brace_placement_rule!(
-    BracesForClassRule,
-    "BracesForClass",
-    "org.codenarc.rule.formatting.BracesForClassRule",
-    "Requires the class opening brace on the declaration line.",
-    NodeMask::of(NodeKind::Class)
-);
-brace_placement_rule!(
-    BracesForMethodRule,
-    "BracesForMethod",
-    "org.codenarc.rule.formatting.BracesForMethodRule",
-    "Requires the method opening brace on the declaration line.",
-    NodeMask::of(NodeKind::Method)
-);
-brace_placement_rule!(
-    BracesForForLoopRule,
-    "BracesForForLoop",
-    "org.codenarc.rule.formatting.BracesForForLoopRule",
-    "Requires the loop opening brace on the statement line.",
-    NodeMask::of(NodeKind::For).union(NodeMask::of(NodeKind::ForEach))
-);
-brace_placement_rule!(
-    BracesForIfElseRule,
-    "BracesForIfElse",
-    "org.codenarc.rule.formatting.BracesForIfElseRule",
-    "Requires the if opening brace on the statement line.",
-    NodeMask::of(NodeKind::If)
-);
-brace_placement_rule!(
-    BracesForTryCatchFinallyRule,
-    "BracesForTryCatchFinally",
-    "org.codenarc.rule.formatting.BracesForTryCatchFinallyRule",
-    "Requires the try opening brace on the statement line.",
-    NodeMask::of(NodeKind::Try)
-);
+/// Flags an opening brace on the wrong line.
+///
+/// `CodeNarc` defaults `sameLine` to true, which is what the property describes: the
+/// brace belongs on the line the declaration ends on.
+pub struct BracePlacementRule {
+    kinds: NodeMask,
+    same_line: bool,
+    allow_next_line_when_multiline: bool,
+}
+
+impl BracePlacementRule {
+    const fn new(kinds: NodeMask) -> Self {
+        Self {
+            kinds,
+            same_line: true,
+            allow_next_line_when_multiline: false,
+        }
+    }
+}
+
+impl Rule for BracePlacementRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("sameLine") {
+            self.same_line = value != "false";
+        }
+        if let Some(value) = properties.get("allowBraceOnNextLineForMultilineDeclarations") {
+            self.allow_next_line_when_multiline = value != "false";
+        }
+        Ok(())
+    }
+}
+
+impl AstRule for BracePlacementRule {
+    fn interests(&self) -> NodeMask {
+        self.kinds
+    }
+
+    fn enter(
+        &mut self,
+        node: NodeRef<'_>,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        match node {
+            NodeRef::Class(class) => self.check_class(class.span, context, sink),
+            NodeRef::Method(method) => self.check_method(method, context, sink),
+            NodeRef::Stmt(stmt) => self.check_statement(stmt, context, sink),
+            _ => {}
+        }
+    }
+}
+
+impl BracePlacementRule {
+    fn check_class(
+        &self,
+        span: groovylint_core::Span,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let start = line_of(context, span.start);
+        let Some(brace) = first_line_with_brace(context, start, line_of(context, span.end)) else {
+            return;
+        };
+        // CodeNarc only looks at whether the brace line *starts* with the brace:
+        // `class A extends B {` is fine, a line holding nothing but `{` is not.
+        let starts_with_brace = line_starts_with_brace(context, brace);
+        if self.same_line != starts_with_brace {
+            return;
+        }
+        let message = if self.same_line {
+            "Opening brace should be on the same line as the declaration"
+        } else {
+            "Opening brace should be on a new line"
+        };
+        report_line(context, sink, brace, message);
+    }
+
+    fn check_method(
+        &self,
+        method: &MethodDecl,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        // Interfaces and abstract methods have no body, so they have no brace.
+        let Some(body) = &method.body else {
+            return;
+        };
+        let declaration = line_of(context, method.span.start);
+        let body_start = line_of(context, body.span.start);
+        let brace_on_same_line = brace_follows_header(context, body.span.start);
+        if self.same_line == brace_on_same_line {
+            return;
+        }
+        if !self.same_line {
+            report_line(
+                context,
+                sink,
+                declaration,
+                "Opening brace should be on a new line",
+            );
+            return;
+        }
+        let multiline = line_of(context, method.span.end) > declaration;
+        if multiline
+            && self.allow_next_line_when_multiline
+            && line_starts_with_brace(context, body_start)
+        {
+            return;
+        }
+        report_line(
+            context,
+            sink,
+            declaration,
+            "Opening brace should be on the same line as the declaration",
+        );
+    }
+
+    fn check_statement(
+        &self,
+        stmt: &Stmt,
+        context: &FileContext<'_>,
+        sink: &mut DiagnosticSink<'_>,
+    ) {
+        let Some(body) = statement_block(stmt) else {
+            return;
+        };
+        let brace_on_same_line = brace_follows_header(context, body.span.start);
+        if self.same_line == brace_on_same_line {
+            return;
+        }
+        let message = if self.same_line {
+            "Opening brace should be on the same line as the declaration"
+        } else {
+            "Opening brace should be on a new line"
+        };
+        report_line(context, sink, line_of(context, stmt.span().start), message);
+    }
+}
+
+/// The block a statement opens, when the rule cares about its braces.
+fn statement_block(stmt: &Stmt) -> Option<&Block> {
+    if let Stmt::Try(statement) = stmt {
+        return Some(&statement.body);
+    }
+    let block: &Stmt = match stmt {
+        Stmt::If(statement) => &statement.then_branch,
+        Stmt::While(statement) => &statement.body,
+        Stmt::For(statement) => &statement.body,
+        Stmt::ForEach(statement) => &statement.body,
+        _ => return None,
+    };
+    match block {
+        Stmt::Block(block) => Some(block),
+        _ => None,
+    }
+}
+
+/// Whether the brace that opens a body sits on the line its header ends on.
+fn brace_follows_header(context: &FileContext<'_>, brace: usize) -> bool {
+    let previous = last_visible_offset(context, brace.saturating_sub(1));
+    line_of(context, previous) == line_of(context, brace)
+}
+
+fn last_visible_offset(context: &FileContext<'_>, before: usize) -> usize {
+    let text = context.source.text();
+    let mut index = before.min(text.len());
+    while index > 0 {
+        let character = text[..index].chars().next_back();
+        match character {
+            Some(character) if character.is_whitespace() => index -= character.len_utf8(),
+            _ => return index.saturating_sub(1),
+        }
+    }
+    0
+}
+
+fn first_line_with_brace(context: &FileContext<'_>, from: usize, to: usize) -> Option<usize> {
+    (from..=to).find(|line| {
+        context
+            .source
+            .line_text(*line)
+            .is_some_and(|text| text.contains('{'))
+    })
+}
+
+fn line_starts_with_brace(context: &FileContext<'_>, line: usize) -> bool {
+    context
+        .source
+        .line_text(line)
+        .is_some_and(|text| text.trim_start().starts_with('{'))
+}
 
 /// Flags indentation that is not a multiple of the configured width.
 #[derive(Default)]
@@ -1027,7 +1216,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Method calls should not have space before arguments.",
             ),
-            || RuleInstanceImpl::File(Box::new(SpaceAfterMethodCallNameRule)),
+            || RuleInstanceImpl::Token(Box::new(SpaceAfterMethodCallNameRule)),
         ),
         descriptor(
             RuleMeta::new(
@@ -1037,7 +1226,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Method declarations should not have space before the parameter list.",
             ),
-            || RuleInstanceImpl::File(Box::new(SpaceAfterMethodDeclarationNameRule)),
+            || RuleInstanceImpl::Ast(Box::new(SpaceAfterMethodDeclarationNameRule)),
         ),
         descriptor(
             RuleMeta::new(
@@ -1087,7 +1276,11 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Opening braces for classes belong on the declaration line.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(BracesForClassRule)),
+            || {
+                RuleInstanceImpl::Ast(Box::new(BracePlacementRule::new(NodeMask::of(
+                    NodeKind::Class,
+                ))))
+            },
         ),
         descriptor(
             RuleMeta::new(
@@ -1097,7 +1290,11 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Opening braces for methods belong on the declaration line.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(BracesForMethodRule)),
+            || {
+                RuleInstanceImpl::Ast(Box::new(BracePlacementRule::new(NodeMask::of(
+                    NodeKind::Method,
+                ))))
+            },
         ),
         descriptor(
             RuleMeta::new(
@@ -1107,7 +1304,11 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Opening braces for loops belong on the statement line.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(BracesForForLoopRule)),
+            || {
+                RuleInstanceImpl::Ast(Box::new(BracePlacementRule::new(
+                    NodeMask::of(NodeKind::For).union(NodeMask::of(NodeKind::ForEach)),
+                )))
+            },
         ),
         descriptor(
             RuleMeta::new(
@@ -1117,7 +1318,11 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Opening braces for if statements belong on the statement line.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(BracesForIfElseRule)),
+            || {
+                RuleInstanceImpl::Ast(Box::new(BracePlacementRule::new(NodeMask::of(
+                    NodeKind::If,
+                ))))
+            },
         ),
         descriptor(
             RuleMeta::new(
@@ -1127,7 +1332,11 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Opening braces for try statements belong on the statement line.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(BracesForTryCatchFinallyRule)),
+            || {
+                RuleInstanceImpl::Ast(Box::new(BracePlacementRule::new(NodeMask::of(
+                    NodeKind::Try,
+                ))))
+            },
         ),
         descriptor(
             RuleMeta::new(
@@ -1617,14 +1826,15 @@ impl TokenRule for SpaceAroundOperatorRule {
             ) else {
                 continue;
             };
+            // An operator in prefix position is unary, and unary operators carry no
+            // spaces by design: `-x`, `!ready`, `a * -b`.
+            if !can_end_expression(previous.kind) {
+                continue;
+            }
             let before = gap(source, previous.span.end, token.span.start);
             let after = gap(source, token.span.end, next.span.start);
-            let before_ok = !before.is_empty()
-                || previous.kind == TokenKind::Newline
-                || previous.span.end == token.span.start;
-            let after_ok = !after.is_empty()
-                || next.kind == TokenKind::Newline
-                || next.span.start == token.span.end;
+            let before_ok = !before.is_empty() || previous.kind == TokenKind::Newline;
+            let after_ok = !after.is_empty() || next.kind == TokenKind::Newline;
             if before_ok && after_ok {
                 continue;
             }
@@ -1636,6 +1846,24 @@ impl TokenRule for SpaceAroundOperatorRule {
             );
         }
     }
+}
+
+/// Whether a token can be the left operand of a binary operator.
+fn can_end_expression(kind: TokenKind) -> bool {
+    !matches!(
+        kind,
+        TokenKind::LeftParen
+            | TokenKind::LeftBracket
+            | TokenKind::LeftBrace
+            | TokenKind::Comma
+            | TokenKind::Colon
+            | TokenKind::Question
+            | TokenKind::Assign
+            | TokenKind::Semicolon
+            | TokenKind::Newline
+            | TokenKind::Return
+            | TokenKind::Arrow
+    ) && !is_binary_operator(kind)
 }
 
 fn is_binary_operator(kind: TokenKind) -> bool {

@@ -1,11 +1,11 @@
 
-            def myClosure = {
+            Object myMethod() {
                 doStuff()
                 if (ready) {
-                    'abc'
+                    [1, 2, 3]
+                } else {
+                    Boolean.FALSE
                 }
                 doOtherStuff()
-                if (ready) 123
-                doSomeOtherStuff()
             }
         

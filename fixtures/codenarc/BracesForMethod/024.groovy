@@ -1,13 +1,8 @@
 
             class MyClass {
-                @AnAnnotation
-                // some comment
-                void aMethod() {
-                }
-
-                @AnAnnotation("abc")
-                // some comment
-                void aMethod() {
+                int size(String name)    // What about {}
+                {
+                    return 99
                 }
             }
         

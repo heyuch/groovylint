@@ -5,6 +5,10 @@
 # when a listed case passes, and when a listed case is no longer in the corpus.
 # docs/RULE-FIXTURES.md explains the buckets.
 #
+# `better:` rows are deliberate: groovylint's answer is the correct one there, so the
+# difference is kept rather than fixed. Regenerate with
+# benchmarks/refresh_known_differences.py.
+#
 AbcMetric/003.groovy	missed: we do not report this case yet
 AbcMetric/004.groovy	other-line: the rule fires but on a different line
 AbcMetric/005.groovy	missed: we do not report this case yet
@@ -22,48 +26,12 @@ BlankLineBeforePackage/002.groovy	missed: we do not report this case yet
 BlankLineBeforePackage/003.groovy	missed: we do not report this case yet
 BlankLineBeforePackage/004.groovy	missed: we do not report this case yet
 BlankLineBeforePackage/005.groovy	false-positive: we report a case CodeNarc allows
-BlockEndsWithBlankLine/*	ours-parser: our parser rejects this syntax
+BlockEndsWithBlankLine/*	other-line: the rule fires but on a different line
 BlockStartsWithBlankLine/001.groovy	false-positive: we report a case CodeNarc allows
-BlockStartsWithBlankLine/005.groovy	ours-parser: our parser rejects this syntax
-BlockStartsWithBlankLine/007.groovy	ours-parser: our parser rejects this syntax
+BlockStartsWithBlankLine/007.groovy	other-line: the rule fires but on a different line
 BlockStartsWithBlankLine/010.groovy	ours-parser: our parser rejects this syntax
 BooleanMethodReturnsNull/*	missed: we do not report this case yet
-BracesForClass/003.groovy	false-positive: we report a case CodeNarc allows
-BracesForClass/004.groovy	missed: we do not report this case yet
-BracesForClass/008.groovy	false-positive: we report a case CodeNarc allows
-BracesForClass/009.groovy	missed: we do not report this case yet
-BracesForClass/010.groovy	other-line: the rule fires but on a different line
-BracesForClass/011.groovy	missed: we do not report this case yet
-BracesForClass/012.groovy	missed: we do not report this case yet
-BracesForForLoop/001.groovy	false-positive: we report a case CodeNarc allows
-BracesForForLoop/003.groovy	missed: we do not report this case yet
-BracesForForLoop/004.groovy	missed: we do not report this case yet
-BracesForForLoop/005.groovy	false-positive: we report a case CodeNarc allows
-BracesForIfElse/000.groovy	false-positive: we report a case CodeNarc allows
-BracesForIfElse/003.groovy	other-line: the rule fires but on a different line
-BracesForIfElse/004.groovy	other-line: the rule fires but on a different line
-BracesForIfElse/005.groovy	other-line: the rule fires but on a different line
-BracesForMethod/003.groovy	other-line: the rule fires but on a different line
-BracesForMethod/004.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/005.groovy	missed: we do not report this case yet
-BracesForMethod/013.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/014.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/015.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/016.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/017.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/018.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/019.groovy	ours-parser: our parser rejects this syntax
-BracesForMethod/020.groovy	missed: we do not report this case yet
-BracesForMethod/021.groovy	missed: we do not report this case yet
-BracesForMethod/023.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/025.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/026.groovy	other-line: the rule fires but on a different line
-BracesForMethod/028.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/029.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/030.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/031.groovy	false-positive: we report a case CodeNarc allows
-BracesForMethod/032.groovy	other-line: the rule fires but on a different line
-BracesForMethod/033.groovy	other-line: the rule fires but on a different line
+BracesForClass/*	false-positive: we report a case CodeNarc allows
 BracesForTryCatchFinally/*	ours-parser: our parser rejects this syntax
 BusyWait/*	false-positive: we report a case CodeNarc allows
 ClassEndsWithBlankLine/002.groovy	missed: we do not report this case yet
@@ -80,7 +48,6 @@ ClassEndsWithBlankLine/023.groovy	missed: we do not report this case yet
 ClassEndsWithBlankLine/024.groovy	other-line: the rule fires but on a different line
 ClassEndsWithBlankLine/028.groovy	false-positive: we report a case CodeNarc allows
 ClassJavadoc/*	missed: we do not report this case yet
-ClassName/*	false-positive: we report a case CodeNarc allows
 ClassNameSameAsFilename/*	false-positive: we report a case CodeNarc allows
 ClassNameSameAsSuperclass/*	missed: we do not report this case yet
 ClassSize/*	ours-parser: our parser rejects this syntax
@@ -119,8 +86,7 @@ ComparisonWithSelf/*	other-line: the rule fires but on a different line
 ConfusingMethodName/001.groovy	missed: we do not report this case yet
 ConfusingMethodName/005.groovy	other-line: the rule fires but on a different line
 ConfusingMethodName/006.groovy	missed: we do not report this case yet
-ConfusingMultipleReturns/000.groovy	ours-parser: our parser rejects this syntax
-ConfusingMultipleReturns/002.groovy	other-line: the rule fires but on a different line
+ConfusingMultipleReturns/*	other-line: the rule fires but on a different line
 ConfusingTernary/*	missed: we do not report this case yet
 ConsecutiveLiteralAppends/*	false-positive: we report a case CodeNarc allows
 ConsecutiveStringConcatenation/000.groovy	false-positive: we report a case CodeNarc allows
@@ -154,7 +120,6 @@ DuplicateImport/*	ours-parser: our parser rejects this syntax
 DuplicateListLiteral/*	other-line: the rule fires but on a different line
 DuplicateMapLiteral/008.groovy	other-line: the rule fires but on a different line
 DuplicateMapLiteral/013.groovy	missed: we do not report this case yet
-DuplicateNumberLiteral/000.groovy	ours-parser: our parser rejects this syntax
 DuplicateNumberLiteral/002.groovy	other-line: the rule fires but on a different line
 DuplicateNumberLiteral/005.groovy	false-positive: we report a case CodeNarc allows
 DuplicateNumberLiteral/014.groovy	other-line: the rule fires but on a different line
@@ -162,7 +127,7 @@ DuplicateNumberLiteral/015.groovy	false-positive: we report a case CodeNarc allo
 DuplicateNumberLiteral/017.groovy	false-positive: we report a case CodeNarc allows
 DuplicateNumberLiteral/019.groovy	false-positive: we report a case CodeNarc allows
 DuplicateNumberLiteral/023.groovy	other-line: the rule fires but on a different line
-DuplicateStringLiteral/000.groovy	ours-parser: our parser rejects this syntax
+DuplicateStringLiteral/000.groovy	false-positive: we report a case CodeNarc allows
 DuplicateStringLiteral/014.groovy	other-line: the rule fires but on a different line
 DuplicateStringLiteral/015.groovy	false-positive: we report a case CodeNarc allows
 DuplicateStringLiteral/016.groovy	false-positive: we report a case CodeNarc allows
@@ -179,7 +144,7 @@ EnumCustomSerializationIgnored/*	false-positive: we report a case CodeNarc allow
 EqualsOverloaded/*	false-positive: we report a case CodeNarc allows
 ExceptionExtendsError/*	false-positive: we report a case CodeNarc allows
 ExceptionExtendsThrowable/*	false-positive: we report a case CodeNarc allows
-ExplicitArrayListInstantiation/*	ours-parser: our parser rejects this syntax
+ExplicitArrayListInstantiation/*	false-positive: we report a case CodeNarc allows
 ExplicitCallToEqualsMethod/*	false-positive: we report a case CodeNarc allows
 ExplicitCallToMultiplyMethod/*	false-positive: we report a case CodeNarc allows
 ExplicitCallToPlusMethod/*	false-positive: we report a case CodeNarc allows
@@ -187,28 +152,24 @@ ExplicitCallToPutAtMethod/000.groovy	false-positive: we report a case CodeNarc a
 ExplicitCallToPutAtMethod/002.groovy	missed: we do not report this case yet
 ExplicitCallToPutAtMethod/003.groovy	missed: we do not report this case yet
 ExplicitGarbageCollection/*	missed: we do not report this case yet
-ExplicitHashMapInstantiation/*	ours-parser: our parser rejects this syntax
-ExplicitHashSetInstantiation/*	ours-parser: our parser rejects this syntax
-ExplicitLinkedHashMapInstantiation/*	ours-parser: our parser rejects this syntax
-ExplicitLinkedListInstantiation/*	ours-parser: our parser rejects this syntax
-ExplicitStackInstantiation/*	ours-parser: our parser rejects this syntax
-ExplicitTreeSetInstantiation/*	ours-parser: our parser rejects this syntax
+ExplicitHashMapInstantiation/*	false-positive: we report a case CodeNarc allows
+ExplicitHashSetInstantiation/*	false-positive: we report a case CodeNarc allows
+ExplicitLinkedHashMapInstantiation/*	false-positive: we report a case CodeNarc allows
+ExplicitLinkedListInstantiation/*	false-positive: we report a case CodeNarc allows
+ExplicitStackInstantiation/*	false-positive: we report a case CodeNarc allows
+ExplicitTreeSetInstantiation/*	false-positive: we report a case CodeNarc allows
 FactoryMethodName/*	false-positive: we report a case CodeNarc allows
-FieldName/000.groovy	false-positive: we report a case CodeNarc allows
-FieldName/009.groovy	false-positive: we report a case CodeNarc allows
-FieldName/010.groovy	false-positive: we report a case CodeNarc allows
-FieldName/012.groovy	false-positive: we report a case CodeNarc allows
+FieldName/013.groovy	missed: we do not report this case yet
+FieldName/014.groovy	missed: we do not report this case yet
 FieldName/015.groovy	false-positive: we report a case CodeNarc allows
 FieldName/016.groovy	false-positive: we report a case CodeNarc allows
-FieldName/017.groovy	false-positive: we report a case CodeNarc allows
 FieldName/020.groovy	other-line: the rule fires but on a different line
 FieldName/022.groovy	false-positive: we report a case CodeNarc allows
 FieldTypeRequired/*	other-line: the rule fires but on a different line
 FileCreateTempFile/*	false-positive: we report a case CodeNarc allows
 FileEndsWithoutNewline/*	false-positive: we report a case CodeNarc allows
 FinalClassWithProtectedMember/*	false-positive: we report a case CodeNarc allows
-GStringExpressionWithinString/000.groovy	false-positive: we report a case CodeNarc allows
-GStringExpressionWithinString/006.groovy	ours-parser: our parser rejects this syntax
+GStringExpressionWithinString/*	false-positive: we report a case CodeNarc allows
 GetterMethodCouldBeProperty/001.groovy	false-positive: we report a case CodeNarc allows
 GetterMethodCouldBeProperty/009.groovy	missed: we do not report this case yet
 GetterMethodCouldBeProperty/013.groovy	missed: we do not report this case yet
@@ -223,7 +184,6 @@ IfStatementCouldBeTernary/002.groovy	false-positive: we report a case CodeNarc a
 IfStatementCouldBeTernary/003.groovy	false-positive: we report a case CodeNarc allows
 IfStatementCouldBeTernary/005.groovy	false-positive: we report a case CodeNarc allows
 IfStatementCouldBeTernary/007.groovy	other-line: the rule fires but on a different line
-IfStatementCouldBeTernary/010.groovy	missed: we do not report this case yet
 IllegalClassMember/001.groovy	missed: we do not report this case yet
 IllegalClassMember/002.groovy	missed: we do not report this case yet
 IllegalClassMember/003.groovy	missed: we do not report this case yet
@@ -233,23 +193,11 @@ IllegalClassMember/007.groovy	false-positive: we report a case CodeNarc allows
 IllegalClassMember/009.groovy	other-line: the rule fires but on a different line
 IllegalClassMember/010.groovy	false-positive: we report a case CodeNarc allows
 IllegalClassMember/012.groovy	other-line: the rule fires but on a different line
-IllegalPackageReference/001.groovy	missed: we do not report this case yet
-IllegalPackageReference/002.groovy	missed: we do not report this case yet
-IllegalPackageReference/003.groovy	missed: we do not report this case yet
-IllegalPackageReference/005.groovy	missed: we do not report this case yet
-IllegalPackageReference/006.groovy	missed: we do not report this case yet
-IllegalPackageReference/007.groovy	missed: we do not report this case yet
-IllegalPackageReference/008.groovy	missed: we do not report this case yet
-IllegalPackageReference/009.groovy	missed: we do not report this case yet
-IllegalPackageReference/010.groovy	missed: we do not report this case yet
-IllegalPackageReference/011.groovy	missed: we do not report this case yet
-IllegalPackageReference/012.groovy	missed: we do not report this case yet
-IllegalPackageReference/013.groovy	missed: we do not report this case yet
+IllegalPackageReference/002.groovy	other-line: the rule fires but on a different line
 IllegalPackageReference/014.groovy	other-line: the rule fires but on a different line
 IllegalPackageReference/016.groovy	missed: we do not report this case yet
-IllegalPackageReference/017.groovy	missed: we do not report this case yet
-IllegalPackageReference/018.groovy	missed: we do not report this case yet
-IllegalPackageReference/019.groovy	missed: we do not report this case yet
+IllegalPackageReference/017.groovy	other-line: the rule fires but on a different line
+IllegalPackageReference/018.groovy	other-line: the rule fires but on a different line
 IllegalRegex/*	missed: we do not report this case yet
 IllegalString/*	missed: we do not report this case yet
 IllegalSubclass/002.groovy	other-line: the rule fires but on a different line
@@ -274,13 +222,12 @@ Indentation/021.groovy	other-line: the rule fires but on a different line
 Indentation/025.groovy	other-line: the rule fires but on a different line
 Indentation/031.groovy	ours-parser: our parser rejects this syntax
 Indentation/038.groovy	false-positive: we report a case CodeNarc allows
-Indentation/039.groovy	ours-parser: our parser rejects this syntax
-Indentation/040.groovy	ours-parser: our parser rejects this syntax
-Indentation/041.groovy	ours-parser: our parser rejects this syntax
+Indentation/041.groovy	missed: we do not report this case yet
 Indentation/042.groovy	false-positive: we report a case CodeNarc allows
 Indentation/048.groovy	false-positive: we report a case CodeNarc allows
 Indentation/050.groovy	other-line: the rule fires but on a different line
 Indentation/051.groovy	false-positive: we report a case CodeNarc allows
+Indentation/052.groovy	ours-parser: our parser rejects this syntax
 InsecureRandom/*	missed: we do not report this case yet
 Instanceof/*	false-positive: we report a case CodeNarc allows
 InterfaceName/*	false-positive: we report a case CodeNarc allows
@@ -314,44 +261,24 @@ JUnitUnnecessaryThrowsException/003.groovy	false-positive: we report a case Code
 JUnitUnnecessaryThrowsException/008.groovy	other-line: the rule fires but on a different line
 JavaIoPackageAccess/000.groovy	false-positive: we report a case CodeNarc allows
 JavaIoPackageAccess/005.groovy	missed: we do not report this case yet
-JavadocEmptyAuthorTag/003.groovy	missed: we do not report this case yet
-JavadocEmptyAuthorTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptyExceptionTag/003.groovy	missed: we do not report this case yet
-JavadocEmptyExceptionTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptyFirstLine/*	missed: we do not report this case yet
-JavadocEmptyLastLine/*	missed: we do not report this case yet
-JavadocEmptyParamTag/003.groovy	missed: we do not report this case yet
-JavadocEmptyParamTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptyReturnTag/003.groovy	missed: we do not report this case yet
-JavadocEmptyReturnTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptySeeTag/003.groovy	missed: we do not report this case yet
-JavadocEmptySeeTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptySinceTag/003.groovy	missed: we do not report this case yet
-JavadocEmptySinceTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptyThrowsTag/003.groovy	missed: we do not report this case yet
-JavadocEmptyThrowsTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocEmptyVersionTag/003.groovy	missed: we do not report this case yet
-JavadocEmptyVersionTag/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocMissingExceptionDescription/003.groovy	missed: we do not report this case yet
-JavadocMissingExceptionDescription/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocMissingParamDescription/003.groovy	missed: we do not report this case yet
-JavadocMissingParamDescription/004.groovy	false-positive: we report a case CodeNarc allows
-JavadocMissingThrowsDescription/003.groovy	missed: we do not report this case yet
-JavadocMissingThrowsDescription/004.groovy	false-positive: we report a case CodeNarc allows
+JavadocEmptyAuthorTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptyExceptionTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptyParamTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptyReturnTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptySeeTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptySinceTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptyThrowsTag/*	false-positive: we report a case CodeNarc allows
+JavadocEmptyVersionTag/*	false-positive: we report a case CodeNarc allows
+JavadocMissingExceptionDescription/*	false-positive: we report a case CodeNarc allows
+JavadocMissingParamDescription/*	false-positive: we report a case CodeNarc allows
+JavadocMissingThrowsDescription/*	false-positive: we report a case CodeNarc allows
 JdbcConnectionReference/001.groovy	ours-parser: our parser rejects this syntax
 JdbcConnectionReference/002.groovy	missed: we do not report this case yet
 JdbcConnectionReference/003.groovy	ours-parser: our parser rejects this syntax
-JdbcConnectionReference/005.groovy	other-line: the rule fires but on a different line
-JdbcConnectionReference/011.groovy	missed: we do not report this case yet
-JdbcConnectionReference/013.groovy	missed: we do not report this case yet
 JdbcConnectionReference/017.groovy	false-positive: we report a case CodeNarc allows
 JdbcResultSetReference/001.groovy	ours-parser: our parser rejects this syntax
 JdbcResultSetReference/002.groovy	missed: we do not report this case yet
 JdbcResultSetReference/003.groovy	ours-parser: our parser rejects this syntax
-JdbcResultSetReference/005.groovy	other-line: the rule fires but on a different line
-JdbcResultSetReference/011.groovy	missed: we do not report this case yet
-JdbcResultSetReference/013.groovy	missed: we do not report this case yet
-LineLength/*	false-positive: we report a case CodeNarc allows
 LocaleSetDefault/001.groovy	other-line: the rule fires but on a different line
 LocaleSetDefault/002.groovy	missed: we do not report this case yet
 LoggerForDifferentClass/001.groovy	other-line: the rule fires but on a different line
@@ -370,9 +297,7 @@ LoggerWithWrongModifiers/007.groovy	false-positive: we report a case CodeNarc al
 LoggerWithWrongModifiers/008.groovy	false-positive: we report a case CodeNarc allows
 LoggingSwallowsStacktrace/*	missed: we do not report this case yet
 MethodCount/*	ours-parser: our parser rejects this syntax
-MethodName/004.groovy	false-positive: we report a case CodeNarc allows
-MethodName/006.groovy	false-positive: we report a case CodeNarc allows
-MethodName/008.groovy	other-line: the rule fires but on a different line
+MethodName/*	other-line: the rule fires but on a different line
 MethodSize/000.groovy	ours-parser: our parser rejects this syntax
 MethodSize/004.groovy	ours-parser: our parser rejects this syntax
 MethodSize/005.groovy	missed: we do not report this case yet
@@ -401,10 +326,7 @@ NestedBlockDepth/013.groovy	missed: we do not report this case yet
 NestedBlockDepth/014.groovy	missed: we do not report this case yet
 NestedBlockDepth/018.groovy	missed: we do not report this case yet
 NestedSynchronization/*	false-positive: we report a case CodeNarc allows
-NoDef/005.groovy	ours-parser: our parser rejects this syntax
-NoDef/006.groovy	false-positive: we report a case CodeNarc allows
-NoDef/011.groovy	ours-parser: our parser rejects this syntax
-NoDef/012.groovy	ours-parser: our parser rejects this syntax
+NoDef/*	false-positive: we report a case CodeNarc allows
 NoDouble/*	other-line: the rule fires but on a different line
 NoFloat/*	other-line: the rule fires but on a different line
 NoJavaUtilDate/001.groovy	false-positive: we report a case CodeNarc allows
@@ -413,7 +335,7 @@ NoJavaUtilDate/003.groovy	other-line: the rule fires but on a different line
 NoJavaUtilDate/004.groovy	missed: we do not report this case yet
 NoScriptBindings/002.groovy	missed: we do not report this case yet
 NoScriptBindings/003.groovy	ours-parser: our parser rejects this syntax
-NoScriptBindings/004.groovy	missed: we do not report this case yet
+NoScriptBindings/005.groovy	missed: we do not report this case yet
 NonFinalSubclassOfSensitiveInterface/*	false-positive: we report a case CodeNarc allows
 ObjectOverrideMisspelledMethodName/*	missed: we do not report this case yet
 OptionalCollectionReturnType/*	missed: we do not report this case yet
@@ -421,29 +343,13 @@ PackageName/*	missed: we do not report this case yet
 PackageNameMatchesFilePath/*	false-positive: we report a case CodeNarc allows
 ParameterAssignmentInFilterClosure/*	other-line: the rule fires but on a different line
 ParameterCount/*	false-positive: we report a case CodeNarc allows
-ParameterName/003.groovy	false-positive: we report a case CodeNarc allows
-ParameterName/011.groovy	other-line: the rule fires but on a different line
-PrivateFieldCouldBeFinal/002.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/006.groovy	false-positive: we report a case CodeNarc allows
+ParameterName/*	other-line: the rule fires but on a different line
 PrivateFieldCouldBeFinal/008.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/010.groovy	missed: we do not report this case yet
 PrivateFieldCouldBeFinal/013.groovy	missed: we do not report this case yet
 PrivateFieldCouldBeFinal/014.groovy	missed: we do not report this case yet
 PrivateFieldCouldBeFinal/015.groovy	other-line: the rule fires but on a different line
-PrivateFieldCouldBeFinal/016.groovy	missed: we do not report this case yet
-PrivateFieldCouldBeFinal/021.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/022.groovy	false-positive: we report a case CodeNarc allows
 PrivateFieldCouldBeFinal/023.groovy	missed: we do not report this case yet
 PrivateFieldCouldBeFinal/024.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/025.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/027.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/028.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/029.groovy	false-positive: we report a case CodeNarc allows
-PrivateFieldCouldBeFinal/030.groovy	false-positive: we report a case CodeNarc allows
-PropertyName/004.groovy	false-positive: we report a case CodeNarc allows
-PropertyName/008.groovy	false-positive: we report a case CodeNarc allows
-PropertyName/009.groovy	false-positive: we report a case CodeNarc allows
-PropertyName/011.groovy	false-positive: we report a case CodeNarc allows
 PropertyName/013.groovy	false-positive: we report a case CodeNarc allows
 PropertyName/016.groovy	other-line: the rule fires but on a different line
 PropertyName/018.groovy	false-positive: we report a case CodeNarc allows
@@ -451,10 +357,8 @@ PublicFinalizeMethod/000.groovy	false-positive: we report a case CodeNarc allows
 PublicFinalizeMethod/002.groovy	missed: we do not report this case yet
 PublicMethodsBeforeNonPublicMethods/*	false-positive: we report a case CodeNarc allows
 RandomDoubleCoercedToZero/*	missed: we do not report this case yet
-RequiredRegex/000.groovy	false-positive: we report a case CodeNarc allows
-RequiredRegex/002.groovy	missed: we do not report this case yet
-RequiredString/000.groovy	false-positive: we report a case CodeNarc allows
-RequiredString/002.groovy	missed: we do not report this case yet
+RequiredRegex/*	missed: we do not report this case yet
+RequiredString/*	missed: we do not report this case yet
 ReturnNullFromCatchBlock/*	missed: we do not report this case yet
 ReturnsNullInsteadOfEmptyArray/*	missed: we do not report this case yet
 ReturnsNullInsteadOfEmptyCollection/000.groovy	false-positive: we report a case CodeNarc allows
@@ -475,20 +379,8 @@ SpaceAfterClosingBrace/014.groovy	ours-parser: our parser rejects this syntax
 SpaceAfterClosingBrace/018.groovy	false-positive: we report a case CodeNarc allows
 SpaceAfterClosingBrace/019.groovy	false-positive: we report a case CodeNarc allows
 SpaceAfterCommentDelimiter/*	ours-parser: our parser rejects this syntax
-SpaceAfterFor/*	ours-parser: our parser rejects this syntax
-SpaceAfterIf/*	ours-parser: our parser rejects this syntax
-SpaceAfterMethodCallName/001.groovy	missed: we do not report this case yet
-SpaceAfterMethodCallName/002.groovy	missed: we do not report this case yet
-SpaceAfterMethodCallName/003.groovy	missed: we do not report this case yet
 SpaceAfterMethodCallName/004.groovy	missed: we do not report this case yet
-SpaceAfterMethodCallName/007.groovy	missed: we do not report this case yet
 SpaceAfterMethodCallName/012.groovy	ours-parser: our parser rejects this syntax
-SpaceAfterMethodCallName/013.groovy	missed: we do not report this case yet
-SpaceAfterMethodCallName/014.groovy	missed: we do not report this case yet
-SpaceAfterMethodDeclarationName/001.groovy	ours-parser: our parser rejects this syntax
-SpaceAfterMethodDeclarationName/002.groovy	missed: we do not report this case yet
-SpaceAfterMethodDeclarationName/003.groovy	missed: we do not report this case yet
-SpaceAfterMethodDeclarationName/004.groovy	missed: we do not report this case yet
 SpaceAfterOpeningBrace/002.groovy	missed: we do not report this case yet
 SpaceAfterOpeningBrace/004.groovy	missed: we do not report this case yet
 SpaceAfterOpeningBrace/006.groovy	missed: we do not report this case yet
@@ -497,22 +389,17 @@ SpaceAfterOpeningBrace/020.groovy	false-positive: we report a case CodeNarc allo
 SpaceAfterOpeningBrace/023.groovy	ours-parser: our parser rejects this syntax
 SpaceAfterOpeningBrace/024.groovy	ours-parser: our parser rejects this syntax
 SpaceAfterOpeningBrace/026.groovy	ours-parser: our parser rejects this syntax
-SpaceAfterWhile/*	ours-parser: our parser rejects this syntax
 SpaceAroundClosureArrow/*	ours-parser: our parser rejects this syntax
 SpaceAroundMapEntryColon/*	ours-parser: our parser rejects this syntax
-SpaceAroundOperator/002.groovy	missed: we do not report this case yet
-SpaceAroundOperator/005.groovy	missed: we do not report this case yet
+SpaceAroundOperator/005.groovy	other-line: the rule fires but on a different line
 SpaceAroundOperator/006.groovy	missed: we do not report this case yet
 SpaceAroundOperator/010.groovy	missed: we do not report this case yet
-SpaceAroundOperator/011.groovy	missed: we do not report this case yet
+SpaceAroundOperator/011.groovy	other-line: the rule fires but on a different line
 SpaceAroundOperator/012.groovy	ours-parser: our parser rejects this syntax
 SpaceAroundOperator/013.groovy	missed: we do not report this case yet
-SpaceAroundOperator/015.groovy	missed: we do not report this case yet
-SpaceAroundOperator/016.groovy	missed: we do not report this case yet
-SpaceAroundOperator/017.groovy	missed: we do not report this case yet
-SpaceAroundOperator/019.groovy	missed: we do not report this case yet
+SpaceAroundOperator/018.groovy	false-positive: we report a case CodeNarc allows
+SpaceAroundOperator/020.groovy	false-positive: we report a case CodeNarc allows
 SpaceAroundOperator/021.groovy	ours-parser: our parser rejects this syntax
-SpaceAroundOperator/023.groovy	missed: we do not report this case yet
 SpaceBeforeClosingBrace/001.groovy	missed: we do not report this case yet
 SpaceBeforeClosingBrace/003.groovy	missed: we do not report this case yet
 SpaceBeforeClosingBrace/004.groovy	missed: we do not report this case yet
@@ -580,44 +467,17 @@ UnnecessaryCatchBlock/*	false-positive: we report a case CodeNarc allows
 UnnecessaryCollectCall/*	false-positive: we report a case CodeNarc allows
 UnnecessaryConstructor/004.groovy	missed: we do not report this case yet
 UnnecessaryConstructor/010.groovy	false-positive: we report a case CodeNarc allows
-UnnecessaryDefInFieldDeclaration/005.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInFieldDeclaration/006.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInFieldDeclaration/007.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInFieldDeclaration/008.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInFieldDeclaration/009.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInFieldDeclaration/010.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInFieldDeclaration/011.groovy	missed: we do not report this case yet
-UnnecessaryDefInFieldDeclaration/012.groovy	missed: we do not report this case yet
-UnnecessaryDefInFieldDeclaration/013.groovy	missed: we do not report this case yet
 UnnecessaryDefInFieldDeclaration/014.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInFieldDeclaration/015.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInMethodDeclaration/000.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/003.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/004.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInMethodDeclaration/006.groovy	missed: we do not report this case yet
-UnnecessaryDefInMethodDeclaration/007.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/008.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/009.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/010.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/011.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/012.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInMethodDeclaration/013.groovy	missed: we do not report this case yet
-UnnecessaryDefInMethodDeclaration/014.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/015.groovy	missed: we do not report this case yet
 UnnecessaryDefInMethodDeclaration/016.groovy	missed: we do not report this case yet
 UnnecessaryDefInMethodDeclaration/017.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInMethodDeclaration/018.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInVariableDeclaration/005.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInVariableDeclaration/006.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInVariableDeclaration/007.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInVariableDeclaration/008.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInVariableDeclaration/009.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInVariableDeclaration/010.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInVariableDeclaration/011.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryDefInVariableDeclaration/012.groovy	missed: we do not report this case yet
 UnnecessaryDefInVariableDeclaration/013.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDefInVariableDeclaration/014.groovy	missed: we do not report this case yet
-UnnecessaryDefInVariableDeclaration/015.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryDoubleInstantiation/*	false-positive: we report a case CodeNarc allows
 UnnecessaryElseStatement/005.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryElseStatement/006.groovy	other-line: the rule fires but on a different line
@@ -629,21 +489,17 @@ UnnecessaryFinalOnPrivateMethod/*	missed: we do not report this case yet
 UnnecessaryFloatInstantiation/*	false-positive: we report a case CodeNarc allows
 UnnecessaryGString/005.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryGString/007.groovy	missed: we do not report this case yet
-UnnecessaryGetter/007.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryGetter/009.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryGetter/011.groovy	missed: we do not report this case yet
 UnnecessaryGetter/012.groovy	missed: we do not report this case yet
-UnnecessaryGetter/014.groovy	ours-parser: our parser rejects this syntax
-UnnecessaryGetter/015.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryGetter/016.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryIfStatement/000.groovy	other-line: the rule fires but on a different line
 UnnecessaryIfStatement/001.groovy	missed: we do not report this case yet
 UnnecessaryIfStatement/002.groovy	other-line: the rule fires but on a different line
 UnnecessaryIfStatement/006.groovy	missed: we do not report this case yet
+UnnecessaryIfStatement/007.groovy	missed: we do not report this case yet
 UnnecessaryIfStatement/008.groovy	missed: we do not report this case yet
 UnnecessaryIfStatement/009.groovy	missed: we do not report this case yet
-UnnecessaryIfStatement/010.groovy	missed: we do not report this case yet
-UnnecessaryIfStatement/011.groovy	missed: we do not report this case yet
 UnnecessaryInstanceOfCheck/*	ours-parser: our parser rejects this syntax
 UnnecessaryInstantiationToGetClass/*	false-positive: we report a case CodeNarc allows
 UnnecessaryIntegerInstantiation/*	false-positive: we report a case CodeNarc allows
@@ -653,6 +509,7 @@ UnnecessaryNullCheck/006.groovy	missed: we do not report this case yet
 UnnecessaryNullCheck/007.groovy	missed: we do not report this case yet
 UnnecessaryNullCheck/008.groovy	missed: we do not report this case yet
 UnnecessaryNullCheck/009.groovy	missed: we do not report this case yet
+UnnecessaryNullCheck/010.groovy	missed: we do not report this case yet
 UnnecessaryNullCheckBeforeInstanceOf/*	missed: we do not report this case yet
 UnnecessaryObjectReferences/*	missed: we do not report this case yet
 UnnecessaryOverridingMethod/*	missed: we do not report this case yet
@@ -672,7 +529,6 @@ UnnecessaryParenthesesForMethodCallWithClosure/*	missed: we do not report this c
 UnnecessaryPublicModifier/006.groovy	missed: we do not report this case yet
 UnnecessaryPublicModifier/011.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryPublicModifier/012.groovy	false-positive: we report a case CodeNarc allows
-UnnecessaryPublicModifier/016.groovy	ours-parser: our parser rejects this syntax
 UnnecessaryPublicModifier/018.groovy	missed: we do not report this case yet
 UnnecessaryReturnKeyword/*	false-positive: we report a case CodeNarc allows
 UnnecessarySafeNavigationOperator/001.groovy	other-line: the rule fires but on a different line
@@ -729,7 +585,6 @@ UseAssertEqualsInsteadOfAssertTrue/002.groovy	missed: we do not report this case
 UseAssertSameInsteadOfAssertTrue/*	false-positive: we report a case CodeNarc allows
 UseAssertTrueInsteadOfAssertEquals/*	missed: we do not report this case yet
 UseCollectNested/*	missed: we do not report this case yet
-VariableName/003.groovy	false-positive: we report a case CodeNarc allows
 VariableName/013.groovy	ours-parser: our parser rejects this syntax
 VariableName/014.groovy	ours-parser: our parser rejects this syntax
 VariableName/015.groovy	ours-parser: our parser rejects this syntax

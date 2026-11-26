@@ -1,6 +1,5 @@
 
-            for (int x = 0;
-                    x < 10;
-                    x++) {
-
-            } 
+            for (Iterator iter = searchResults.iterator(); iter.hasNext(); iter.next()) {
+                println iter
+            }
+        

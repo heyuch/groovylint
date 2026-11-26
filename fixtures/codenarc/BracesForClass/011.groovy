@@ -1,6 +1,6 @@
 
-            class MyClass
-                        extends File {
-
-            }
+             def x = """
+             {
+             }
+             """
         

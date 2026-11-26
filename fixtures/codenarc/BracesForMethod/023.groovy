@@ -1,8 +1,15 @@
 
             class MyClass {
-                int size(String name = "${SomeClass.SOME_CONSTANT}")
+                @AnAnnotation
+                // some comment
+                void aMethod()
                 {
-                    return 99
+                }
+
+                @AnAnnotation("abc")
+                // some comment
+                void aMethod()
+                {
                 }
             }
         

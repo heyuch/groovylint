@@ -186,6 +186,20 @@ impl<'a> Parser<'a> {
             if self.at(TokenKind::Lt) {
                 self.skip_balanced(TokenKind::Lt, TokenKind::Gt)?;
             }
+            // `def private field`, `def final x`: the modifier may follow the type.
+            let prefix = if self.at_modifier() {
+                let mut merged = prefix;
+                merged.absorb(self.parse_prefix()?);
+                merged
+            } else {
+                prefix
+            };
+            if self.at(TokenKind::LeftParen) {
+                return self.parse_name_list_declaration(&prefix);
+            }
+            if self.at(TokenKind::String) && self.peek_kind(1) == TokenKind::LeftParen {
+                return self.parse_method(start, prefix, None).map(Item::Method);
+            }
             if self.at_ident_like() && self.peek_kind(1) == TokenKind::LeftParen {
                 return self.parse_method(start, prefix, None).map(Item::Method);
             }
@@ -455,7 +469,10 @@ impl<'a> Parser<'a> {
         while !self.at(TokenKind::RightParen) && !self.at(TokenKind::Eof) {
             let param_prefix = self.parse_prefix()?;
             if self.at_ident_like()
-                && matches!(self.peek_kind(1), TokenKind::Comma | TokenKind::RightParen)
+                && matches!(
+                    self.peek_kind(1),
+                    TokenKind::Comma | TokenKind::RightParen | TokenKind::Assign
+                )
             {
                 let token = self.advance();
                 params.push(Param {
@@ -546,6 +563,42 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses `def (a, b) = [1, 2]`, keeping one declaration per name.
+    fn parse_name_list_declaration(&mut self, prefix: &PrefixInfo) -> Result<Item, ParseError> {
+        self.expect(TokenKind::LeftParen)?;
+        let mut names = Vec::new();
+        loop {
+            self.skip_newlines();
+            let token = self.expect_ident()?;
+            names.push(token);
+            if !self.eat(TokenKind::Comma) {
+                break;
+            }
+        }
+        self.skip_newlines();
+        self.expect(TokenKind::RightParen)?;
+        let init = if self.eat(TokenKind::Assign) {
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
+        let end = self.previous_span().end;
+        let mut declarations = Vec::new();
+        for token in names {
+            declarations.push(Stmt::VarDecl(VarDecl {
+                name: token.text(self.source).to_string(),
+                type_name: None,
+                annotations: prefix.annotations.clone(),
+                annotation_details: prefix.annotation_details.clone(),
+                init: init.clone(),
+                span: Span::new(token.span.start, end),
+            }));
+        }
+        // Kept as statements: a name list is rare enough that reporting it as a
+        // group of declarations is worth more than modelling it as fields.
+        Ok(Item::Statement(combine_declarations(declarations)))
+    }
+
     fn parse_field_or_var(
         &mut self,
         start: usize,
@@ -612,12 +665,89 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// A closure statement starts with `{`, so `{ -> ... }` must not be read as a
+    /// block: the arrow only appears in a parameter list.
+    fn looks_like_closure_statement(&self) -> bool {
+        let mut depth = 0usize;
+        let mut offset = 0usize;
+        loop {
+            let kind = self.peek_kind(offset);
+            match kind {
+                TokenKind::LeftBrace => depth += 1,
+                TokenKind::RightBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return false;
+                    }
+                }
+                TokenKind::Arrow if depth == 1 => return true,
+                TokenKind::Semicolon | TokenKind::Eof => return false,
+                _ => {}
+            }
+            offset += 1;
+        }
+    }
+
+    /// `given:` and friends: a label is a statement on its own, and whatever
+    /// follows on the same line is parsed as the next statement.
+    fn parse_label(&mut self, start: usize) -> Stmt {
+        self.advance();
+        self.advance();
+        Stmt::Empty(Span::new(start, self.previous_span().end))
+    }
+
+    /// `(a, b) = [1, 2]`: a destructuring assignment, which carries no declaration.
+    fn parse_tuple_assignment(&mut self, start: usize) -> Result<Stmt, ParseError> {
+        self.advance();
+        let mut depth = 1usize;
+        while depth > 0 && !self.at(TokenKind::Eof) {
+            match self.current().kind {
+                TokenKind::LeftParen | TokenKind::LeftBracket | TokenKind::LeftBrace => depth += 1,
+                TokenKind::RightParen | TokenKind::RightBracket | TokenKind::RightBrace => {
+                    depth -= 1;
+                }
+                _ => {}
+            }
+            self.advance();
+        }
+        if self.eat(TokenKind::Assign) {
+            let _ = self.parse_expression()?;
+        }
+        Ok(Stmt::Empty(Span::new(start, self.previous_span().end)))
+    }
+
+    fn looks_like_tuple_assignment(&self) -> bool {
+        let mut depth = 0usize;
+        let mut offset = 0usize;
+        loop {
+            match self.peek_kind(offset) {
+                TokenKind::LeftParen => depth += 1,
+                TokenKind::RightParen => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return self.peek_kind(offset + 1) == TokenKind::Assign;
+                    }
+                }
+                TokenKind::Arrow | TokenKind::Semicolon | TokenKind::Eof => return false,
+                _ => {}
+            }
+            offset += 1;
+        }
+    }
+
     fn parse_statement(&mut self) -> Result<Stmt, ParseError> {
         self.skip_separators();
         let start = self.current().span.start;
 
         match self.current().kind {
+            TokenKind::LeftBrace if self.looks_like_closure_statement() => {}
             TokenKind::LeftBrace => return self.parse_block().map(Stmt::Block),
+            TokenKind::Ident if self.peek_kind(1) == TokenKind::Colon => {
+                return Ok(self.parse_label(start));
+            }
+            TokenKind::LeftParen if self.looks_like_tuple_assignment() => {
+                return self.parse_tuple_assignment(start);
+            }
             TokenKind::If => return self.parse_if(start),
             TokenKind::While => return self.parse_while(start),
             TokenKind::Do => return self.parse_do_while(start),
@@ -2373,6 +2503,19 @@ impl<'a> Parser<'a> {
         is_name && self.peek_kind(1) == TokenKind::Colon
     }
 
+    fn at_modifier(&self) -> bool {
+        matches!(
+            self.current().kind,
+            TokenKind::Public
+                | TokenKind::Private
+                | TokenKind::Protected
+                | TokenKind::Static
+                | TokenKind::Final
+                | TokenKind::Abstract
+                | TokenKind::Synchronized
+        )
+    }
+
     fn at_ident_like(&self) -> bool {
         matches!(
             self.current().kind,
@@ -2885,6 +3028,25 @@ struct PrefixInfo {
     is_synchronized: bool,
     is_transient: bool,
     is_volatile: bool,
+}
+
+impl PrefixInfo {
+    /// Keeps the flags of another prefix, for `def private x` where the modifier
+    /// arrives after the type.
+    fn absorb(&mut self, other: Self) {
+        self.annotations.extend(other.annotations);
+        self.annotation_details.extend(other.annotation_details);
+        self.suppressed_rules.extend(other.suppressed_rules);
+        self.is_static |= other.is_static;
+        self.is_abstract |= other.is_abstract;
+        self.is_final |= other.is_final;
+        self.is_public |= other.is_public;
+        self.is_private |= other.is_private;
+        self.is_protected |= other.is_protected;
+        self.is_synchronized |= other.is_synchronized;
+        self.is_transient |= other.is_transient;
+        self.is_volatile |= other.is_volatile;
+    }
 }
 
 fn simple_name(name: &str) -> String {

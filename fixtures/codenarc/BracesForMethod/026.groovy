@@ -1,8 +1,10 @@
 
-            class MyClass {
-                int size(String name)    // What about {}
+            class RemoteWebDriverWithExpectations {
+                RemoteWebDriverWithExpectations(
+                    URL remoteAddress, Capabilities capabilities, List<String> ignoredCommands = DEFAULT_IGNORED_COMMANDS)
                 {
-                    return 99
+                    super(remoteAddress, capabilities)
+                    this.ignoredCommands = ignoredCommands
                 }
             }
         

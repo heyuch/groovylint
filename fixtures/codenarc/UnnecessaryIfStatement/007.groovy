@@ -1,13 +1,11 @@
 
-            def method1() {
-                if (expression1) {
-                    return true
+            def myClosure = {
+                doStuff()
+                if (ready) {
+                    'abc'
                 }
-                return false
-            }
-            def closure1 = {
-                if (expression2)
-                    return Boolean.FALSE
-                return Boolean.TRUE
+                doOtherStuff()
+                if (ready) 123
+                doSomeOtherStuff()
             }
         

@@ -1,11 +1,21 @@
 
             class MyClass {
                 /**
-                 * Return the calculated count of some stuff.
                  * @throws
-                 *    the full count
+                 * @see MyOtherClass
                  */
-                int countThings() {
-                }
+                int method1() { }
+
+                /**
+                 * @throws
+                 */
+                int method2() { }
+
+                /**
+                 *@throws
+                 *
+                 * Oh and another thing...
+                 */
+                int method3() { }
             }
         

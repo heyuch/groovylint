@@ -11,12 +11,12 @@ AbcMetric	AbcMetric/009.groovy		6	ignoreMethodNames=myM*d*,otherC??su*,maxMethod
 AbcMetric	AbcMetric/010.groovy		2	maxClassAverageMethodAbcScore=1,maxMethodAbcScore=1
 AbcMetric	AbcMetric/011.groovy			maxClassAverageMethodAbcScore=1,maxMethodAbcScore=1
 AbstractClassName	AbstractClassName/000.groovy		-	
-AbstractClassName	AbstractClassName/001.groovy		-	regex=/[A-Z].*/
-AbstractClassName	AbstractClassName/002.groovy		1	regex=/z.*/
-AbstractClassName	AbstractClassName/003.groovy		-	regex=/z.*/
-AbstractClassName	AbstractClassName/004.groovy		-	regex=/[A-Z].*/
-AbstractClassName	AbstractClassName/005.groovy		-	regex=/[A-Z].*/
-AbstractClassName	AbstractClassName/006.groovy		-	regex=/[A-Z].*/
+AbstractClassName	AbstractClassName/001.groovy		-	regex=[A-Z].*
+AbstractClassName	AbstractClassName/002.groovy		1	regex=z.*
+AbstractClassName	AbstractClassName/003.groovy		-	regex=z.*
+AbstractClassName	AbstractClassName/004.groovy		-	regex=[A-Z].*
+AbstractClassName	AbstractClassName/005.groovy		-	regex=[A-Z].*
+AbstractClassName	AbstractClassName/006.groovy		-	regex=[A-Z].*
 AbstractClassWithPublicConstructor	AbstractClassWithPublicConstructor/000.groovy		-	
 AbstractClassWithPublicConstructor	AbstractClassWithPublicConstructor/001.groovy		3	
 AbstractClassWithPublicConstructor	AbstractClassWithPublicConstructor/002.groovy		4	
@@ -149,24 +149,18 @@ BracesForClass	BracesForClass/007.groovy		3	sameLine=true
 BracesForClass	BracesForClass/008.groovy		-	sameLine=false
 BracesForClass	BracesForClass/009.groovy		2	sameLine=false
 BracesForClass	BracesForClass/010.groovy		2	sameLine=false
-BracesForClass	BracesForClass/011.groovy		6,18,64,70	
-BracesForClass	BracesForClass/012.groovy		6,14,44,49	sameLine=false
-BracesForClass	BracesForClass/013.groovy		-	
+BracesForClass	BracesForClass/011.groovy		-	
 BracesForForLoop	BracesForForLoop/000.groovy		-	
 BracesForForLoop	BracesForForLoop/001.groovy		-	sameLine=false
 BracesForForLoop	BracesForForLoop/002.groovy		-	
-BracesForForLoop	BracesForForLoop/003.groovy		33	
-BracesForForLoop	BracesForForLoop/004.groovy		23	sameLine=false
-BracesForForLoop	BracesForForLoop/005.groovy		-	sameLine=false
-BracesForForLoop	BracesForForLoop/006.groovy		-	
-BracesForForLoop	BracesForForLoop/007.groovy		-	
-BracesForIfElse	BracesForIfElse/000.groovy		-	
+BracesForForLoop	BracesForForLoop/003.groovy		-	sameLine=false
+BracesForForLoop	BracesForForLoop/004.groovy		-	
+BracesForForLoop	BracesForForLoop/005.groovy		-	
+BracesForIfElse	BracesForIfElse/000.groovy		-	sameLine=false
 BracesForIfElse	BracesForIfElse/001.groovy		-	
 BracesForIfElse	BracesForIfElse/002.groovy		-	
 BracesForIfElse	BracesForIfElse/003.groovy		2	
-BracesForIfElse	BracesForIfElse/004.groovy		40,43,47	
-BracesForIfElse	BracesForIfElse/005.groovy		28,29,30	sameLine=false
-BracesForIfElse	BracesForIfElse/006.groovy		-	validateElse=true
+BracesForIfElse	BracesForIfElse/004.groovy		-	validateElse=true
 BracesForMethod	BracesForMethod/000.groovy		-	
 BracesForMethod	BracesForMethod/001.groovy		-	
 BracesForMethod	BracesForMethod/002.groovy		-	
@@ -187,27 +181,22 @@ BracesForMethod	BracesForMethod/016.groovy		2
 BracesForMethod	BracesForMethod/017.groovy		-	sameLine=false
 BracesForMethod	BracesForMethod/018.groovy		-	sameLine=false
 BracesForMethod	BracesForMethod/019.groovy		2	sameLine=false
-BracesForMethod	BracesForMethod/020.groovy		9,12,19,38,71	
-BracesForMethod	BracesForMethod/021.groovy		9,11,15,27,50	sameLine=false
+BracesForMethod	BracesForMethod/020.groovy		-	
+BracesForMethod	BracesForMethod/021.groovy		-	sameLine=false
 BracesForMethod	BracesForMethod/022.groovy		-	
 BracesForMethod	BracesForMethod/023.groovy		-	sameLine=false
-BracesForMethod	BracesForMethod/024.groovy		-	
-BracesForMethod	BracesForMethod/025.groovy		-	sameLine=false
-BracesForMethod	BracesForMethod/026.groovy		3	
-BracesForMethod	BracesForMethod/027.groovy		-	
+BracesForMethod	BracesForMethod/024.groovy		3	
+BracesForMethod	BracesForMethod/025.groovy		-	
+BracesForMethod	BracesForMethod/026.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
+BracesForMethod	BracesForMethod/027.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
 BracesForMethod	BracesForMethod/028.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
 BracesForMethod	BracesForMethod/029.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/030.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/031.groovy		-	allowBraceOnNextLineForMultilineDeclarations=true,sameLine=true
-BracesForMethod	BracesForMethod/032.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
-BracesForMethod	BracesForMethod/033.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
-BracesForTryCatchFinally	BracesForTryCatchFinally/000.groovy		21,26,29	
-BracesForTryCatchFinally	BracesForTryCatchFinally/001.groovy		-	sameLine=false
-BracesForTryCatchFinally	BracesForTryCatchFinally/002.groovy		16,19,20	sameLine=false
-BracesForTryCatchFinally	BracesForTryCatchFinally/003.groovy		9,12	sameLine=false
-BracesForTryCatchFinally	BracesForTryCatchFinally/004.groovy		-	
-BracesForTryCatchFinally	BracesForTryCatchFinally/005.groovy		-	
-BracesForTryCatchFinally	BracesForTryCatchFinally/006.groovy		-	catchOnSameLineAsClosingBrace=false,validateCatch=true,validateFinally=true
+BracesForMethod	BracesForMethod/030.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
+BracesForMethod	BracesForMethod/031.groovy		3	allowBraceOnNextLineForMultilineDeclarations=false,sameLine=true
+BracesForTryCatchFinally	BracesForTryCatchFinally/000.groovy		9,12	sameLine=false
+BracesForTryCatchFinally	BracesForTryCatchFinally/001.groovy		-	
+BracesForTryCatchFinally	BracesForTryCatchFinally/002.groovy		-	
+BracesForTryCatchFinally	BracesForTryCatchFinally/003.groovy		-	catchOnSameLineAsClosingBrace=false,validateCatch=true,validateFinally=true
 BrokenNullCheck	BrokenNullCheck/000.groovy		-	
 BrokenNullCheck	BrokenNullCheck/001.groovy		-	
 BrokenNullCheck	BrokenNullCheck/002.groovy		2,3,4,5,6,7	
@@ -301,9 +290,9 @@ ClassName	ClassName/001.groovy		1
 ClassName	ClassName/002.groovy		2	
 ClassName	ClassName/003.groovy		-	
 ClassName	ClassName/004.groovy		-	
-ClassName	ClassName/005.groovy		1	regex=/z.*/
-ClassName	ClassName/006.groovy		-	regex=/z.*/
-ClassName	ClassName/007.groovy		-	regex=/z.*/
+ClassName	ClassName/005.groovy		1	regex=z.*
+ClassName	ClassName/006.groovy		-	regex=z.*
+ClassName	ClassName/007.groovy		-	regex=z.*
 ClassName	ClassName/008.groovy		-	
 ClassName	ClassName/009.groovy		-	
 ClassNameSameAsFilename	ClassNameSameAsFilename/000.groovy		-	
@@ -848,23 +837,23 @@ FactoryMethodName	FactoryMethodName/002.groovy		5
 FactoryMethodName	FactoryMethodName/003.groovy		7	
 FactoryMethodName	FactoryMethodName/004.groovy		7	
 FactoryMethodName	FactoryMethodName/005.groovy		3	
-FieldName	FieldName/000.groovy		-	regex=/^[a-z]([a-zA-Z0-9$])*\b/
+FieldName	FieldName/000.groovy		-	regex=^[a-z]([a-zA-Z0-9$])*\b
 FieldName	FieldName/001.groovy		3	
 FieldName	FieldName/002.groovy		-	
 FieldName	FieldName/003.groovy		3	
-FieldName	FieldName/004.groovy		3	regex=/z.*/
-FieldName	FieldName/005.groovy		-	regex=/z.*/
+FieldName	FieldName/004.groovy		3	regex=z.*
+FieldName	FieldName/005.groovy		-	regex=z.*
 FieldName	FieldName/006.groovy		-	
-FieldName	FieldName/007.groovy		-	regex=/z.*/
+FieldName	FieldName/007.groovy		-	regex=z.*
 FieldName	FieldName/008.groovy		3	
-FieldName	FieldName/009.groovy		-	finalRegex=/z.*/
-FieldName	FieldName/010.groovy		-	staticRegex=/C.*/
+FieldName	FieldName/009.groovy		-	finalRegex=z.*
+FieldName	FieldName/010.groovy		-	staticRegex=C.*
 FieldName	FieldName/011.groovy		3	
-FieldName	FieldName/012.groovy		-	finalRegex=/X.*/     // ignored,staticFinalRegex=/C.*/,staticRegex=/Z.*/    // ignored
-FieldName	FieldName/013.groovy		3	finalRegex=/X.*/     // ignored,privateStaticFinalRegex=/[a-z][a-zA-Z0-9]*/,staticFinalRegex=/C.*/ //ignored,staticRegex=/Z.*/    // ignored
-FieldName	FieldName/014.groovy		3	finalRegex=/X.*/,staticFinalRegex=null,staticRegex=/C.*/       // ignored
-FieldName	FieldName/015.groovy		-	finalRegex=null,staticFinalRegex=null,staticRegex=/C.*/
-FieldName	FieldName/016.groovy		-	finalRegex=null,regex=/C.*/,staticFinalRegex=null,staticRegex=null
+FieldName	FieldName/012.groovy		-	finalRegex=X.*,staticFinalRegex=C.*,staticRegex=Z.*
+FieldName	FieldName/013.groovy		3	finalRegex=X.*,privateStaticFinalRegex=[a-z][a-zA-Z0-9]*,staticFinalRegex=C.*,staticRegex=Z.*
+FieldName	FieldName/014.groovy		3	finalRegex=X.*,staticRegex=C.*
+FieldName	FieldName/015.groovy		-	staticRegex=C.*
+FieldName	FieldName/016.groovy		-	regex=C.*
 FieldName	FieldName/017.groovy		-	
 FieldName	FieldName/018.groovy		-	ignoreFieldNames=Count
 FieldName	FieldName/019.groovy		3	ignoreFieldNames=Other
@@ -1056,9 +1045,7 @@ IfStatementCouldBeTernary	IfStatementCouldBeTernary/006.groovy		-
 IfStatementCouldBeTernary	IfStatementCouldBeTernary/007.groovy		2,3,4	
 IfStatementCouldBeTernary	IfStatementCouldBeTernary/008.groovy		2	
 IfStatementCouldBeTernary	IfStatementCouldBeTernary/009.groovy		5	
-IfStatementCouldBeTernary	IfStatementCouldBeTernary/010.groovy		3,9	
-IfStatementCouldBeTernary	IfStatementCouldBeTernary/011.groovy		-	checkLastStatementImplicitElse=false
-IllegalClassMember	IllegalClassMember/000.groovy		-	applyToClassNames=null       // overwrite initialization
+IllegalClassMember	IllegalClassMember/000.groovy		-	
 IllegalClassMember	IllegalClassMember/001.groovy		4,6	illegalFieldModifiers=public static, protected
 IllegalClassMember	IllegalClassMember/002.groovy		3,4	allowedFieldModifiers=public final, private, protected static
 IllegalClassMember	IllegalClassMember/003.groovy		4	illegalPropertyModifiers=final
@@ -1091,11 +1078,11 @@ IllegalPackageReference	IllegalPackageReference/016.groovy		4	packageNames=com.o
 IllegalPackageReference	IllegalPackageReference/017.groovy		2,4	packageNames=com.example,com.example,org.bad,com.other.ignore
 IllegalPackageReference	IllegalPackageReference/018.groovy		2,3,5	packageNames=com.ex?mple*,org.*,com.other.*
 IllegalPackageReference	IllegalPackageReference/019.groovy		2	packageNames=org.bad
-IllegalRegex	IllegalRegex/000.groovy		-	regex=null
+IllegalRegex	IllegalRegex/000.groovy		-	
 IllegalRegex	IllegalRegex/001.groovy		2	
 IllegalRegex	IllegalRegex/002.groovy		2,5	
 IllegalRegex	IllegalRegex/003.groovy		-	
-IllegalString	IllegalString/000.groovy		-	string=null
+IllegalString	IllegalString/000.groovy		-	
 IllegalString	IllegalString/001.groovy		-	
 IllegalString	IllegalString/002.groovy		2	
 IllegalString	IllegalString/003.groovy		4	
@@ -1224,12 +1211,12 @@ Instanceof	Instanceof/003.groovy		-	ignoreTypeNames=My*Class
 IntegerGetInteger	IntegerGetInteger/000.groovy		-	
 IntegerGetInteger	IntegerGetInteger/001.groovy		2,3	
 InterfaceName	InterfaceName/000.groovy		-	
-InterfaceName	InterfaceName/001.groovy		-	regex=/[A-Z].*/
-InterfaceName	InterfaceName/002.groovy		1	regex=/z.*/
-InterfaceName	InterfaceName/003.groovy		-	regex=/z.*/
-InterfaceName	InterfaceName/004.groovy		-	regex=/[A-Z].*/
-InterfaceName	InterfaceName/005.groovy		-	regex=/[A-Z].*/
-InterfaceName	InterfaceName/006.groovy		-	regex=/[A-Z].*/
+InterfaceName	InterfaceName/001.groovy		-	regex=[A-Z].*
+InterfaceName	InterfaceName/002.groovy		1	regex=z.*
+InterfaceName	InterfaceName/003.groovy		-	regex=z.*
+InterfaceName	InterfaceName/004.groovy		-	regex=[A-Z].*
+InterfaceName	InterfaceName/005.groovy		-	regex=[A-Z].*
+InterfaceName	InterfaceName/006.groovy		-	regex=[A-Z].*
 InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/000.groovy		-	
 InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/001.groovy		-	
 InterfaceNameSameAsSuperInterface	InterfaceNameSameAsSuperInterface/002.groovy		2	
@@ -1415,77 +1402,64 @@ JavadocConsecutiveEmptyLines	JavadocConsecutiveEmptyLines/002.groovy		7,13,21
 JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/000.groovy		-	
 JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/001.groovy		-	
 JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/002.groovy		7,17	
-JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/003.groovy		7,17	
-JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/004.groovy		-	allowMultiline=true
-JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/003.groovy		-	allowMultiline=true
+JavadocEmptyAuthorTag	JavadocEmptyAuthorTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/000.groovy		-	
 JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/001.groovy		-	
 JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/002.groovy		7,17	
-JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/003.groovy		7,17	
-JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/004.groovy		-	allowMultiline=true
-JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/003.groovy		-	allowMultiline=true
+JavadocEmptyExceptionTag	JavadocEmptyExceptionTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptyFirstLine	JavadocEmptyFirstLine/000.groovy		-	
 JavadocEmptyFirstLine	JavadocEmptyFirstLine/001.groovy		-	
 JavadocEmptyFirstLine	JavadocEmptyFirstLine/002.groovy		2,10	
-JavadocEmptyFirstLine	JavadocEmptyFirstLine/003.groovy		2,10	
 JavadocEmptyLastLine	JavadocEmptyLastLine/000.groovy		-	
 JavadocEmptyLastLine	JavadocEmptyLastLine/001.groovy		-	
 JavadocEmptyLastLine	JavadocEmptyLastLine/002.groovy		6,17	
-JavadocEmptyLastLine	JavadocEmptyLastLine/003.groovy		6,17	
 JavadocEmptyParamTag	JavadocEmptyParamTag/000.groovy		-	
 JavadocEmptyParamTag	JavadocEmptyParamTag/001.groovy		-	
 JavadocEmptyParamTag	JavadocEmptyParamTag/002.groovy		7,17	
-JavadocEmptyParamTag	JavadocEmptyParamTag/003.groovy		7,17	
-JavadocEmptyParamTag	JavadocEmptyParamTag/004.groovy		-	allowMultiline=true
-JavadocEmptyParamTag	JavadocEmptyParamTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyParamTag	JavadocEmptyParamTag/003.groovy		-	allowMultiline=true
+JavadocEmptyParamTag	JavadocEmptyParamTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptyReturnTag	JavadocEmptyReturnTag/000.groovy		-	
 JavadocEmptyReturnTag	JavadocEmptyReturnTag/001.groovy		-	
 JavadocEmptyReturnTag	JavadocEmptyReturnTag/002.groovy		7,17	
-JavadocEmptyReturnTag	JavadocEmptyReturnTag/003.groovy		7,17	
-JavadocEmptyReturnTag	JavadocEmptyReturnTag/004.groovy		-	allowMultiline=true
-JavadocEmptyReturnTag	JavadocEmptyReturnTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/003.groovy		-	allowMultiline=true
+JavadocEmptyReturnTag	JavadocEmptyReturnTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptySeeTag	JavadocEmptySeeTag/000.groovy		-	
 JavadocEmptySeeTag	JavadocEmptySeeTag/001.groovy		-	
 JavadocEmptySeeTag	JavadocEmptySeeTag/002.groovy		7,17	
-JavadocEmptySeeTag	JavadocEmptySeeTag/003.groovy		7,17	
-JavadocEmptySeeTag	JavadocEmptySeeTag/004.groovy		-	allowMultiline=true
-JavadocEmptySeeTag	JavadocEmptySeeTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptySeeTag	JavadocEmptySeeTag/003.groovy		-	allowMultiline=true
+JavadocEmptySeeTag	JavadocEmptySeeTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptySinceTag	JavadocEmptySinceTag/000.groovy		-	
 JavadocEmptySinceTag	JavadocEmptySinceTag/001.groovy		-	
 JavadocEmptySinceTag	JavadocEmptySinceTag/002.groovy		7,17	
-JavadocEmptySinceTag	JavadocEmptySinceTag/003.groovy		7,17	
-JavadocEmptySinceTag	JavadocEmptySinceTag/004.groovy		-	allowMultiline=true
-JavadocEmptySinceTag	JavadocEmptySinceTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptySinceTag	JavadocEmptySinceTag/003.groovy		-	allowMultiline=true
+JavadocEmptySinceTag	JavadocEmptySinceTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/000.groovy		-	
 JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/001.groovy		-	
 JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/002.groovy		7,17	
-JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/003.groovy		7,17	
-JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/004.groovy		-	allowMultiline=true
-JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/003.groovy		-	allowMultiline=true
+JavadocEmptyThrowsTag	JavadocEmptyThrowsTag/004.groovy		4,10,15	allowMultiline=true
 JavadocEmptyVersionTag	JavadocEmptyVersionTag/000.groovy		-	
 JavadocEmptyVersionTag	JavadocEmptyVersionTag/001.groovy		-	
 JavadocEmptyVersionTag	JavadocEmptyVersionTag/002.groovy		7,17	
-JavadocEmptyVersionTag	JavadocEmptyVersionTag/003.groovy		7,17	
-JavadocEmptyVersionTag	JavadocEmptyVersionTag/004.groovy		-	allowMultiline=true
-JavadocEmptyVersionTag	JavadocEmptyVersionTag/005.groovy		4,10,15	allowMultiline=true
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/003.groovy		-	allowMultiline=true
+JavadocEmptyVersionTag	JavadocEmptyVersionTag/004.groovy		4,10,15	allowMultiline=true
 JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/000.groovy		-	
 JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/001.groovy		-	
 JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/002.groovy		6,15	
-JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/003.groovy		6,15	
-JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/004.groovy		-	allowMultiline=true
-JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/005.groovy		4,10,15	allowMultiline=true
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/003.groovy		-	allowMultiline=true
+JavadocMissingExceptionDescription	JavadocMissingExceptionDescription/004.groovy		4,10,15	allowMultiline=true
 JavadocMissingParamDescription	JavadocMissingParamDescription/000.groovy		-	
 JavadocMissingParamDescription	JavadocMissingParamDescription/001.groovy		-	
 JavadocMissingParamDescription	JavadocMissingParamDescription/002.groovy		6,15	
-JavadocMissingParamDescription	JavadocMissingParamDescription/003.groovy		6,15	
-JavadocMissingParamDescription	JavadocMissingParamDescription/004.groovy		-	allowMultiline=true
-JavadocMissingParamDescription	JavadocMissingParamDescription/005.groovy		4,10,15	allowMultiline=true
+JavadocMissingParamDescription	JavadocMissingParamDescription/003.groovy		-	allowMultiline=true
+JavadocMissingParamDescription	JavadocMissingParamDescription/004.groovy		4,10,15	allowMultiline=true
 JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/000.groovy		-	
 JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/001.groovy		-	
 JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/002.groovy		6,15	
-JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/003.groovy		6,15	
-JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/004.groovy		-	allowMultiline=true
-JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/005.groovy		4,10,15	allowMultiline=true
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/003.groovy		-	allowMultiline=true
+JavadocMissingThrowsDescription	JavadocMissingThrowsDescription/004.groovy		4,10,15	allowMultiline=true
 JdbcConnectionReference	JdbcConnectionReference/000.groovy		2	
 JdbcConnectionReference	JdbcConnectionReference/001.groovy		-	
 JdbcConnectionReference	JdbcConnectionReference/002.groovy		2	
@@ -1529,8 +1503,8 @@ LineLength	LineLength/003.groovy		2	ignoreImportStatements=false
 LineLength	LineLength/004.groovy		-	
 LineLength	LineLength/005.groovy		2	ignorePackageStatements=false
 LineLength	LineLength/006.groovy		3	
-LineLength	LineLength/007.groovy		-	ignoreLineRegex=/.*name.*/,length=30
-LineLength	LineLength/008.groovy		3	ignoreLineRegex=/.*xxx.*/,length=30
+LineLength	LineLength/007.groovy		-	ignoreLineRegex=.*name.*,length=30
+LineLength	LineLength/008.groovy		3	ignoreLineRegex=.*xxx.*,length=30
 LocaleSetDefault	LocaleSetDefault/000.groovy		-	
 LocaleSetDefault	LocaleSetDefault/001.groovy		2,3,4	
 LocaleSetDefault	LocaleSetDefault/002.groovy		2,3	
@@ -1578,10 +1552,10 @@ MethodCount	MethodCount/002.groovy		-	maxMethods=2
 MethodName	MethodName/000.groovy		3	
 MethodName	MethodName/001.groovy		-	
 MethodName	MethodName/002.groovy		-	
-MethodName	MethodName/003.groovy		3	regex=/z.*/
-MethodName	MethodName/004.groovy		-	regex=/z.*/
-MethodName	MethodName/005.groovy		1	regex=/z.*/
-MethodName	MethodName/006.groovy		-	regex=/z.*/
+MethodName	MethodName/003.groovy		3	regex=z.*
+MethodName	MethodName/004.groovy		-	regex=z.*
+MethodName	MethodName/005.groovy		1	regex=z.*
+MethodName	MethodName/006.groovy		-	regex=z.*
 MethodName	MethodName/007.groovy		-	ignoreMethodNames=MyMethod
 MethodName	MethodName/008.groovy		3	ignoreMethodNames=OTHER?name,_*,GOOD_NAME
 MethodName	MethodName/009.groovy		-	
@@ -1691,14 +1665,14 @@ NoDef	NoDef/001.groovy		-
 NoDef	NoDef/002.groovy		2	
 NoDef	NoDef/003.groovy		2	
 NoDef	NoDef/004.groovy		2,4	
-NoDef	NoDef/005.groovy		-	excludeRegex=/((setup|cleanup)(|Spec)|"[^"].*")/ //spock methods
-NoDef	NoDef/006.groovy		-	excludeRegex=/aaa|bbb|ccc/
+NoDef	NoDef/005.groovy		-	excludeRegex=((setup|cleanup)(|Spec)|"[^"].*")
+NoDef	NoDef/006.groovy		-	excludeRegex=aaa|bbb|ccc
 NoDef	NoDef/007.groovy		3	
 NoDef	NoDef/008.groovy		-	
 NoDef	NoDef/009.groovy		5	
 NoDef	NoDef/010.groovy		3,4	
 NoDef	NoDef/011.groovy		2	
-NoDef	NoDef/012.groovy		-	excludeRegex=/(update|condition|other|init)/
+NoDef	NoDef/012.groovy		-	excludeRegex=(update|condition|other|init)
 NoDouble	NoDouble/000.groovy		4,5,7,9	
 NoDouble	NoDouble/001.groovy		4,5,7,9	
 NoFloat	NoFloat/000.groovy		4,5,7,9	
@@ -1714,8 +1688,8 @@ NoScriptBindings	NoScriptBindings/000.groovy		-
 NoScriptBindings	NoScriptBindings/001.groovy		2	
 NoScriptBindings	NoScriptBindings/002.groovy		3	
 NoScriptBindings	NoScriptBindings/003.groovy		-	
-NoScriptBindings	NoScriptBindings/004.groovy		3	
-NoScriptBindings	NoScriptBindings/005.groovy		-	
+NoScriptBindings	NoScriptBindings/004.groovy		-	
+NoScriptBindings	NoScriptBindings/005.groovy		3	
 NoScriptBindings	NoScriptBindings/006.groovy		-	
 NoTabCharacter	NoTabCharacter/000.groovy		-	
 NoTabCharacter	NoTabCharacter/001.groovy		3	
@@ -1761,8 +1735,8 @@ PackageName	PackageName/001.groovy		-
 PackageName	PackageName/002.groovy		-	
 PackageName	PackageName/003.groovy		-	
 PackageName	PackageName/004.groovy		-	
-PackageName	PackageName/005.groovy			regex=/z.*/
-PackageName	PackageName/006.groovy		-	regex=/z.*/
+PackageName	PackageName/005.groovy			regex=z.*
+PackageName	PackageName/006.groovy		-	regex=z.*
 PackageName	PackageName/007.groovy		-	
 PackageName	PackageName/008.groovy		2	packageNameRequired=true
 PackageNameMatchesFilePath	PackageNameMatchesFilePath/000.groovy		-	groupId=
@@ -1783,8 +1757,8 @@ ParameterCount	ParameterCount/001.groovy		-	maxParameters=3
 ParameterCount	ParameterCount/002.groovy		-	maxParameters=3
 ParameterName	ParameterName/000.groovy		3	
 ParameterName	ParameterName/001.groovy		-	
-ParameterName	ParameterName/002.groovy		3	regex=/z.*/
-ParameterName	ParameterName/003.groovy		-	regex=/_.*/
+ParameterName	ParameterName/002.groovy		3	regex=z.*
+ParameterName	ParameterName/003.groovy		-	regex=_.*
 ParameterName	ParameterName/004.groovy		3	
 ParameterName	ParameterName/005.groovy		-	
 ParameterName	ParameterName/006.groovy		3	
@@ -1864,17 +1838,17 @@ PrivateFieldCouldBeFinal	PrivateFieldCouldBeFinal/031.groovy		-
 PropertyName	PropertyName/000.groovy		3	
 PropertyName	PropertyName/001.groovy		-	
 PropertyName	PropertyName/002.groovy		3	
-PropertyName	PropertyName/003.groovy		3	regex=/z.*/
-PropertyName	PropertyName/004.groovy		-	regex=/z.*/
+PropertyName	PropertyName/003.groovy		3	regex=z.*
+PropertyName	PropertyName/004.groovy		-	regex=z.*
 PropertyName	PropertyName/005.groovy		-	
-PropertyName	PropertyName/006.groovy		-	regex=/z.*/
+PropertyName	PropertyName/006.groovy		-	regex=z.*
 PropertyName	PropertyName/007.groovy		3	
-PropertyName	PropertyName/008.groovy		-	finalRegex=/z.*/
-PropertyName	PropertyName/009.groovy		-	staticRegex=/C.*/
+PropertyName	PropertyName/008.groovy		-	finalRegex=z.*
+PropertyName	PropertyName/009.groovy		-	staticRegex=C.*
 PropertyName	PropertyName/010.groovy		3	
-PropertyName	PropertyName/011.groovy		-	finalRegex=/X.*/     // ignored,staticFinalRegex=/C.*/,staticRegex=/Z.*/    // ignored
-PropertyName	PropertyName/012.groovy		3	staticRegex=/C.*/       // ignored
-PropertyName	PropertyName/013.groovy		-	staticFinalRegex=null,staticRegex=/C.*/
+PropertyName	PropertyName/011.groovy		-	finalRegex=X.*,staticFinalRegex=C.*,staticRegex=Z.*
+PropertyName	PropertyName/012.groovy		3	staticRegex=C.*
+PropertyName	PropertyName/013.groovy		-	staticRegex=C.*
 PropertyName	PropertyName/014.groovy		-	ignorePropertyNames=Count
 PropertyName	PropertyName/015.groovy		3	ignorePropertyNames=Other
 PropertyName	PropertyName/016.groovy		4	ignorePropertyNames=OTHER?name,_*,GOOD_NAME
@@ -1911,10 +1885,10 @@ RandomDoubleCoercedToZero	RandomDoubleCoercedToZero/008.groovy		3,6
 RemoveAllOnSelf	RemoveAllOnSelf/000.groovy		-	
 RemoveAllOnSelf	RemoveAllOnSelf/001.groovy		3	
 RemoveAllOnSelf	RemoveAllOnSelf/002.groovy		5	
-RequiredRegex	RequiredRegex/000.groovy		-	regex=null
+RequiredRegex	RequiredRegex/000.groovy		-	
 RequiredRegex	RequiredRegex/001.groovy		-	
 RequiredRegex	RequiredRegex/002.groovy			
-RequiredString	RequiredString/000.groovy		-	string=null
+RequiredString	RequiredString/000.groovy		-	
 RequiredString	RequiredString/001.groovy		-	
 RequiredString	RequiredString/002.groovy			
 ReturnFromFinallyBlock	ReturnFromFinallyBlock/000.groovy		15	
@@ -1997,7 +1971,7 @@ SpaceAfterClosingBrace	SpaceAfterClosingBrace/014.groovy		-
 SpaceAfterClosingBrace	SpaceAfterClosingBrace/015.groovy		-	
 SpaceAfterClosingBrace	SpaceAfterClosingBrace/016.groovy		-	
 SpaceAfterClosingBrace	SpaceAfterClosingBrace/017.groovy		2	
-SpaceAfterClosingBrace	SpaceAfterClosingBrace/018.groovy		-	checkClosureMapEntryValue=true   // ignored
+SpaceAfterClosingBrace	SpaceAfterClosingBrace/018.groovy		-	checkClosureMapEntryValue=true
 SpaceAfterClosingBrace	SpaceAfterClosingBrace/019.groovy		-	
 SpaceAfterClosingBrace	SpaceAfterClosingBrace/020.groovy		-	
 SpaceAfterClosingBrace	SpaceAfterClosingBrace/021.groovy		-	
@@ -2107,13 +2081,13 @@ SpaceAroundClosureArrow	SpaceAroundClosureArrow/000.groovy		-
 SpaceAroundClosureArrow	SpaceAroundClosureArrow/001.groovy		-	
 SpaceAroundClosureArrow	SpaceAroundClosureArrow/002.groovy		2,3,4,5,6,7	
 SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/000.groovy		-	
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/001.groovy		-	characterBeforeColonRegex=/\s/
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/002.groovy		-	characterAfterColonRegex=/\s/
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/003.groovy		-	characterAfterColonRegex=/\s/
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/004.groovy		-	characterAfterColonRegex=/\s/
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/005.groovy		-	characterAfterColonRegex=/\s/,characterBeforeColonRegex=/./
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/006.groovy		-	characterAfterColonRegex=/\s/
-SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/007.groovy		-	characterAfterColonRegex=/\s/
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/001.groovy		-	characterBeforeColonRegex=\s
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/002.groovy		-	characterAfterColonRegex=\s
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/003.groovy		-	characterAfterColonRegex=\s
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/004.groovy		-	characterAfterColonRegex=\s
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/005.groovy		-	characterAfterColonRegex=\s,characterBeforeColonRegex=.
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/006.groovy		-	characterAfterColonRegex=\s
+SpaceAroundMapEntryColon	SpaceAroundMapEntryColon/007.groovy		-	characterAfterColonRegex=\s
 SpaceAroundOperator	SpaceAroundOperator/000.groovy		-	
 SpaceAroundOperator	SpaceAroundOperator/001.groovy		-	
 SpaceAroundOperator	SpaceAroundOperator/002.groovy		4,7	
@@ -2240,7 +2214,7 @@ StatelessClass	StatelessClass/002.groovy		-	applyToClassNames=*
 StatelessClass	StatelessClass/003.groovy		-	applyToClassNames=*
 StatelessClass	StatelessClass/004.groovy		-	applyToClassNames=*
 StatelessClass	StatelessClass/005.groovy		-	applyToFileNames=*
-StatelessClass	StatelessClass/006.groovy		3,4	applyToFilesMatching=/.*/
+StatelessClass	StatelessClass/006.groovy		3,4	applyToFilesMatching=.*
 StatelessClass	StatelessClass/007.groovy		-	applyToClassNames=*
 StatelessClass	StatelessClass/008.groovy		3	applyToClassNames=*,ignoreFieldNames=other
 StatelessClass	StatelessClass/009.groovy		5	addToIgnoreFieldNames=yyy,deposit??ount,applyToClassNames=*,ignoreFieldNames=oth*,xxxx
@@ -2621,15 +2595,13 @@ UnnecessaryIfStatement	UnnecessaryIfStatement/002.groovy		2,3,4
 UnnecessaryIfStatement	UnnecessaryIfStatement/003.groovy		-	
 UnnecessaryIfStatement	UnnecessaryIfStatement/004.groovy		-	
 UnnecessaryIfStatement	UnnecessaryIfStatement/005.groovy		-	
-UnnecessaryIfStatement	UnnecessaryIfStatement/006.groovy		3,9	
-UnnecessaryIfStatement	UnnecessaryIfStatement/007.groovy		-	checkLastStatementImplicitElse=false
-UnnecessaryIfStatement	UnnecessaryIfStatement/008.groovy		8	
-UnnecessaryIfStatement	UnnecessaryIfStatement/009.groovy		4,8	
-UnnecessaryIfStatement	UnnecessaryIfStatement/010.groovy		6	
-UnnecessaryIfStatement	UnnecessaryIfStatement/011.groovy		4,6	
+UnnecessaryIfStatement	UnnecessaryIfStatement/006.groovy		8	
+UnnecessaryIfStatement	UnnecessaryIfStatement/007.groovy		4,8	
+UnnecessaryIfStatement	UnnecessaryIfStatement/008.groovy		6	
+UnnecessaryIfStatement	UnnecessaryIfStatement/009.groovy		4,6	
+UnnecessaryIfStatement	UnnecessaryIfStatement/010.groovy		-	
+UnnecessaryIfStatement	UnnecessaryIfStatement/011.groovy		-	
 UnnecessaryIfStatement	UnnecessaryIfStatement/012.groovy		-	
-UnnecessaryIfStatement	UnnecessaryIfStatement/013.groovy		-	
-UnnecessaryIfStatement	UnnecessaryIfStatement/014.groovy		-	
 UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/000.groovy		-	
 UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/001.groovy		2	
 UnnecessaryInstanceOfCheck	UnnecessaryInstanceOfCheck/002.groovy		2	
@@ -2654,8 +2626,9 @@ UnnecessaryNullCheck	UnnecessaryNullCheck/004.groovy		2
 UnnecessaryNullCheck	UnnecessaryNullCheck/005.groovy		4	
 UnnecessaryNullCheck	UnnecessaryNullCheck/006.groovy		2,3	
 UnnecessaryNullCheck	UnnecessaryNullCheck/007.groovy		2,3	
-UnnecessaryNullCheck	UnnecessaryNullCheck/008.groovy		2	
-UnnecessaryNullCheck	UnnecessaryNullCheck/009.groovy		2,3	
+UnnecessaryNullCheck	UnnecessaryNullCheck/008.groovy		2,3	
+UnnecessaryNullCheck	UnnecessaryNullCheck/009.groovy		2	
+UnnecessaryNullCheck	UnnecessaryNullCheck/010.groovy		2	
 UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/000.groovy		-	
 UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/001.groovy		2	
 UnnecessaryNullCheckBeforeInstanceOf	UnnecessaryNullCheckBeforeInstanceOf/002.groovy		2	
@@ -2942,14 +2915,14 @@ UseOfNotifyMethod	UseOfNotifyMethod/002.groovy		2
 UseOfNotifyMethod	UseOfNotifyMethod/003.groovy		2	
 VariableName	VariableName/000.groovy		4	
 VariableName	VariableName/001.groovy		-	
-VariableName	VariableName/002.groovy		4	regex=/z.*/
-VariableName	VariableName/003.groovy		-	regex=/z.*/
+VariableName	VariableName/002.groovy		4	regex=z.*
+VariableName	VariableName/003.groovy		-	regex=z.*
 VariableName	VariableName/004.groovy		-	
 VariableName	VariableName/005.groovy		-	
 VariableName	VariableName/006.groovy		4	
 VariableName	VariableName/007.groovy		-	finalRegex=
-VariableName	VariableName/008.groovy		4	finalRegex=/z.*/
-VariableName	VariableName/009.groovy		-	finalRegex=/z.*/
+VariableName	VariableName/008.groovy		4	finalRegex=z.*
+VariableName	VariableName/009.groovy		-	finalRegex=z.*
 VariableName	VariableName/010.groovy		3	
 VariableName	VariableName/011.groovy		-	
 VariableName	VariableName/012.groovy		4	

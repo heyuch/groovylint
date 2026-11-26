@@ -54,8 +54,8 @@ What the harvester has to undo, because the tests are Groovy rather than plain t
 ## What it says today
 
 ```
-2986 cases (1589 expected violations, 1397 expected silence) over 398 rules
-1964 match CodeNarc      879 recorded as known differences      143 for rules out of scope
+2959 cases (1565 expected violations, 1394 expected silence) over 398 rules
+2099 match CodeNarc      717 recorded as known differences      143 for rules out of scope
 ```
 
 Of the 382 rules this project registers, 378 have fixtures. The 20 corpus rules without
@@ -66,14 +66,16 @@ Known differences, by cause:
 
 | Cause | Cases | What it means |
 |---|---|---|
-| `missed` | 373 | the rule does not report a case CodeNarc reports |
-| `false-positive` | 253 | the rule reports a case CodeNarc allows |
-| `other-line` | 129 | the rule fires, but points at a different line |
-| `ours-parser` | 124 | the snippet uses syntax our parser rejects |
+| `missed` | 311 | the rule does not report a case CodeNarc reports |
+| `false-positive` | 224 | the rule reports a case CodeNarc allows |
+| `other-line` | 126 | the rule fires, but points at a different line |
+| `ours-parser` | 56 | the snippet uses syntax our parser rejects |
 
-The `ours-parser` cases are a parser work list, not a rule work list. They cluster on
-`def` in a parameter list, modifiers after a type (`def static X`), annotations on
-imports, `->` in closure parameter lists, and map-literal colons. The count is pinned by
+The `ours-parser` cases are a parser work list, not a rule work list. The first pass
+over them removed the largest clusters: `def` in a parameter list, modifiers after a
+type (`def static X`), method names that are strings (`def 'a test'()`), destructuring
+declarations (`def (a, b) = ...`), `{ -> ... }` as a statement, labels
+(`given: 'x'`) and SPOCK-style specs. What is left is rarer syntax. The count is pinned by
 `PARSER_BUDGET` in the test, so a parser regression fails the build instead of quietly
 joining the ledger.
 
@@ -81,15 +83,14 @@ The rules with the most failing cases, and why they are worth starting with:
 
 | Rule | Failing | Cause |
 |---|---|---|
-| `BracesForMethod` | 21 | we point at the brace, CodeNarc at the declaration; also parser cases |
-| `IllegalPackageReference` | 17 | we only inspect imports; CodeNarc inspects type references anywhere |
-| `Indentation` | 17 | counts indentation differently for nested closures |
-| `PrivateFieldCouldBeFinal` | 17 | we report fields CodeNarc leaves alone |
-| `UnnecessaryDefInMethodDeclaration` | 16 | mostly our parser (`def` in a parameter list) |
-| `SynchronizedOnBoxedPrimitive` | 14 | we see fewer synchronised targets |
-| `ClassEndsWithBlankLine`, `ClassStartsWithBlankLine` | 13 each | blank-line boundary handling |
-| `SpaceAroundOperator` | 13 | mostly our parser (escapes in the snippets were the cause) |
-| `UnnecessaryPackageReference` | 12 | `java.lang` default-import handling |
+| `UnnecessaryPackageReference` | 10 | `java.lang` default-import handling |
+| `ClassStartsWithBlankLine`, `ClassEndsWithBlankLine` | 8 + 12 | `blankLineRequired=false` and inner/single-line class handling |
+| `Indentation` | 8 | counts indentation differently for nested closures |
+| `DuplicateStringLiteral`, `DuplicateNumberLiteral` | 7 + 4 | which literals count as duplicates |
+| `ReturnsNullInsteadOfEmptyCollection` | 6 | sees fewer returning methods |
+| `TrailingComma` | 6 | empty and single-element lists |
+| `UnnecessaryBooleanExpression` | 6 | sees fewer expressions |
+| `MissingOverrideAnnotation`, `LoggerForDifferentClass`, `IllegalClassMember`, `ImplementationAsType` | 5 each | resolution-dependent checks |
 
 Metric rules (`AbcMetric`, `CyclomaticComplexity`, `CrapMetric`) differ in how they
 count, which is a different discussion from correctness.
@@ -111,7 +112,16 @@ ledger cannot hide progress or rot. Rows may name a single case
 (`EmptyIfStatement/000.groovy`) or a whole rule (`AbcMetric/*`) when every failing case
 of that rule shares one cause.
 
-Regenerate the corpus after changing the harvester, not after fixing a rule.
+Regenerate the corpus after changing the harvester, not after fixing a rule. To rebuild
+the ledger from the current code in one step — it fails if the result is not green —
+
+```bash
+python3 benchmarks/refresh_known_differences.py
+```
+
+A case where our answer is the correct one and CodeNarc's is not is recorded with the
+`better:` reason instead of being fixed. `refresh_known_differences.py` keeps those rows
+across a refresh, so a deliberate difference cannot be lost by accident.
 
 ## What this does not cover
 

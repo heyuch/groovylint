@@ -196,15 +196,35 @@ impl Rule for IllegalPackageReferenceRule {
 
 impl FileRule for IllegalPackageReferenceRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        if self.package_names.is_empty() {
+            return;
+        }
+        // The import line is a reference too, and CodeNarc reports it as such.
         for import in &context.script.imports {
-            for package in &self.package_names {
-                if !import.path.starts_with(package) {
+            let package = crate::rules::types::import_package(&import.path);
+            for pattern in &self.package_names {
+                if !crate::rules::types::wildcard_matches(package, pattern.trim()) {
                     continue;
                 }
                 sink.report(
                     import.span,
+                    format!("Found reference to illegal package name {package}"),
+                );
+                break;
+            }
+        }
+        // CodeNarc looks at every type reference, not only at imports: a fully
+        // qualified field type is just as much a reference to the package.
+        for reference in crate::rules::types::type_references(context.script) {
+            for package in &self.package_names {
+                if !crate::rules::types::package_matches(&reference.name, package) {
+                    continue;
+                }
+                sink.report(
+                    reference.span,
                     format!("Found illegal package reference {package}"),
                 );
+                break;
             }
         }
     }

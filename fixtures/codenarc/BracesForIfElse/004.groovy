@@ -1,6 +1,6 @@
 
-            if (someContainer."${SomeClass.SOME_CONSTANT}" != null)  // And what about {}
-            {
-                doStuff()
+            package com.mycompany.enums
+
+            enum Season {
+                SUMMER, WINTER
             }
-        

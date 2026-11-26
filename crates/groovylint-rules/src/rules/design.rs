@@ -2,7 +2,7 @@
 
 use groovylint_core::Severity;
 use groovylint_syntax::ast::{
-    AssignOp, ClassDecl, ClassKind, ExprKind, Item, Literal, MethodDecl, Stmt,
+    AssignOp, ClassDecl, ClassKind, Expr, ExprKind, Item, Literal, MethodDecl, Stmt, UnaryOp,
 };
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
@@ -591,12 +591,50 @@ impl AstRule for OptionalMethodParameterRule {
 }
 
 /// Flags private fields that are only assigned in constructors.
-#[derive(Default)]
 pub struct PrivateFieldCouldBeFinalRule {
     classes: ClassStack,
+    ignored_fields: Vec<String>,
+    ignored_classes: Vec<String>,
+    ignore_jpa_entities: bool,
 }
 
-impl Rule for PrivateFieldCouldBeFinalRule {}
+impl Default for PrivateFieldCouldBeFinalRule {
+    fn default() -> Self {
+        Self {
+            classes: ClassStack::default(),
+            ignored_fields: Vec::new(),
+            ignored_classes: Vec::new(),
+            ignore_jpa_entities: true,
+        }
+    }
+}
+
+fn split_list(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+/// Annotations that make a class a JPA entity, whose fields the rule leaves alone.
+const JPA_ANNOTATIONS: &[&str] = &["Entity", "MappedSuperclass", "Embeddable"];
+
+impl Rule for PrivateFieldCouldBeFinalRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("ignoreFieldNames") {
+            self.ignored_fields = split_list(value);
+        }
+        if let Some(value) = properties.get("doNotApplyToClassNames") {
+            self.ignored_classes = split_list(value);
+        }
+        if let Some(value) = properties.get("ignoreJpaEntities") {
+            self.ignore_jpa_entities = value != "false";
+        }
+        Ok(())
+    }
+}
 
 impl AstRule for PrivateFieldCouldBeFinalRule {
     fn interests(&self) -> NodeMask {
@@ -614,6 +652,22 @@ impl AstRule for PrivateFieldCouldBeFinalRule {
         };
         self.classes.push(&class.name);
 
+        if self.ignore_jpa_entities
+            && class
+                .annotations
+                .iter()
+                .any(|annotation| JPA_ANNOTATIONS.contains(&annotation.as_str()))
+        {
+            return;
+        }
+        if self
+            .ignored_classes
+            .iter()
+            .any(|pattern| crate::rules::types::wildcard_matches(&class.name, pattern))
+        {
+            return;
+        }
+
         let mut candidates: Vec<&str> = class
             .members
             .iter()
@@ -621,7 +675,6 @@ impl AstRule for PrivateFieldCouldBeFinalRule {
                 Item::Field(field)
                     if field.is_private
                         && !field.is_final
-                        && !field.is_static
                         && (field.init.is_some()
                             || constructor_assignments(&class.members).contains(&field.name)) =>
                 {
@@ -637,9 +690,15 @@ impl AstRule for PrivateFieldCouldBeFinalRule {
         // Any assignment outside a constructor disqualifies the field.
         let text = context.source.text();
         let mut disqualified = Vec::new();
-        collect_assignments(&class.members, false, &mut disqualified);
+        collect_assignments(&class.members, Some(&class.name), &mut disqualified);
         let _ = text;
         candidates.retain(|name| !disqualified.iter().any(|other| *other == *name));
+        let ignored = self.ignored_fields.clone();
+        candidates.retain(|name| {
+            !ignored
+                .iter()
+                .any(|pattern| crate::rules::types::wildcard_matches(name, pattern))
+        });
 
         for name in candidates {
             let annotated = class.members.iter().any(|member| match member {
@@ -706,56 +765,120 @@ fn constructor_assignments(items: &[Item]) -> Vec<String> {
 }
 
 /// Collects field names assigned outside constructors.
-fn collect_assignments(items: &[Item], in_constructor: bool, out: &mut Vec<String>) {
+/// Records every field assignment that would stop the field from being final.
+///
+/// A write inside a constructor still allows `final`; a write in a method, a field
+/// initializer or a closure does not, because it runs later.
+fn collect_assignments(items: &[Item], class_name: Option<&str>, out: &mut Vec<String>) {
     for item in items {
         match item {
             Item::Method(method) => {
-                let is_constructor = items
-                    .iter()
-                    .any(|other| matches!(other, Item::Class(class) if class.name == method.name));
-                let _ = is_constructor;
+                let is_constructor = class_name == Some(method.name.as_str());
                 if let Some(body) = &method.body {
                     for statement in &body.statements {
-                        collect_statement_assignments(statement, in_constructor, out);
+                        collect_statement_assignments(statement, is_constructor, out);
                     }
+                }
+            }
+            Item::Field(field) => {
+                if let Some(init) = &field.init {
+                    collect_expression_assignments(init, false, out);
                 }
             }
             Item::Initializer(initializer) => {
                 for statement in &initializer.body.statements {
-                    collect_statement_assignments(statement, in_constructor, out);
+                    collect_statement_assignments(statement, false, out);
                 }
             }
-            Item::Class(class) => collect_assignments(&class.members, in_constructor, out),
+            Item::Class(class) => collect_assignments(&class.members, Some(&class.name), out),
             _ => {}
         }
     }
 }
 
-fn collect_statement_assignments(statement: &Stmt, in_constructor: bool, out: &mut Vec<String>) {
-    struct Finder<'a> {
-        in_constructor: bool,
-        names: &'a mut Vec<String>,
-    }
-
-    impl crate::traverse::AstVisitor for Finder<'_> {
-        fn enter(&mut self, node: NodeRef<'_>) {
-            let NodeRef::Expr(expr) = node else {
-                return;
-            };
-            if let ExprKind::Assign { target, op, .. } = &expr.kind
-                && matches!(op, AssignOp::Assign)
-                && !self.in_constructor
-                && let Some(name) = variable_name(target)
-            {
-                self.names.push(name.to_string());
-            }
-        }
-
-        fn exit(&mut self, _node: NodeRef<'_>) {}
-    }
-
-    let mut finder = Finder {
+fn collect_expression_assignments(expr: &Expr, in_constructor: bool, out: &mut Vec<String>) {
+    let mut finder = AssignmentFinder {
         in_constructor,
+        closure_depth: 0,
+        names: out,
+    };
+    crate::traverse::walk_expr(expr, &mut finder);
+}
+
+/// Collects assignment targets outside constructors.
+struct AssignmentFinder<'a> {
+    in_constructor: bool,
+    closure_depth: usize,
+    names: &'a mut Vec<String>,
+}
+
+impl AssignmentFinder<'_> {
+    /// A write only initialises the field when it runs in the constructor itself:
+    /// a closure runs later, so a write inside one disqualifies the field.
+    fn mutates(&self) -> bool {
+        !self.in_constructor || self.closure_depth > 0
+    }
+}
+
+impl crate::traverse::AstVisitor for AssignmentFinder<'_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        let NodeRef::Expr(expr) = node else {
+            return;
+        };
+        if matches!(expr.kind, ExprKind::Closure { .. }) {
+            self.closure_depth += 1;
+            return;
+        }
+        if !self.mutates() {
+            return;
+        }
+        match &expr.kind {
+            ExprKind::Assign { target, .. } => {
+                if let Some(name) = assignment_target(target) {
+                    self.names.push(name);
+                }
+            }
+            ExprKind::Unary {
+                op: UnaryOp::PreInc | UnaryOp::PreDec | UnaryOp::PostInc | UnaryOp::PostDec,
+                operand,
+            } => {
+                if let Some(name) = assignment_target(operand) {
+                    self.names.push(name);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn exit(&mut self, node: NodeRef<'_>) {
+        if let NodeRef::Expr(Expr {
+            kind: ExprKind::Closure { .. },
+            ..
+        }) = node
+        {
+            self.closure_depth = self.closure_depth.saturating_sub(1);
+        }
+    }
+}
+
+/// The field a write targets: `x` or `this.x`.
+fn assignment_target(expr: &Expr) -> Option<String> {
+    if let Some(name) = variable_name(expr) {
+        return Some(name.to_string());
+    }
+    let ExprKind::Property { receiver, name, .. } = &expr.kind else {
+        return None;
+    };
+    let ExprKind::Variable(base) = &receiver.kind else {
+        return None;
+    };
+    (base == "this").then(|| name.clone())
+}
+
+fn collect_statement_assignments(statement: &Stmt, in_constructor: bool, out: &mut Vec<String>) {
+    let mut finder = AssignmentFinder {
+        in_constructor,
+        closure_depth: 0,
         names: out,
     };
     crate::traverse::walk_stmt(statement, &mut finder);

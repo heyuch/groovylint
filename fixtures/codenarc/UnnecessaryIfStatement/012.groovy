@@ -1,6 +1,6 @@
 
-            String myMethod() {
-                doStuff()
-                if (ready) 'abc'; else 'xyz'
-            }
+            if (someExpression) {}
+            if (someExpression) { doSomething() } else { }
+            try { } finally { }
+
         

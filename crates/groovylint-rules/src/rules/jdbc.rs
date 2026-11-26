@@ -6,7 +6,7 @@
 //! supertypes.
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{ExprKind, ImportDecl, Item, Script, Stmt};
+use groovylint_syntax::ast::{ExprKind, ImportDecl, Item, Script};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
@@ -55,13 +55,10 @@ fn check_script(script: &Script, spec: ReferenceSpec, sink: &mut DiagnosticSink<
         }
     }
 
-    let mut collector = Collector {
-        spec,
-        spans: Vec::new(),
-    };
-    crate::traverse::walk_script(script, &mut collector);
-    for (span, type_name) in collector.spans {
-        sink.report(span, spec.message(&type_name));
+    for reference in crate::rules::types::type_references(script) {
+        if spec.matches(&reference.name) {
+            sink.report(reference.span, spec.message(&reference.name));
+        }
     }
 }
 
@@ -71,90 +68,6 @@ fn matched_import(import: &ImportDecl, spec: ReferenceSpec) -> Option<&str> {
         return Some(path);
     }
     None
-}
-
-/// Collects declarations and expressions that name a tracked type.
-struct Collector {
-    spec: ReferenceSpec,
-    spans: Vec<(groovylint_core::Span, String)>,
-}
-
-impl crate::traverse::AstVisitor for Collector {
-    fn enter(&mut self, node: NodeRef<'_>) {
-        match node {
-            NodeRef::Class(class) => {
-                let mut names = Vec::new();
-                if let Some(parent) = &class.extends {
-                    names.push(parent.clone());
-                }
-                names.extend(class.implements.iter().cloned());
-                for name in names {
-                    if self.spec.matches(&name) {
-                        self.spans.push((class.span, name));
-                    }
-                }
-            }
-            NodeRef::Field(field) => {
-                if let Some(type_name) = &field.type_name
-                    && self.spec.matches(type_name)
-                {
-                    self.spans.push((field.span, type_name.clone()));
-                }
-            }
-            NodeRef::Method(method) => {
-                if let Some(return_type) = &method.return_type
-                    && self.spec.matches(return_type)
-                {
-                    self.spans.push((method.span, return_type.clone()));
-                }
-                for param in &method.params {
-                    if let Some(type_name) = &param.type_name
-                        && self.spec.matches(type_name)
-                    {
-                        self.spans.push((param.span, type_name.clone()));
-                    }
-                }
-            }
-            NodeRef::Stmt(Stmt::VarDecl(decl)) => {
-                if let Some(type_name) = &decl.type_name
-                    && self.spec.matches(type_name)
-                {
-                    self.spans.push((decl.span, type_name.clone()));
-                }
-            }
-            NodeRef::Stmt(Stmt::Try(try_stmt)) => {
-                for catch in &try_stmt.catches {
-                    for type_name in &catch.type_names {
-                        if self.spec.matches(type_name) {
-                            self.spans.push((catch.span, type_name.clone()));
-                        }
-                    }
-                }
-            }
-            NodeRef::Expr(expr) => match &expr.kind {
-                ExprKind::New { type_name, .. } | ExprKind::Cast { type_name, .. } => {
-                    if self.spec.matches(type_name) {
-                        self.spans.push((expr.span, type_name.clone()));
-                    }
-                }
-                ExprKind::Property {
-                    receiver,
-                    name,
-                    safe: false,
-                } if name == "class" => {
-                    if let ExprKind::Variable(base) = &receiver.kind
-                        && self.spec.matches(base)
-                    {
-                        self.spans.push((expr.span, base.clone()));
-                    }
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-    }
-
-    fn exit(&mut self, _node: NodeRef<'_>) {}
 }
 
 /// Flags direct references to `java.sql.Connection`.

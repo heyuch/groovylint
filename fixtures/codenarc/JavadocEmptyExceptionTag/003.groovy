@@ -2,11 +2,10 @@
             class MyClass {
                 /**
                  * Return the calculated count of some stuff.
-                 * @exception name description
-                 * @param endIndex the ending index
-                 * @return the full count
+                 * @exception
+                 *    the full count
                  */
-                int countThings(int endIndex) {
+                int countThings() {
                 }
             }
         

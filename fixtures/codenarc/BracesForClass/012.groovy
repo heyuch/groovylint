@@ -1,6 +1,0 @@
-
-            class MyClass
-                        extends File {
-
-            }
-        

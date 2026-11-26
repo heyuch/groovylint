@@ -38,9 +38,10 @@ fn regex_property(
     }
 }
 
-fn ignored_names(properties: &RuleProperties, name: &str) -> Vec<String> {
+/// Reads an `ignore...Names` property, keeping the rule's default when it is absent.
+fn ignored_names(properties: &RuleProperties, name: &str, default: &[String]) -> Vec<String> {
     let Some(value) = properties.get(name) else {
-        return Vec::new();
+        return default.to_vec();
     };
     value
         .split(',')
@@ -115,13 +116,14 @@ enum NameTarget {
 impl Rule for NamePatternRule {
     fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
         self.pattern = regex_property(properties, "regex", &self.pattern)?;
+        let default = std::mem::take(&mut self.ignored);
         self.ignored = match self.target {
-            NameTarget::Method => ignored_names(properties, "ignoreMethodNames"),
-            NameTarget::Parameter => ignored_names(properties, "ignoreParameterNames"),
-            NameTarget::Property => ignored_names(properties, "ignorePropertyNames"),
-            NameTarget::Variable => ignored_names(properties, "ignoreVariableNames"),
-            NameTarget::Field => ignored_names(properties, "ignoreFieldNames"),
-            _ => Vec::new(),
+            NameTarget::Method => ignored_names(properties, "ignoreMethodNames", &default),
+            NameTarget::Parameter => ignored_names(properties, "ignoreParameterNames", &default),
+            NameTarget::Property => ignored_names(properties, "ignorePropertyNames", &default),
+            NameTarget::Variable => ignored_names(properties, "ignoreVariableNames", &default),
+            NameTarget::Field => ignored_names(properties, "ignoreFieldNames", &default),
+            _ => default,
         };
         if matches!(
             self.target,

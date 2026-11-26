@@ -191,14 +191,35 @@ def properties_in(block: str) -> dict[str, str]:
     found = {}
     for match in PROPERTY.finditer(block):
         pos = skip_space(block, match.end())
-        body, end, _ = literal_at(block, pos)
+        body, _, _ = literal_at(block, pos)
         if body is not None:
             found[match.group(1)] = body
             continue
         value_match = re.match(r'[^,\n]+', block[pos:])
-        if value_match:
-            found[match.group(1)] = value_match.group(0).strip()
+        if not value_match:
+            continue
+        value = strip_comment(value_match.group(0).strip())
+        if value == 'null':
+            # Groovy's null means "not set", which is how CodeNarc reads it.
+            continue
+        found[match.group(1)] = value
     return found
+
+
+def strip_comment(value: str) -> str:
+    """Removes a trailing `// ...` from a property value, keeping slashy strings."""
+    if value.startswith('/'):
+        # A slashy string ends at the first unescaped slash.
+        index = 1
+        while index < len(value):
+            if value[index] == '\\':
+                index += 2
+                continue
+            if value[index] == '/':
+                return value[1:index]
+            index += 1
+    index = value.find('//')
+    return value if index < 0 else value[:index].strip()
 
 
 def source_location(block: str) -> tuple[str | None, str | None]:
@@ -274,41 +295,69 @@ def case_from_assertion(block: str, match: re.Match[str], rule_name: str,
 
 def cases_in_class(path: pathlib.Path, rule_name: str, interpolate,
                    shared: dict[str, str] | None = None) -> list[dict]:
+    """Collects one case per assertion, pairing it with the source in scope.
+
+    Assignments and assertions are walked in source order: a method that reassigns
+    ``SOURCE`` twice must not pair the first assertion with the second snippet.
+    """
     text = path.read_text()
+    methods = split_methods(text)
     shared_literals = dict(shared or {})
-    for match in ASSIGNMENT.finditer(text):
-        body, _, _ = literal_at(text, skip_space(text, match.end()))
-        if body is not None:
-            shared_literals.setdefault(match.group(1), body)
+    shared_literals.update(class_level_literals(text, methods))
+
     cases = []
-    for method, block in split_methods(text):
+    for method, block in methods:
         spans = literal_spans(block)
-        variables = {}
+        events = []
         for match in ASSIGNMENT.finditer(block):
             if not outside(spans, match.start()):
                 continue
             body, _, _ = literal_at(block, skip_space(block, match.end()))
             if body is not None:
-                variables[match.group(1)] = body
-        properties = properties_in(block)
-        source_path, source_name = source_location(block)
-        scope = dict(shared_literals, **variables)
+                events.append((match.start(), 'assign', match.group(1), body, None))
         for kind, pattern, expected_count in ASSERTIONS:
             for match in pattern.finditer(block):
-                result = case_from_assertion(block, match, rule_name, expected_count, scope, interpolate)
-                if result is None:
-                    continue
-                body, lines = result
-                cases.append({
-                    'method': method,
-                    'kind': kind,
-                    'source': body,
-                    'lines': lines,
-                    'properties': properties,
-                    'path': source_path,
-                    'name': source_name,
-                })
+                events.append((match.start(), 'assert', kind, match, expected_count))
+        events.sort(key=lambda event: event[0])
+
+        properties = properties_in(block)
+        source_path, source_name = source_location(block)
+        variables = dict(shared_literals)
+        for _, event, name, payload, expected_count in events:
+            if event == 'assign':
+                variables[name] = payload
+                continue
+            result = case_from_assertion(block, payload, rule_name, expected_count, variables, interpolate)
+            if result is None:
+                continue
+            body, lines = result
+            cases.append({
+                'method': method,
+                'kind': name,
+                'source': body,
+                'lines': lines,
+                'properties': properties,
+                'path': source_path,
+                'name': source_name,
+            })
     return cases
+
+
+def class_level_literals(text: str, methods: list[tuple[str, str]]) -> dict[str, str]:
+    """Literals declared outside every method, which every test method can see."""
+    covered = []
+    for _, block in methods:
+        start = text.find(block)
+        if start >= 0:
+            covered.append((start, start + len(block)))
+    variables = {}
+    for match in ASSIGNMENT.finditer(text):
+        if any(start <= match.start() < end for start, end in covered):
+            continue
+        body, _, _ = literal_at(text, skip_space(text, match.end()))
+        if body is not None:
+            variables[match.group(1)] = body
+    return variables
 
 
 # --------------------------------------------------------------------------- #

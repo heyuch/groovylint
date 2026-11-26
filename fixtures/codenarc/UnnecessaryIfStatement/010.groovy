@@ -1,9 +1,6 @@
 
             String myMethod() {
                 doStuff()
-                if (ready) {
-                    doStuff()
-                } else [a:123, b:456]
-                doOtherStuff()
+                if (ready) 'abc'; else 'xyz'
             }
         

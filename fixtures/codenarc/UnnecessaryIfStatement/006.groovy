@@ -1,13 +1,10 @@
 
-            def method1() {
-                if (expression1) {
-                    return true
+            def isSpellingCorrect(word) {
+                File file = new File("...")
+                def found = false
+                file.eachLine {
+                    if (it == word) found = true
                 }
-                return false
-            }
-            def closure1 = {
-                if (expression2)
-                    return Boolean.FALSE
-                return Boolean.TRUE
+                if (found) { true } else false
             }
         

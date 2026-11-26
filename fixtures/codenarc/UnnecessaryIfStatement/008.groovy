@@ -1,10 +1,9 @@
 
-            def isSpellingCorrect(word) {
-                File file = new File("...")
-                def found = false
-                file.eachLine {
-                    if (it == word) found = true
-                }
-                if (found) { true } else false
+            String myMethod() {
+                doStuff()
+                if (ready) {
+                    doStuff()
+                } else [a:123, b:456]
+                doOtherStuff()
             }
         

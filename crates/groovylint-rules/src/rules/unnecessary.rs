@@ -1242,7 +1242,49 @@ fn is_serializable(class: &ClassDecl) -> bool {
         .any(|name| name.rsplit('.').next() == Some("Serializable"))
 }
 
-/// Flags `def` on declarations that already have a type or modifier.
+/// The modifiers that make `def` redundant, in the order `CodeNarc` reports them.
+const REDUNDANT_WITH_DEF: &[&str] = &[
+    "private",
+    "protected",
+    "public",
+    "static",
+    "final",
+    "synchronized",
+    "abstract",
+    "transient",
+    "volatile",
+    "strictfp",
+    "Object",
+];
+
+/// The declaration text up to its value or comment, which is what `CodeNarc` scans.
+fn declaration_head<'a>(
+    context: &'a FileContext<'_>,
+    span: groovylint_core::Span,
+) -> Option<&'a str> {
+    let text = context.source.text().get(span.range())?;
+    let mut head = text;
+    if let Some(index) = head.find('=') {
+        head = &head[..index];
+    }
+    if let Some(index) = head.find("//") {
+        head = &head[..index];
+    }
+    Some(head)
+}
+
+/// The modifier that already says what `def` says, if the declaration has one.
+fn redundant_with_def(head: &str) -> Option<&'static str> {
+    if !head.split_whitespace().any(|word| word == "def") {
+        return None;
+    }
+    REDUNDANT_WITH_DEF
+        .iter()
+        .copied()
+        .find(|keyword| head.split_whitespace().any(|word| word == *keyword))
+}
+
+/// Flags `def` on field declarations that already carry a modifier.
 pub struct UnnecessaryDefInFieldDeclarationRule;
 
 impl Rule for UnnecessaryDefInFieldDeclarationRule {}
@@ -1261,31 +1303,20 @@ impl AstRule for UnnecessaryDefInFieldDeclarationRule {
         let NodeRef::Field(field) = node else {
             return;
         };
-        if field.type_name.is_some() {
-            return;
-        }
-        let has_modifier = field.is_static
-            || field.is_final
-            || field.is_private
-            || field.is_public
-            || field.is_protected;
-        if !has_modifier {
-            return;
-        }
-        let Some(text) = context.source.text().get(field.span.range()) else {
+        let Some(head) = declaration_head(context, field.span) else {
             return;
         };
-        if !text.trim_start().starts_with("def ") {
+        let Some(keyword) = redundant_with_def(head) else {
             return;
-        }
+        };
         sink.report(
             field.span,
-            "The def keyword for this field declaration is unneeded",
+            format!("The def keyword is unneeded when a field is marked {keyword}"),
         );
     }
 }
 
-/// Flags `def` on method declarations that already have a modifier.
+/// Flags `def` on method declarations that already carry a modifier.
 pub struct UnnecessaryDefInMethodDeclarationRule;
 
 impl Rule for UnnecessaryDefInMethodDeclarationRule {}
@@ -1304,22 +1335,50 @@ impl AstRule for UnnecessaryDefInMethodDeclarationRule {
         let NodeRef::Method(method) = node else {
             return;
         };
-        if method.return_type.is_some() {
+        let Some(head) = declaration_head(context, method.span) else {
+            return;
+        };
+        // A quoted method name or a parameter list is not part of the declaration
+        // proper; CodeNarc removes both before looking for keywords.
+        let stripped = remove_distracting_parts(head);
+        if stripped.contains('<') {
             return;
         }
-        if !(method.is_private
-            || method.is_protected
-            || method.is_public
-            || method.is_static
-            || method.is_final)
-        {
+        let Some(keyword) = redundant_with_def(&stripped) else {
             return;
-        }
-        report_def(context, sink, method.span, "method");
+        };
+        sink.report(
+            method.span,
+            format!("The def keyword is unneeded when a method is marked {keyword}"),
+        );
     }
 }
 
-/// Flags `def` on variable declarations that already have a type.
+/// Drops quoted names, parameter lists and generics from a declaration head.
+fn remove_distracting_parts(head: &str) -> String {
+    let mut out = String::with_capacity(head.len());
+    let mut depth = 0usize;
+    let mut quote: Option<char> = None;
+    for character in head.chars() {
+        if let Some(active) = quote {
+            if character == active {
+                quote = None;
+                out.push(' ');
+            }
+            continue;
+        }
+        match character {
+            '\'' | '"' => quote = Some(character),
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(character),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// Flags `def` on variable declarations that already carry a modifier.
 pub struct UnnecessaryDefInVariableDeclarationRule;
 
 impl Rule for UnnecessaryDefInVariableDeclarationRule {}
@@ -1338,30 +1397,17 @@ impl AstRule for UnnecessaryDefInVariableDeclarationRule {
         let NodeRef::Stmt(Stmt::VarDecl(decl)) = node else {
             return;
         };
-        // A local declaration only carries `def`; a type or modifier replaces it.
-        if decl.type_name.is_some() {
+        let Some(head) = declaration_head(context, decl.span) else {
             return;
-        }
-        let _ = (context, sink);
+        };
+        let Some(keyword) = redundant_with_def(head) else {
+            return;
+        };
+        sink.report(
+            decl.span,
+            format!("The def keyword is unneeded when a variable is marked {keyword}"),
+        );
     }
-}
-
-fn report_def(
-    context: &FileContext<'_>,
-    sink: &mut DiagnosticSink<'_>,
-    span: groovylint_core::Span,
-    kind: &str,
-) {
-    let Some(text) = context.source.text().get(span.range()) else {
-        return;
-    };
-    if !text.trim_start().starts_with("def ") {
-        return;
-    }
-    sink.report(
-        span,
-        format!("The def keyword for this {kind} declaration is unneeded"),
-    );
 }
 
 /// Flags constructors that only call `super()` with the same arguments.

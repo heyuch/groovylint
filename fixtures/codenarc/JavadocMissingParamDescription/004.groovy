@@ -1,11 +1,21 @@
 
             class MyClass {
                 /**
-                 * Return the calculated count of some stuff.
                  * @param name
-                 *    the full count
+                 * @see MyOtherClass
                  */
-                int countThings() {
-                }
+                int method1() { }
+
+                /**
+                 * @param name
+                 */
+                int method2() { }
+
+                /**
+                 *@param name
+                 *
+                 * Oh and another thing...
+                 */
+                int method3() { }
             }
         

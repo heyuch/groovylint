@@ -1,6 +1,13 @@
 
             class MyClass {
-                int size() { groups.size() }
-                AutoScalingGroupData get(int i) { groups[i] }
+                @AnAnnotation
+                // some comment
+                void aMethod() {
+                }
+
+                @AnAnnotation("abc")
+                // some comment
+                void aMethod() {
+                }
             }
         

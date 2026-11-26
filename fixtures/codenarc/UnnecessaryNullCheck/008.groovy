@@ -1,3 +1,4 @@
 
-//            (obj != null && obj.prop && obj.method()) ? x : y
-//        
+            if (super != null) { }
+            if (null != super) { }
+        

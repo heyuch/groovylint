@@ -27,6 +27,7 @@ pub mod naming;
 pub mod security;
 pub mod serialization;
 pub mod size;
+pub mod types;
 pub mod unary;
 pub mod unnecessary;
 pub mod unnecessary_semicolon;

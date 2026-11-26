@@ -1,6 +1,5 @@
 
-            for(String name=${SomeClass.SOME_CONSTANT}; name==null;)  // And what about {}
-            {
-                doStuff()
+            for (Iterator iter = searchResults.iterator(); iter.hasNext();) {
+                println iter.next()
             }
         

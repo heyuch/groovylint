@@ -1,7 +1,5 @@
 
-//            class MyClass {
-//              def foo = {}
-//                Closure FOo
-//                def foO = {}
-//            }
-//        
+            def foo = {}
+            def Foo = {}
+            def foO = {}
+        
