@@ -441,21 +441,13 @@ impl AstRule for LoggerForDifferentClassRule {
                     );
                     return;
                 }
-                let ExprKind::Property {
-                    receiver,
-                    name: property,
-                    ..
-                } = &first.kind
-                else {
+                // `getLogger(Foo)`, `getLogger(Foo.class)`, `getLogger(Foo.class.name)`
+                // and `getLogger(Foo.name)` all name the same class; anything else
+                // (a computed name) is left alone.
+                let Some(owner) = logger_owner(first) else {
                     return;
                 };
-                if property != "class" {
-                    return;
-                }
-                let ExprKind::Variable(owner) = &receiver.kind else {
-                    return;
-                };
-                if owner == self.classes.current() {
+                if owner == self.classes.current() || owner.is_empty() {
                     return;
                 }
                 sink.report(
@@ -478,6 +470,30 @@ impl AstRule for LoggerForDifferentClassRule {
         if matches!(node, NodeRef::Class(_)) {
             self.classes.exit(node);
         }
+    }
+}
+
+/// The class a logger argument names, when the argument is just a name.
+fn logger_owner(argument: &Expr) -> Option<&str> {
+    match &argument.kind {
+        ExprKind::Variable(name) => Some(name.as_str()),
+        ExprKind::Property {
+            receiver,
+            name,
+            safe: false,
+        } if name == "class" || name == "name" => match &receiver.kind {
+            ExprKind::Variable(owner) => Some(owner.as_str()),
+            ExprKind::Property {
+                receiver: inner,
+                name: property,
+                ..
+            } if property == "class" => match &inner.kind {
+                ExprKind::Variable(owner) => Some(owner.as_str()),
+                _ => None,
+            },
+            _ => None,
+        },
+        _ => None,
     }
 }
 

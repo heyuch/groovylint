@@ -69,9 +69,28 @@ fn trimmed(context: &FileContext<'_>, line: usize) -> String {
 }
 
 /// Requires a blank line before the closing brace of every class.
-pub struct ClassEndsWithBlankLineRule;
+#[derive(Default)]
+pub struct ClassEndsWithBlankLineRule {
+    blank_line_required: Option<bool>,
+    ignore_single_line_classes: Option<bool>,
+    ignore_inner_classes: bool,
+    depth: usize,
+}
 
-impl Rule for ClassEndsWithBlankLineRule {}
+impl Rule for ClassEndsWithBlankLineRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("blankLineRequired") {
+            self.blank_line_required = Some(value != "false");
+        }
+        if let Some(value) = properties.get("ignoreSingleLineClasses") {
+            self.ignore_single_line_classes = Some(value != "false");
+        }
+        if let Some(value) = properties.get("ignoreInnerClasses") {
+            self.ignore_inner_classes = value != "false";
+        }
+        Ok(())
+    }
+}
 
 impl AstRule for ClassEndsWithBlankLineRule {
     fn interests(&self) -> NodeMask {
@@ -87,12 +106,26 @@ impl AstRule for ClassEndsWithBlankLineRule {
         let NodeRef::Class(class) = node else {
             return;
         };
-        if is_single_line_class(context, class) {
+        let inner = self.depth > 0;
+        self.depth += 1;
+
+        let required = self.blank_line_required.unwrap_or(true);
+        let ignore_single = self.ignore_single_line_classes.unwrap_or(true);
+        if inner && self.ignore_inner_classes {
+            return;
+        }
+        let single_line = is_single_line_class(context, class);
+        if single_line && (ignore_single || !required) {
             return;
         }
         let last = line_of(context, class.span.end);
-        let before = last.saturating_sub(1);
-        if trimmed(context, last) != "}" || !is_blank(context, before) {
+        if single_line {
+            report_line(context, sink, last, "Single line classes are not allowed");
+            return;
+        }
+        let closes_with_brace = trimmed(context, last) == "}";
+        let blank_before = is_blank(context, last.saturating_sub(1));
+        if required && (!closes_with_brace || !blank_before) {
             report_line(
                 context,
                 sink,
@@ -100,13 +133,51 @@ impl AstRule for ClassEndsWithBlankLineRule {
                 "Class does not end with a blank line before the closing brace",
             );
         }
+        if !required && closes_with_brace && blank_before {
+            report_line(
+                context,
+                sink,
+                last,
+                "Class ends with an empty line before the closing brace",
+            );
+        }
+    }
+
+    fn exit(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        _sink: &mut DiagnosticSink<'_>,
+    ) {
+        if matches!(node, NodeRef::Class(_)) {
+            self.depth = self.depth.saturating_sub(1);
+        }
     }
 }
 
 /// Requires a blank line after the opening brace of every class.
-pub struct ClassStartsWithBlankLineRule;
+#[derive(Default)]
+pub struct ClassStartsWithBlankLineRule {
+    blank_line_required: Option<bool>,
+    ignore_single_line_classes: Option<bool>,
+    ignore_inner_classes: bool,
+    depth: usize,
+}
 
-impl Rule for ClassStartsWithBlankLineRule {}
+impl Rule for ClassStartsWithBlankLineRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("blankLineRequired") {
+            self.blank_line_required = Some(value != "false");
+        }
+        if let Some(value) = properties.get("ignoreSingleLineClasses") {
+            self.ignore_single_line_classes = Some(value != "false");
+        }
+        if let Some(value) = properties.get("ignoreInnerClasses") {
+            self.ignore_inner_classes = value != "false";
+        }
+        Ok(())
+    }
+}
 
 impl AstRule for ClassStartsWithBlankLineRule {
     fn interests(&self) -> NodeMask {
@@ -122,24 +193,100 @@ impl AstRule for ClassStartsWithBlankLineRule {
         let NodeRef::Class(class) = node else {
             return;
         };
-        if is_single_line_class(context, class) {
+        let inner = self.depth > 0;
+        self.depth += 1;
+
+        let required = self.blank_line_required.unwrap_or(true);
+        let ignore_single = self.ignore_single_line_classes.unwrap_or(true);
+        if inner && self.ignore_inner_classes {
             return;
         }
-        let Some(brace) = class_brace_line(context, class) else {
-            return;
-        };
-        let after = brace + 1;
-        if after >= line_of(context, class.span.end) {
+        let single_line = is_single_line_class(context, class);
+        if single_line && (ignore_single || !required) {
             return;
         }
-        if !is_blank(context, after) {
+        if single_line {
             report_line(
                 context,
                 sink,
-                after,
-                "Class does not start with a blank line after the opening brace",
+                line_of(context, class.span.start),
+                "Single line classes are not allowed",
             );
+            return;
         }
+
+        let start = line_of(context, class.span.start);
+        if !required {
+            let member_on_start = class.members.iter().any(|member| {
+                member_span(member).is_some_and(|span| line_of(context, span.start) == start)
+            });
+            if member_on_start {
+                return;
+            }
+            if is_blank(context, start + 1) {
+                report_line(
+                    context,
+                    sink,
+                    start + 1,
+                    "Class starts with a blank line after the opening brace",
+                );
+            }
+            return;
+        }
+
+        let Some(brace) = class_brace_line(context, class) else {
+            return;
+        };
+        let after_brace = brace + 1;
+        if trimmed(context, after_brace).is_empty() {
+            if after_brace >= line_of(context, class.span.end) {
+                return;
+            }
+            for member in &class.members {
+                let Some(span) = member_span(member) else {
+                    continue;
+                };
+                let line = line_of(context, span.start);
+                if line == start || line == start + 1 {
+                    report_line(
+                        context,
+                        sink,
+                        line,
+                        "Class does not start with a blank line after the opening brace",
+                    );
+                }
+            }
+            return;
+        }
+        report_line(
+            context,
+            sink,
+            start + 1,
+            "Class does not start with a blank line after the opening brace",
+        );
+    }
+
+    fn exit(
+        &mut self,
+        node: NodeRef<'_>,
+        _context: &FileContext<'_>,
+        _sink: &mut DiagnosticSink<'_>,
+    ) {
+        if matches!(node, NodeRef::Class(_)) {
+            self.depth = self.depth.saturating_sub(1);
+        }
+    }
+}
+
+/// The span of a class member, for the blank-line rules.
+fn member_span(member: &groovylint_syntax::ast::Item) -> Option<groovylint_core::Span> {
+    use groovylint_syntax::ast::Item;
+    match member {
+        Item::Field(field) => Some(field.span),
+        Item::Method(method) => Some(method.span),
+        Item::Class(class) => Some(class.span),
+        Item::Initializer(initializer) => Some(initializer.span),
+        _ => None,
     }
 }
 
@@ -1366,7 +1513,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Classes should end with a blank line before the closing brace.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(ClassEndsWithBlankLineRule)),
+            || RuleInstanceImpl::Ast(Box::new(ClassEndsWithBlankLineRule::default())),
         ),
         descriptor(
             RuleMeta::new(
@@ -1376,7 +1523,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Classes should start with a blank line after the opening brace.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(ClassStartsWithBlankLineRule)),
+            || RuleInstanceImpl::Ast(Box::new(ClassStartsWithBlankLineRule::default())),
         ),
         descriptor(
             RuleMeta::new(

@@ -55,7 +55,7 @@ What the harvester has to undo, because the tests are Groovy rather than plain t
 
 ```
 2959 cases (1565 expected violations, 1394 expected silence) over 398 rules
-2099 match CodeNarc      717 recorded as known differences      143 for rules out of scope
+2173 match CodeNarc      643 recorded as known differences      143 for rules out of scope
 ```
 
 Of the 382 rules this project registers, 378 have fixtures. The 20 corpus rules without
@@ -66,9 +66,9 @@ Known differences, by cause:
 
 | Cause | Cases | What it means |
 |---|---|---|
-| `missed` | 311 | the rule does not report a case CodeNarc reports |
-| `false-positive` | 224 | the rule reports a case CodeNarc allows |
-| `other-line` | 126 | the rule fires, but points at a different line |
+| `missed` | 268 | the rule does not report a case CodeNarc reports |
+| `false-positive` | 206 | the rule reports a case CodeNarc allows |
+| `other-line` | 113 | the rule fires, but points at a different line |
 | `ours-parser` | 56 | the snippet uses syntax our parser rejects |
 
 The `ours-parser` cases are a parser work list, not a rule work list. The first pass
@@ -83,14 +83,12 @@ The rules with the most failing cases, and why they are worth starting with:
 
 | Rule | Failing | Cause |
 |---|---|---|
-| `UnnecessaryPackageReference` | 10 | `java.lang` default-import handling |
-| `ClassStartsWithBlankLine`, `ClassEndsWithBlankLine` | 8 + 12 | `blankLineRequired=false` and inner/single-line class handling |
-| `Indentation` | 8 | counts indentation differently for nested closures |
-| `DuplicateStringLiteral`, `DuplicateNumberLiteral` | 7 + 4 | which literals count as duplicates |
-| `ReturnsNullInsteadOfEmptyCollection` | 6 | sees fewer returning methods |
-| `TrailingComma` | 6 | empty and single-element lists |
-| `UnnecessaryBooleanExpression` | 6 | sees fewer expressions |
-| `MissingOverrideAnnotation`, `LoggerForDifferentClass`, `IllegalClassMember`, `ImplementationAsType` | 5 each | resolution-dependent checks |
+| `Indentation` | 8 | CodeNarc's indentation state machine differs on nested blocks |
+| `AbcMetric`, `CyclomaticComplexity`, `MethodSize`, `ClassSize`, `CrapMetric` | 5 + 4 + … | how a metric is counted |
+| `IllegalClassMember`, `ImplementationAsType`, `MissingOverrideAnnotation` | 5 each | need type resolution, which we do not have |
+| `NestedBlockDepth` | 5 | which statements count as a block |
+| `Space*Brace` | 4 each | the character-level skipping rules |
+| `IllegalPackageReference` | 4 | line attribution inside multi-line declarations |
 
 Metric rules (`AbcMetric`, `CyclomaticComplexity`, `CrapMetric`) differ in how they
 count, which is a different discussion from correctness.

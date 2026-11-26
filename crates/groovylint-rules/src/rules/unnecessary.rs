@@ -394,12 +394,40 @@ impl AstRule for UnnecessaryIfStatementRule {
         let Some(else_branch) = if_stmt.else_branch.as_deref() else {
             return;
         };
-        if returns_constant(&if_stmt.then_branch, true) && returns_constant(else_branch, false) {
+        // `CodeNarc` reports both orders: the branches only restate the condition.
+        let then_true = returns_constant(&if_stmt.then_branch, true);
+        let then_false = returns_constant(&if_stmt.then_branch, false);
+        let else_true = returns_constant(else_branch, true);
+        let else_false = returns_constant(else_branch, false);
+        if (then_true && else_false) || (then_false && else_true) {
             sink.report(
                 if_stmt.span,
                 "The if and else blocks merely return true/false",
             );
         }
+    }
+}
+
+/// The value of a boolean literal or of `Boolean.TRUE` / `Boolean.FALSE`.
+fn bool_constant(expr: &Expr) -> Option<bool> {
+    if let Some(flag) = bool_literal(expr) {
+        return Some(flag);
+    }
+    let ExprKind::Property {
+        receiver,
+        name,
+        safe: false,
+    } = &unparen(expr).kind
+    else {
+        return None;
+    };
+    if variable_name(receiver) != Some("Boolean") {
+        return None;
+    }
+    match name.as_str() {
+        "TRUE" => Some(true),
+        "FALSE" => Some(false),
+        _ => None,
     }
 }
 
@@ -412,7 +440,7 @@ fn returns_constant(statement: &Stmt, value: bool) -> bool {
         },
         _ => None,
     };
-    returned.and_then(bool_literal) == Some(value)
+    returned.and_then(bool_constant) == Some(value)
 }
 
 /// Flags fully-qualified references to classes Groovy imports by default.
@@ -786,17 +814,14 @@ impl AstRule for UnnecessaryBooleanExpressionRule {
         let NodeRef::Expr(expr) = node else {
             return;
         };
+        // CodeNarc reports `x && <constant>` and `x || <constant>` whichever
+        // constant it is, on both sides.
         let redundant = match &expr.kind {
             ExprKind::Binary {
-                op: BinaryOp::And,
+                op: BinaryOp::And | BinaryOp::Or,
                 left,
                 right,
-            } => bool_literal(left) == Some(true) || bool_literal(right) == Some(true),
-            ExprKind::Binary {
-                op: BinaryOp::Or,
-                left,
-                right,
-            } => bool_literal(left) == Some(false) || bool_literal(right) == Some(false),
+            } => is_constant(left) || is_constant(right),
             ExprKind::Unary {
                 op: groovylint_syntax::ast::UnaryOp::Not,
                 operand,
