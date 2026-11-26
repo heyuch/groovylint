@@ -1,0 +1,397 @@
+# Architecture rule model: design v3
+
+Status: **design for review** (nothing implemented). Supersedes the module DSL of
+[`ARCH-MODULE-RULES.md`](ARCH-MODULE-RULES.md) (v2) and the DSL sketch in
+[`ARCHITECTURE-RULES.md`](ARCHITECTURE-RULES.md) §3.
+
+v2 put every constraint into one matrix: a source kind on one side, target kinds on
+the other, with `allow` / `allowSelf` / `allowOther` / `deny` as the four axes. It
+could express the rules, but reading one meant simulating a matrix, and because the
+matrix was the only mechanism, things that are not a matrix (an ordered layer stack,
+who may see a module, a graph property) had to be bent into it.
+
+v3 separates what a rule is made of.
+
+## 1. What a rule is
+
+An architecture rule is a triple:
+
+```
+(target type T) × (selector over T) × (constraint vocabulary of T)
+```
+
+- **Target type** — one of a closed set: `module`, `class`, `method`, `field`,
+  `statement`, `expression`. Different types can be constrained in different ways,
+  and the implementation differs, so the type is part of the model.
+- **Selector** — "which of these": name suffix, inheritance, required interface,
+  annotation, signature, containment. Selectors compose with `and` / `or` / `not`.
+- **Constraint** — "what they must or must not do". The vocabulary is **closed per
+  target type**: modules have dependencies and composition, classes have
+  dependencies, supertypes, annotations, placement, methods have annotations and
+  signatures, statements have emptiness and literals.
+
+Users compose selectors and constraints. They do not invent constraints, because a
+closed vocabulary is what makes a violation explainable, baseline-able, and
+actionable for the author — and for an agent editing the code.
+
+Three properties the model needs to be worth anything:
+
+1. **Selectors are composable predicates.** "Enums that implement `BaseEnum`" is a
+   conjunction, not a special case.
+2. **Edges are collected at the finest granularity and projected upwards.** A
+   dependency is first a class → class edge; a module → module edge is that same
+   edge with both ends projected. "Module A must not depend on B" and "classes in
+   `client` must not depend on `application`" are one edge model evaluated at two
+   levels, not two implementations.
+3. **Ownership is part of a selector.** A method's owner is a class, a class's owner
+   is a module. "Methods in client contracts must not be `@Transactional`" is
+   `target = method`, selector `in = <the client target>`.
+
+## 2. Declaring targets
+
+A target is declared once and referenced by name. Naming is the reuse mechanism:
+change a suffix in one place, and every rule that uses the target follows.
+
+```toml
+version = 1
+
+[targets]
+# ─ by module kind ─
+domain         = { on = "class", in = "*-domain" }
+application    = { on = "class", in = "*-application" }
+adapter        = { on = "class", in = "*-adapter" }
+infrastructure = { on = "class", in = "*-infrastructure" }
+client         = { on = "class", in = "*-client" }
+models         = { on = "class", in = ["*-models", "*-shared-models"] }
+
+# ─ platform libraries every module may use ─
+shared-domain  = { on = "class", in = "shared-core:shared-core-domain" }
+
+# ─ external packages and single classes ─
+web            = { on = "package", name = ["org.springframework.web.**", "javax.servlet.**"] }
+persistence    = { on = "package", name = "org.apache.ibatis.**" }
+spring         = { on = "package", name = "org.springframework.**" }
+app-context    = { on = "class",   name = "com.acme.platform.AppContext" }
+page           = { on = "class",   name = "com.acme.platform.vo.Page" }
+
+# ─ shapes ─
+domain-service = { on = "class",  in = "domain", name = ["*Service", "*ServiceImpl"],
+                   not = { kind = "interface" } }
+service-impl   = { on = "class",  in = "domain", name = "*ServiceImpl" }
+repository     = { on = "class",  in = "domain", name = "*Repository" }
+repository-query = { on = "method", in = "repository", name = "query*" }
+repository-load  = { on = "method", in = "repository", name = "load*" }
+business-enum  = { on = "class",  in = ["domain", "client"], kind = "enum" }
+use-case       = { on = "class",  in = ["domain", "client"], name = "*Application" }
+```
+
+Rules for the matcher (unchanged from v2, they were the good part):
+
+- a location matches a target when **all** of its given selectors match;
+- targets are tried in declaration order, **first match wins**;
+- a location matched by two targets is reported by `arch lint-config` as ambiguous,
+  so `*-models` vs `*-shared-models` is a decision, not a coin flip;
+- a location matched by no target is `unknown` and reported;
+- patterns are anchored; `*` is any run of characters except `:`, `**` crosses `:`,
+  `?` is one character, `{slot}` captures one segment for diagnostics; `regex = "…"`
+  is the escape hatch for hostile naming.
+
+**Naming is not mandatory.** A selector used once is written inline, so a small
+project does not maintain a name table:
+
+```toml
+[[rule]]
+target = { on = "class", in = "*-adapter" }
+must   = { notDependOn = ["domain"] }
+```
+
+`arch lint-config` suggests extracting a name when the same selector appears twice.
+
+## 3. Rules, grouped by target
+
+A rule block is `target` + `must` (a map of constraint → arguments) + `because`.
+
+```toml
+[[rule]]
+target  = "domain"
+must    = { notDependOn   = ["application", "adapter", "infrastructure", "web", "persistence"],
+            dependOnlyOn  = ["self:domain", "any:shared-domain", "any:models", "any:client"] }
+because = "02 §3.1 domain 只承载领域规则，不能依赖 application/adapter/infrastructure，也不能依赖其他模块的 domain"
+```
+
+One target may appear in several blocks (different `because`, different severity
+later); grouping is the default shape, not a restriction. `arch fmt` sorts blocks by
+target so that all constraints on one object read together.
+
+`except` is the node-level escape, and only that — a list of concrete nodes, not a
+second selector language:
+
+```toml
+[[rule]]
+target  = "domain-method"
+must    = { notAnnotatedWith = ["org.springframework.transaction.annotation.Transactional"] }
+except  = ["com.acme.billing.domain.service.impl.BillingFileServiceImpl"]   # 存量，见 baseline
+because = "02 §3.4 事务边界只在 application 层声明，domain 由调用方决定事务"
+```
+
+`on = "test"` / `on = "main"` scopes a rule to a source set; the default is the
+project's `sourceSets`.
+
+## 4. Relations: `self:` and `other`
+
+Most dependency rules are about the module boundary, so a dependency argument is
+either a target name (any module) or a prefixed relation:
+
+| Form | Means |
+|---|---|
+| `models` | any module's `models` (the default) |
+| `self:domain` | the `domain` of the *same* module as the source |
+| `other:client` | another module's `client` — same as plain `client` |
+
+`self:` is what makes a lattice rule closed: "domain may depend on its own domain
+and on any `models`, nothing else" is one line instead of an allow/allowSelf pair.
+v2 needed `allowSelf` and `allowOther` because it had no way to say *same instance*
+inside a list; one prefix is cheaper to read than two axes, and `arch lint-config`
+warns when `self:` is written for a target that has no module (a script, a shared
+library).
+
+Kinds that are reachable from everywhere (`client`, `models`, `shared-domain`) are
+declared by listing them in each rule, not by a global allow switch: the rule stays
+the complete statement about its target, so a new target cannot silently become
+reachable.
+
+## 5. Existence, counts, and quantified members
+
+Two constraint shapes are not about a single node but about a set or about members:
+
+```toml
+[[rule]]
+target  = "use-case"
+must    = { exist = false }
+because = "02 §2 Application 是用例编排，属于 application 层，不能落在 domain 或 client"
+
+[[rule]]
+target  = "module"
+must    = { children = ["adapter", "application", "domain", "infrastructure", "client", "models"],
+            counts   = { domain = ">=1", adapter = "<=1", client = "<=1" } }
+because = "02 §2 模块组合只有这几类子模块"
+
+[[rule]]
+target  = "mapper"
+must    = { allParams = { annotatedWith = ["org.apache.ibatis.annotations.Param"] } }
+because = "08 Mapper 的每个参数必须 @Param 显式声明"
+
+[[rule]]
+target  = "tenant-model"
+must    = { extend    = "com.acme.platform.BaseDataVerPoModel",
+            implement = ["com.acme.platform.TenantCodeAware"],
+            annotatedWith = ["com.acme.platform.PrimaryKey"] }
+because = "08 租户表 PO 继承基类、实现 TenantCodeAware、并声明主键"
+```
+
+`all` / `any` / `none` over the members of a target (`allMembers`, `allMethods`,
+`allParams`) is a **generic quantifier**, not one constraint per rule: a project that
+later needs "every field is `private`" writes `allMembers = { modifier = "private" }`
+without a code change. Several constraints in one `must` map are a conjunction, which
+is what the ArchUnit `should().andShould()` chains were spelling out.
+
+## 6. Types as values, and the limit of names
+
+Some constraints take a type: `rawReturnType`, `implement`, `extend`. A target may be
+used as that value, which is how "`load*` must not return a collection" is written:
+
+```toml
+[targets]
+collection = { on = "type", name = ["java.lang.Iterable", "java.util.Collection",
+                                    "java.util.List", "java.util.Set", "java.util.Map"],
+               array = true }
+
+[[rule]]
+target  = "repository-load"
+must    = { notRawReturnType = ["collection", "page", "java.util.Optional"],
+            notAnnotatedWith  = ["Nullable"] }
+because = "02 §4 load 承诺数据存在，不返回集合/分页/包装器，也不允许 @Nullable"
+```
+
+This is the one place where a real type system would buy something: ArchUnit asks
+`assignableTo(Iterable)`, we compare written names. The approximation is honest and
+usually exact, because the rule is written against the *declared* type anyway
+(`haveRawReturnType` is raw, generics erased), but a method declaring an exotic
+implementation type would slip through. Declaring the list is also a check on the
+rule: it says out loud which types count.
+
+**What the model never needs is inference.** Every constraint here is a judgement
+about a written name, an annotation, a shape, or an edge between names — not about
+what a dynamic expression evaluates to. `def x = service.find(…)` hides an edge; that
+is a miss, not a false positive, and closing it needs the type model described in
+[`ROADMAP.md`](../ROADMAP.md) §7.5, which is a separate decision.
+
+## 7. Worked example: a real catalog, de-duplicated
+
+A production codebase encodes its architecture as 112 ArchUnit rule methods across 18
+per-module test files (2,772 lines of Groovy). They are the same ~45 intents repeated
+per module, plus module-specific extras. Expressed in v3 the whole catalog is one
+config, because a target is a pattern rather than a literal package.
+
+```toml
+# ── dependency direction ────────────────────────────────────────────────
+[[rule]]
+target  = "domain"
+must    = { notDependOn  = ["application", "adapter", "infrastructure", "web", "persistence",
+                            "app-context"],
+            dependOnlyOn = ["self:domain", "any:shared-domain", "any:models", "any:client"] }
+because = "02 §3.1 domain 只承载领域规则"
+
+[[rule]]
+target  = "models"
+must    = { notDependOn = ["application", "adapter", "infrastructure", "domain"] }
+because = "02 §3.2 模型模块只放稳定业务模型"
+
+[[rule]]
+target  = "client"
+must    = { notDependOn = ["application", "adapter", "infrastructure", "domain", "spring",
+                           "app-context"] }
+because = "02 §3.3 client 只暴露跨模块契约"
+
+[[rule]]
+target  = "adapter"
+must    = { dependOnlyOn = ["self:application", "any:client", "any:models"] }
+because = "02 §3.4 adapter 只调用 application"
+
+[[rule]]
+target  = "application"
+must    = { dependOnlyOn = ["self:domain", "any:shared-domain", "any:client", "any:models"] }
+because = "02 §3.5 application 只依赖本模块 domain 与提供方 client"
+
+[[rule]]
+target  = "infrastructure"
+must    = { dependOnlyOn = ["self:domain", "any:models", "any:persistence"] }
+because = "02 §3.6 infrastructure 只向下依赖本模块 domain"
+
+[[rule]]
+target  = "domain-service"
+must    = { notDependOn = ["app-context"] }
+because = "07 §2 domain service 用依赖注入，上下文由入参传入"
+
+# ── annotations and placement ──────────────────────────────────────────
+[[rule]]
+target  = "domain-service"
+must    = { annotatedWith = "org.springframework.stereotype.Service" }
+
+[[rule]]
+target  = "service-impl"
+must    = { packageMatches = "com.acme.**.domain.**.service.impl" }
+because = "07 §3 Service 实现统一放 service.impl，与接口包分开"
+
+[[rule]]
+target  = "use-case"
+must    = { exist = false }
+
+[[rule]]
+target  = "business-enum"
+must    = { implement = "com.acme.platform.enums.BaseEnum" }
+because = "07 §5 业务枚举必须 implements BaseEnum"
+
+[[rule]]
+target  = "api-method"
+must    = { annotatedWith = ["com.acme.platform.ApiSecurity"] }
+because = "07 §6 每个启用的业务 HTTP 方法必须声明 @ApiSecurity"
+
+[[rule]]
+target  = "api-class"
+must    = { annotatedWith    = ["com.acme.platform.ApiScope"],
+            notAnnotatedWith = ["TenantScoped", "PlatformScoped"] }
+because = "07 §6 @ApiScope 决定请求上下文，旧注解不再参与解析"
+
+# ── repository naming contract ─────────────────────────────────────────
+[[rule]]
+target  = "repository-query"
+must    = { rawReturnType = "page" }
+because = "02 §4 query 前缀表示分页查询"
+
+[[rule]]
+target  = "repository-get"
+must    = { notRawReturnType = ["page"] }
+
+[[rule]]
+target  = "repository-load"
+must    = { notRawReturnType = ["collection", "page", "java.util.Optional"],
+            notAnnotatedWith  = ["Nullable"] }
+
+# ── module composition ─────────────────────────────────────────────────
+[[rule]]
+target  = "module"
+must    = { children = ["adapter", "application", "domain", "infrastructure", "client", "models"],
+            counts   = { domain = ">=1", adapter = "<=1", client = "<=1" } }
+
+[[rule]]
+target  = "module-graph"
+must    = { acyclic = true }
+because = "02 §5 模块之间不得成环"
+```
+
+What the exercise showed:
+
+- **The repetition is gone.** One target definition covers every module, so 112
+  hand-written rules become ~40 blocks; `because` reads like the document it quotes.
+- **The three ad-hoc escape mechanisms collapse.** The codebase currently uses
+  hand-maintained `LEGACY_*_CLASSES` sets, `resideOutsideOfPackages(...)` carve-outs
+  and `allowEmptyShould(true)`. In v3 they are `except`, `baseline`, and an
+  `arch lint-config` warning, respectively.
+- **`orShould().beAnnotatedWith(A).orShould().beAnnotatedWith(B)`** becomes a list
+  argument, which is what it always meant.
+- **Four things v3 has and v2 did not:** `self:`/`any:`, `exist`/`counts`,
+  the `all*` quantifiers, and named targets reusable across rule blocks.
+
+Two intents in that catalog still need a decision, both because they reach past a
+single node:
+
+- **Call-graph rules** — "adapter calls application only through transactional
+  methods", "HTTP entry points check permissions". These need resolved call targets
+  *and* the callee's annotations, i.e. a project call graph, not a dependency edge.
+  They are out of scope for v3 and stay in [`ARCHITECTURE-RULES.md`](ARCHITECTURE-RULES.md) §5
+  phase 5.
+- **`assignableTo`-style type questions** — see §6.
+
+## 8. Validation and baseline
+
+`arch lint-config` reads the config without analysing code and reports:
+
+- unknown target name in a rule or constraint;
+- a selector that matches nothing in the project (`allowEmptyShould` in ArchUnit
+  terms — a rule that silently checks nothing is worse than no rule);
+- a location matched by two targets (ambiguous classification);
+- an unused target, a target with no rule, a rule with an empty `must`;
+- `self:` inside a target that cannot have a module owner.
+
+`baseline` records today's violations by `rule id + target name + node`, so adoption
+starts at zero friction while the debt list only shrinks. Hiding a new violation must
+require editing the baseline file, which is reviewable.
+
+## 9. Migration from v2
+
+| v2 | v3 |
+|---|---|
+| `[kinds.x] name = "*-domain"` | `[targets] domain = { on = "class", in = "*-domain" }` (same idea, now typed) |
+| `allow` / `allowSelf` / `allowOther` | one `dependOnlyOn` list with `self:` / `any:` prefixes |
+| `deny = [...]` | `notDependOn = [...]` on the same target |
+| `exemptFrom = [...]` on a rule | `except = [...]` node list, or `baseline` |
+| `parent` / `children` / `counts` containment rule | `children` / `counts` constraints on `target = "module"` |
+| `check = "package-root"` / `"declared-dependency"` | `packageMatches` constraint; declared-dependency stays phase 5 |
+| `nameAliases` / `pathAliases` | a list in `name` / `in` |
+
+## 10. Open decisions
+
+1. **Source-set scoping.** `on = "main" | "test"` per rule, or one `[project]`
+   default with per-rule override? Test architecture needs its own rules; the same
+   `*-domain` target must not mix them.
+2. **Severity.** Per rule block (`severity = "warn"`), or per target? v2 had no
+   severity at all and every violation failed the build.
+3. **`target = "any"`.** Allow a constraint to be written once and dispatched to
+   every target type (annotation bans are the natural case), or require the author to
+   write it per type. The former is shorter; the latter keeps the diagnostic honest
+   about what kind of node was found.
+4. **Call-graph scope.** Whether resolved call targets ship in the same release as
+   dependency edges, or later. Two of the catalog's intents depend on it.
+5. **Where the config lives.** One root file, or per-module files merged by the root
+   (per-module files make ownership clear, one file keeps the lattice closed).

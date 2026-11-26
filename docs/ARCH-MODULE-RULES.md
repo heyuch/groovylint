@@ -1,14 +1,15 @@
 # Module structure & dependency rules: design v2
 
-Status: **design for review** (nothing implemented). Supersedes the
-role-vocabulary model of v1.
+Status: **superseded** by [`ARCH-RULE-MODEL.md`](ARCH-RULE-MODEL.md) (v3).
 
-v1 hard-coded the vocabulary (`domain`/`application`/… as fixed roles). The v2
-model below replaces it with **named node kinds declared by the user**: groovylint
-matches locations by pattern, the user names them, and rules only ever talk about
-those names. That is both more general and smaller, and it answers the original
-question — groovylint does not care what a module is called; it cares whether the
-graph matches the declared rules.
+Kept because v2 is where the modelling problems were found and measured: the node /
+kind / edge model, the pattern grammar, the ambiguity and validation rules, and the
+first attempt at the target project's constraint mapping. v3 keeps the matcher and
+the validation rules, and replaces the `allow` / `allowSelf` / `allowOther` matrix
+with a target type × selector × constraint vocabulary, so read v3 first and come
+back here only for the history.
+
+## Original v2 design (history)
 
 ## 1. Review of the proposed model
 

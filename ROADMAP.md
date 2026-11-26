@@ -246,9 +246,11 @@ Exit criteria:
 
 ### M4 — Project graph and ArchUnit-like rules (0.6, deferred)
 
-**Status: proposal.** Rule families, DSL, phasing and open decisions are in
-[`docs/ARCHITECTURE-RULES.md`](docs/ARCHITECTURE-RULES.md), derived from a real
-project's ArchUnit catalog.
+**Status: proposal.** The rule model (target type × selector × constraint, named
+targets, relations, quantifiers) is in
+[`docs/ARCH-RULE-MODEL.md`](docs/ARCH-RULE-MODEL.md); rule families, source-vs-bytecode
+and phasing are in [`docs/ARCHITECTURE-RULES.md`](docs/ARCHITECTURE-RULES.md). Both are
+derived from a real project's ArchUnit catalog.
 
 Deliver the dependency graph and architecture rules.
 
@@ -271,7 +273,7 @@ Components:
    - unresolved external references retained as symbolic names.
 3. `ProjectIndex` and `DependencyGraph`.
 4. Project rule execution after all files are parsed.
-5. Configuration model and DSL.
+5. Configuration model and DSL: see [`docs/ARCH-RULE-MODEL.md`](docs/ARCH-RULE-MODEL.md).
 6. Diagnostics at the exact dependency site, with fallback to the declaration.
 
 Initial rule types:

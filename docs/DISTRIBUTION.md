@@ -91,7 +91,7 @@ These are integration quality issues, independent of how the binary ships:
 | P3 | Lint **main only** by default, `test` opt-in (`groovylint.testSourceSets = [...]`) | test sources legitimately trip rules that main must not; today `check` runs both |
 | P4 | `--format json` passthrough plus a SARIF writer (or a documented converter) | code-scanning and Sonar ingestion |
 | P5 | Baseline file input: `groovylint.baseline = layout.projectDirectory.file("groovylint-baseline.txt")` | the only way a 24k-file project adopts the gate |
-| P6 | Root-level `groovylintArch` task, once, over the whole project | architecture rules need one project-wide run, not one per module (see `docs/ARCH-MODULE-RULES.md`) |
+| P6 | Root-level `groovylintArch` task, once, over the whole project | architecture rules need one project-wide run, not one per module (see `docs/ARCH-RULE-MODEL.md`) |
 | P7 | `toolVersion` property (default = plugin version) | canary testing without waiting for a plugin release |
 | P8 | Wire `markedOnly` / `initializationCheck` / `assertsTrue` through to `nullcheck` | the extension has `nullcheckMode`/`contracts` only; the CLI accepts more |
 | P9 | `groovylint.enabled` / `-x groovylintMain` documented | "the tool is down, ship anyway" must be a one-liner |
