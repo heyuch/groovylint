@@ -1,6 +1,7 @@
 # Architecture rule model: design v3
 
-Status: **design for review** (nothing implemented). Supersedes the module DSL of
+Status: **design accepted, keywords frozen, not implemented.** The settling decisions
+are in §10. Supersedes the module DSL of
 [`ARCH-MODULE-RULES.md`](ARCH-MODULE-RULES.md) (v2) and the DSL sketch in
 [`ARCHITECTURE-RULES.md`](ARCHITECTURE-RULES.md) §3.
 
@@ -135,8 +136,9 @@ Consequences for the model:
 - **`packageMatches` disappears.** It was a class constraint in v2 and an earlier
   draft of v3; with packages as targets it is just `in = <package target>`. Adding the
   missing level removed a keyword instead of adding one.
-- **Slices come for free**: a package pattern with `{slot}` captures a segment, and
-  `acyclic` over the capture is the "no cycles between feature slices" rule.
+- **Slices are within reach**: a package pattern with `{slot}` captures a segment, which
+  is all a slice needs. The cycle check that makes slices useful is module-only in the
+  first release (§10), so this arrives with it.
 
 Which level should a rule use? The one whose meaning the team already agreed on:
 cross-module contracts at `module` level (who may depend on whom), intra-module roles
@@ -202,8 +204,21 @@ except  = ["com.acme.billing.domain.service.impl.BillingFileServiceImpl"]   # �
 because = "02 §3.4 事务边界只在 application 层声明，domain 由调用方决定事务"
 ```
 
-`on = "test"` / `on = "main"` scopes a rule to a source set; the default is the
-project's `sourceSets`.
+A rule block also carries two optional scoping keywords:
+
+```toml
+[[rule]]
+target   = "domain-spi"
+must     = { notDependOn = ["persistence"] }
+on       = "test"         # default "main"
+severity = "warn"         # default from [project].severity, which defaults to "error"
+```
+
+Rules check **main** unless a block says otherwise, so a test-architecture rule can
+never be reached by accident, and a rule that is still being introduced can start at
+`warn` without weakening every other rule. There is no per-target severity: a
+constraint either applies or it does not, and its weight belongs to the rule that
+states it.
 
 ## 4. Relations: `self:`, `any:` and `other`
 
@@ -404,17 +419,6 @@ must    = { children = ["adapter", "application", "domain", "infrastructure", "c
 target  = "module"
 must    = { acyclic = true }
 because = "02 §5 模块之间不得成环"
-
-# ── slices: no cycles between the feature packages of one module ───────
-[[rule]]
-target  = "feature-slice"
-must    = { acyclic = true }
-because = "02 §5 同一模块内的特性包之间不得互相依赖"
-
-[targets.feature-slice]
-on   = "package"
-name = "com.acme.{module}.domain.{feature}"
-slot = "feature"
 ```
 
 What the exercise showed:
@@ -468,31 +472,31 @@ require editing the baseline file, which is reviewable.
 | `check = "declared-dependency"` | unchanged, phase 5 |
 | `nameAliases` / `pathAliases` | a list in `name` / `in` |
 
-## 10. Open decisions
+## 10. Decisions
 
-1. **Source-set scoping.** `on = "main" | "test"` per rule, or one `[project]`
-   default with per-rule override? Test architecture needs its own rules; the same
-   `*-domain` target must not mix them.
-2. **Severity.** Per rule block (`severity = "warn"`), or per target? v2 had no
-   severity at all and every violation failed the build.
-3. **`target = "any"`.** Allow a constraint to be written once and dispatched to
-   every target type (annotation bans are the natural case), or require the author to
-   write it per type. The former is shorter; the latter keeps the diagnostic honest
-   about what kind of node was found.
-4. **Call-graph scope.** Whether resolved call targets ship in the same release as
-   dependency edges, or later. Two of the catalog's intents depend on it.
-5. **Where the config lives.** One root file, or per-module files merged by the root
-   (per-module files make ownership clear, one file keeps the lattice closed).
-6. **Scope of `acyclic`.** Modules and packages for the first release (both are a
-   projection of the same edge), or modules only? Anything finer needs a decision
-   about which containment edge forms a cycle.
-7. **Package patterns that span modules.** `com.acme.**.api` matches packages in every
-   module, which is useful for conventions and meaningful for cross-module rules, but
-   it makes `self:` ambiguous (whose module?). Options: forbid crossing modules,
-   resolve `self:` against each node's own module, or scope such a target with `in`.
-8. **Slices as a first-class concept.** A `{slot}` package pattern plus `acyclic` gets
-   the behaviour, but ArchUnit and import-linter give slices a name. Whether to
-   surface `slices = { by = "...", of = "..." }` as sugar, or leave it to patterns.
+Settled:
+
+| Question | Decision | Consequence |
+|---|---|---|
+| Scope of `acyclic` | **Modules only** in the first release | Only the module rule in §7 is MVP; package cycles wait for a decision about which containment edge closes one |
+| Severity | One project default, `severity` overridable per rule block | The default keeps today's behaviour: a violation fails the build |
+| Source set | Rules check **main** by default; `on = "test"` is explicit | Test architecture needs its own rule blocks, and can never inherit a `*-domain` target by accident |
+| `target = "any"` | **Not part of the language** | A constraint is written per target type, so every diagnostic names the kind of node it found. Reconsider only with a concrete case |
+| Where the config lives | **One file at the repository root** | Module ownership is expressed by target names and `except`, not by file ownership; `arch lint-config` reports unused targets so a stale section is visible |
+
+Still open, and why they can wait:
+
+1. **Call-graph scope.** Whether resolved call targets ship with dependency edges or
+   later. Two catalog intents need them; both are listed as phase 5+ in
+   [`ARCHITECTURE-RULES.md`](ARCHITECTURE-RULES.md).
+2. **Package patterns that span modules.** `com.acme.**.api` matches packages in every
+   module. Useful for conventions, but it makes `self:` ambiguous (whose module?).
+   Options: forbid crossing modules, resolve `self:` against each node's own module,
+   or require an explicit `in`.
+3. **Slices as a first-class concept.** A `{slot}` package pattern plus a cycle check
+   gets the behaviour; whether to also surface `slices = { by = "...", of = "..." }`
+   as sugar. Blocked behind decision 1 anyway, since slices are only useful with a
+   cycle check.
 
 ## Appendix A: reference vocabulary
 
@@ -545,7 +549,7 @@ diagnostics can talk about it.
 | Type | Constraints |
 |---|---|
 | `module` | `dependOnlyOn`, `notDependOn`, `children`, `counts`, `acyclic` |
-| `package` | `dependOnlyOn`, `notDependOn`, `visible`, `acyclic` |
+| `package` | `dependOnlyOn`, `notDependOn`, `visible` |
 | `class` | `dependOnlyOn`, `notDependOn`, `annotatedWith`, `notAnnotatedWith`, `annotationArgument`, `extend`, `implement`, `exist`, `allMembers`, `allMethods`, `allFields` |
 | `method` | `annotatedWith`, `notAnnotatedWith`, `rawReturnType`, `notRawReturnType`, `allParams`, `visibility` |
 | `field` | `annotatedWith`, `notAnnotatedWith`, `type`, `notType` |
@@ -558,8 +562,8 @@ Notes that decide behaviour, not syntax:
 - `visible` is the target-side form: who may depend on this package. Values are
   target names plus `self:`, `any:`, `none`; the default is `self:` (the same module),
   which matches what package-private access already enforces at the language level.
-- `acyclic` is available on `module` and on `package`, and with a slice it applies per
-  captured segment rather than to the whole target.
+- `acyclic` is available on `module` only in the first release. Package-level cycles
+  need a decision about which containment edge closes a cycle, so they wait.
 - `children` and `counts` are allow-lists: a child whose target is not listed is a
   violation, which is what makes module composition closed.
 - `exist = false` states "no node may match this target"; `counts` covers `>=n`,
@@ -579,6 +583,8 @@ Notes that decide behaviour, not syntax:
 | `other:` | accepted alias for `any:`, used when a rule lists `self:` and `any:` together |
 | `except` | node-level exemption list on a rule |
 | `because` | the reason printed with every violation |
+| `severity` | `error` (default) or `warn`, per rule block |
+| `on` | `main` (default) or `test`, per rule block |
 
 ### A.5 Reserved words
 
