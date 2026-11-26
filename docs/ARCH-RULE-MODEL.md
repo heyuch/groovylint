@@ -32,7 +32,9 @@ An architecture rule is a triple:
 
 Users compose selectors and constraints. They do not invent constraints, because a
 closed vocabulary is what makes a violation explainable, baseline-able, and
-actionable for the author — and for an agent editing the code.
+actionable for the author — and for an agent editing the code. The closed
+vocabularies are enumerated in [Appendix A](#appendix-a-reference-vocabulary); what
+the engine has to implement to run them is [Appendix B](#appendix-b-what-the-engine-must-implement).
 
 Three properties the model needs to be worth anything:
 
@@ -137,7 +139,7 @@ because = "02 §3.4 事务边界只在 application 层声明，domain 由调用�
 `on = "test"` / `on = "main"` scopes a rule to a source set; the default is the
 project's `sourceSets`.
 
-## 4. Relations: `self:` and `other`
+## 4. Relations: `self:`, `any:` and `other`
 
 Most dependency rules are about the module boundary, so a dependency argument is
 either a target name (any module) or a prefixed relation:
@@ -231,7 +233,9 @@ is a miss, not a false positive, and closing it needs the type model described i
 A production codebase encodes its architecture as 112 ArchUnit rule methods across 18
 per-module test files (2,772 lines of Groovy). They are the same ~45 intents repeated
 per module, plus module-specific extras. Expressed in v3 the whole catalog is one
-config, because a target is a pattern rather than a literal package.
+config, because a target is a pattern rather than a literal package. Target
+definitions are abbreviated: the ones from §2 are reused, `api-class`, `api-method`,
+`mapper` and `tenant-model` follow the same shapes.
 
 ```toml
 # ── dependency direction ────────────────────────────────────────────────
@@ -325,7 +329,7 @@ must    = { children = ["adapter", "application", "domain", "infrastructure", "c
             counts   = { domain = ">=1", adapter = "<=1", client = "<=1" } }
 
 [[rule]]
-target  = "module-graph"
+target  = "module"
 must    = { acyclic = true }
 because = "02 §5 模块之间不得成环"
 ```
@@ -395,3 +399,121 @@ require editing the baseline file, which is reviewable.
    dependency edges, or later. Two of the catalog's intents depend on it.
 5. **Where the config lives.** One root file, or per-module files merged by the root
    (per-module files make ownership clear, one file keeps the lattice closed).
+6. **Scope of `acyclic`.** Modules only for the first release, or also packages and
+   classes? Modules is what the catalog asks for; anything finer needs a decision
+   about which containment edge forms a cycle.
+
+## Appendix A: reference vocabulary
+
+The complete keyword surface. Everything not listed here does not exist, which is
+the point: a config can be validated by reading it, and a violation can name the one
+keyword it broke.
+
+### A.1 Target types
+
+| Type | Covers |
+|---|---|
+| `module` | a Gradle module or a package root |
+| `class` | class, interface, trait, enum, annotation type, including nested ones |
+| `method` | methods and constructors |
+| `field` | fields and properties |
+
+Deliberately absent from the first release: `statement`, `expression` (no architecture
+rule needs them), `parameter` (`allParams` covers it), `package` (`packageMatches`
+covers it).
+
+### A.2 Selectors
+
+Common to every type:
+
+| Keyword | Meaning |
+|---|---|
+| `name` | name pattern over the simple name (`*`, `**`, `?`, `{slot}`) |
+| `nameMatches` | the same, as an anchored regex |
+| `in` | containing target: module for class/field/method, class for field/method |
+| `anyOf` | union of target names |
+| `not` | negation of another selector |
+
+Additional per type:
+
+| Type | Selectors |
+|---|---|
+| `module` | `path`, `packageMatches` |
+| `class` | `kind` (`class`/`interface`/`trait`/`enum`/`annotation`), `abstract`, `extends`, `implements`, `annotatedWith`, `packageMatches`, `nested` |
+| `method` | `annotatedWith`, `rawReturnType`, `modifiers` (`static`/`public`/`protected`/`private`/`abstract`/`final`), `paramCount` |
+| `field` | `annotatedWith`, `type`, `modifiers` |
+
+### A.3 Constraints
+
+| Type | Constraints |
+|---|---|
+| `module` | `dependOnlyOn`, `notDependOn`, `children`, `counts`, `acyclic` |
+| `class` | `dependOnlyOn`, `notDependOn`, `annotatedWith`, `notAnnotatedWith`, `annotationArgument`, `extend`, `implement`, `packageMatches`, `exist`, `allMembers`, `allMethods`, `allFields` |
+| `method` | `annotatedWith`, `notAnnotatedWith`, `rawReturnType`, `notRawReturnType`, `allParams`, `visibility` |
+| `field` | `annotatedWith`, `notAnnotatedWith`, `type`, `notType` |
+
+Notes that decide behaviour, not syntax:
+
+- `dependOnlyOn` / `notDependOn` take **target names only**, optionally prefixed
+  with `self:` or `any:`. A pattern string is not accepted, so there is exactly one
+  matching semantics in the whole language.
+- `children` and `counts` are allow-lists: a child whose target is not listed is a
+  violation, which is what makes module composition closed.
+- `exist = false` states "no node may match this target"; `counts` covers `>=n`,
+  `<=n`, `*`, `+`.
+- The `all*` quantifiers evaluate over the members of a match (methods, fields,
+  parameters). An empty member set is **true**, and `arch lint-config` reports the
+  target instead — a vacuous truth must never read as a pass.
+- `annotationArgument = { annotation, name, value }` compares the written argument
+  text, not a resolved constant.
+
+### A.4 Composition and relations
+
+| Keyword | Meaning |
+|---|---|
+| `self:` | the same module as the source node |
+| `any:` | any module (the default when no prefix is written) |
+| `other:` | accepted alias for `any:`, used when a rule lists `self:` and `any:` together |
+| `except` | node-level exemption list on a rule |
+| `because` | the reason printed with every violation |
+
+### A.5 Reserved words
+
+Every keyword above is reserved: `arch lint-config` rejects a target name that
+shadows one, because `name = "target"` plus a target called `target` is a config bug
+that would otherwise surface as a silent mis-match.
+
+## Appendix B: what the engine must implement
+
+The DSL is a shell; the work is underneath it.
+
+1. **Fact extraction** — package, imports, declarations, `extends`/`implements`,
+   field and parameter types, annotations with arguments, `new`, casts, class
+   literals, call sites; every fact keeps a span.
+2. **Name resolution** — fully qualified name → explicit import → same package →
+   wildcard import → static import → project index. Unresolved names stay symbolic;
+   nothing is guessed.
+3. **Project index** — class → module, package, target classification, supertypes,
+   annotations; module → children, package roots.
+4. **Edges and projection** — collect class → class, project to module → module.
+   One edge model, evaluated at either level.
+5. **Target matching** — declaration order, first match wins, ambiguity reported.
+6. **Constraint evaluation and diagnostics** — finding site, `because`, baseline key
+   (`rule id` + target name + node).
+7. **`arch lint-config`** — unknown target, selector that matches nothing, ambiguous
+   classification, unused target, empty rule.
+8. **Baseline** — record today's findings, fail only on new ones.
+
+### B.1 Phasing, and what each phase unlocks
+
+| Phase | Implements | ArchUnit intents covered |
+|---|---|---:|
+| 1 | facts, resolution, index, class dependencies / annotations / placement | 24 |
+| 2 | method signature constraints (`rawReturnType`, `allParams`, `@Nullable`) | 29 |
+| 3 | field annotations, `annotationArgument`, `extend` / `implement` / `exist` | 34 |
+| 4 | module composition (`children`, `counts`, `acyclic`) | 37 |
+| 5 | quantifiers, `arch lint-config`, baseline | 43 |
+| later | call graph | +2 |
+
+Coverage refers to the de-duplicated catalog in §7. Phase 1 alone is a usable
+product: it catches every dependency-direction violation in that catalog.

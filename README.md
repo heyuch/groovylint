@@ -199,6 +199,7 @@ cargo doc-all
 - [Nullness analysis design](docs/NULLCHECK.md)
 - [Incremental analysis and caching](docs/PERFORMANCE.md)
 - [CodeNarc rule coverage](docs/COVERAGE.md)
+- [Architecture rule model](docs/ARCH-RULE-MODEL.md) and [its rule families](docs/ARCHITECTURE-RULES.md)
 - [Rule fixtures from CodeNarc](docs/RULE-FIXTURES.md)
 - [Gradle plugin](gradle-plugin/README.md)
 - [Distribution: Gradle and Maven](docs/DISTRIBUTION.md)
