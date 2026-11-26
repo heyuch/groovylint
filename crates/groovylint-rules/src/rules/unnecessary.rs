@@ -7,7 +7,8 @@ use groovylint_syntax::ast::{
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
-    AstRule, Category, DiagnosticSink, FileContext, NodeKind, NodeMask, NodeRef, Rule, RuleMeta,
+    AstRule, Category, DiagnosticSink, FileContext, FileRule, NodeKind, NodeMask, NodeRef, Rule,
+    RuleMeta,
 };
 use crate::rules::util::{ClassStack, expr_text, is_constant, unparen, variable_name};
 
@@ -419,41 +420,33 @@ pub struct UnnecessaryPackageReferenceRule;
 
 impl Rule for UnnecessaryPackageReferenceRule {}
 
-impl AstRule for UnnecessaryPackageReferenceRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Expr).union(NodeMask::of(NodeKind::Field))
-    }
-
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let text = context.source.text();
-        let (span, type_name) = match node {
-            NodeRef::Expr(expr) => {
-                let ExprKind::New { type_name, .. } = &expr.kind else {
-                    return;
-                };
-                (expr.span, type_name)
+impl FileRule for UnnecessaryPackageReferenceRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut imported = Vec::new();
+        let mut star_packages = Vec::new();
+        for import in &context.script.imports {
+            if import.path.ends_with('*') {
+                star_packages.push(crate::rules::types::import_package(&import.path).to_string());
+            } else {
+                imported.push(import.path.clone());
             }
-            NodeRef::Field(field) => {
-                let Some(type_name) = &field.type_name else {
-                    return;
-                };
-                (field.span, type_name)
-            }
-            _ => return,
-        };
-        if !is_auto_imported(type_name) {
-            return;
         }
-        sink.report(
-            span,
-            format!("{type_name} is imported by default and can be referenced by its simple name"),
-        );
-        let _ = text;
+
+        for reference in crate::rules::types::type_references(context.script) {
+            let name = &reference.name;
+            let package = name.rsplit_once('.').map(|(package, _)| package);
+            let redundant = is_auto_imported(name)
+                || imported.iter().any(|candidate| candidate == name)
+                || package
+                    .is_some_and(|package| star_packages.iter().any(|starred| starred == package));
+            if !redundant {
+                continue;
+            }
+            sink.report(
+                reference.span,
+                format!("Specifying the package name is not necessary for {name}"),
+            );
+        }
     }
 }
 
@@ -461,13 +454,14 @@ impl AstRule for UnnecessaryPackageReferenceRule {
 fn is_auto_imported(name: &str) -> bool {
     const PACKAGES: &[&str] = &[
         "java.lang.",
-        "java.util.",
         "java.io.",
         "java.net.",
+        "java.util.",
         "groovy.lang.",
         "groovy.util.",
     ];
-    PACKAGES.iter().any(|package| name.starts_with(package))
+    const CLASSES: &[&str] = &["java.math.BigDecimal", "java.math.BigInteger"];
+    PACKAGES.iter().any(|package| name.starts_with(package)) || CLASSES.contains(&name)
 }
 
 /// Flags the `public` modifier on classes and methods.
@@ -994,6 +988,14 @@ impl AstRule for UnnecessaryNullCheckRule {
         let NodeRef::Expr(expr) = node else {
             return;
         };
+        // `this == null` and `super == null` are decidable at compile time.
+        if let Some(reference) = self_reference_null_check(expr) {
+            sink.report(
+                expr.span,
+                format!("Testing the {reference} reference for null is pointless"),
+            );
+            return;
+        }
         let ExprKind::Binary {
             op: BinaryOp::And,
             left,
@@ -1019,6 +1021,28 @@ impl AstRule for UnnecessaryNullCheckRule {
         );
         let _ = source;
     }
+}
+
+/// The reference (`this` or `super`) when the expression compares it with null.
+fn self_reference_null_check(expr: &Expr) -> Option<&'static str> {
+    let ExprKind::Binary { op, left, right } = &expr.kind else {
+        return None;
+    };
+    let compares_null = matches!(op, BinaryOp::Eq | BinaryOp::NotEq);
+    if !compares_null {
+        return None;
+    }
+    for (side, other) in [(left, right), (right, left)] {
+        if !matches!(&unparen(other).kind, ExprKind::Literal(Literal::Null)) {
+            continue;
+        }
+        match &unparen(side).kind {
+            ExprKind::This => return Some("this"),
+            ExprKind::Super => return Some("super"),
+            _ => {}
+        }
+    }
+    None
 }
 
 /// Returns the variable name of a `x != null` check.
@@ -1071,6 +1095,14 @@ impl AstRule for UnnecessaryNullCheckBeforeInstanceOfRule {
         let NodeRef::Expr(expr) = node else {
             return;
         };
+        // `this == null` and `super == null` are decidable at compile time.
+        if let Some(reference) = self_reference_null_check(expr) {
+            sink.report(
+                expr.span,
+                format!("Testing the {reference} reference for null is pointless"),
+            );
+            return;
+        }
         let ExprKind::Binary {
             op: BinaryOp::And,
             left,
@@ -1859,20 +1891,64 @@ pub struct UnnecessarySetterRule;
 
 impl Rule for UnnecessarySetterRule {}
 
-impl AstRule for UnnecessarySetterRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Expr)
+impl FileRule for UnnecessarySetterRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut visitor = SetterVisitor {
+            classes: Vec::new(),
+            sink,
+        };
+        crate::traverse::walk_script(context.script, &mut visitor);
+    }
+}
+
+/// Walks the file looking for `x.setFoo(v)` calls that stand alone as statements.
+struct SetterVisitor<'a, 'b> {
+    classes: Vec<ClassMembers>,
+    sink: &'a mut DiagnosticSink<'b>,
+}
+
+#[derive(Default)]
+struct ClassMembers {
+    fields: std::collections::BTreeSet<String>,
+    static_methods: std::collections::BTreeSet<String>,
+}
+
+impl crate::traverse::AstVisitor for SetterVisitor<'_, '_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        match node {
+            NodeRef::Class(class) => {
+                let mut members = ClassMembers::default();
+                for member in &class.members {
+                    match member {
+                        Item::Field(field) => {
+                            members.fields.insert(field.name.clone());
+                        }
+                        Item::Method(method) if method.is_static => {
+                            members.static_methods.insert(method.name.clone());
+                        }
+                        _ => {}
+                    }
+                }
+                self.classes.push(members);
+            }
+            NodeRef::Stmt(Stmt::Expr(expr)) => {
+                self.check_call(expr);
+            }
+            _ => {}
+        }
     }
 
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        _context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Expr(expr) = node else {
-            return;
-        };
+    fn exit(&mut self, node: NodeRef<'_>) {
+        if matches!(node, NodeRef::Class(_)) {
+            self.classes.pop();
+        }
+    }
+}
+
+impl SetterVisitor<'_, '_> {
+    fn check_call(&mut self, expr: &Expr) {
+        // Only a call that stands alone is rewritten that easily; a call whose value
+        // is used (`def c = x.setCount(2)`) is not a statement.
         let ExprKind::Call {
             receiver: Some(receiver),
             name,
@@ -1882,20 +1958,38 @@ impl AstRule for UnnecessarySetterRule {
         else {
             return;
         };
-        if args.len() != 1
-            || !name.starts_with("set")
-            || name.len() <= 3
-            || !name.as_bytes()[3].is_ascii_uppercase()
-            || variable_name(receiver) == Some("super")
-        {
+        if args.len() != 1 {
             return;
         }
-        let property = format!(
-            "{}{}",
-            name.as_bytes()[3].to_ascii_lowercase() as char,
-            &name[4..]
-        );
-        sink.report(
+        if variable_name(receiver) == Some("super") {
+            return;
+        }
+        if !name.starts_with("set") || name.len() <= 3 {
+            return;
+        }
+        let first = name.as_bytes()[3] as char;
+        if !first.is_uppercase() {
+            return;
+        }
+        let rest = &name[4..];
+        if !rest.is_empty()
+            && rest
+                .chars()
+                .all(|character| character.is_uppercase() || character == '_')
+        {
+            // `setURL`, `setURLs` are setters for acronym properties.
+            return;
+        }
+        let property = format!("{}{rest}", first.to_lowercase());
+        if let Some(members) = self.classes.last() {
+            if members.fields.contains(&property) {
+                return;
+            }
+            if members.static_methods.contains(name.as_str()) {
+                return;
+            }
+        }
+        self.sink.report(
             expr.span,
             format!("{name}(...) can probably be rewritten as {property} = ..."),
         );
@@ -2256,7 +2350,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Default imports do not need their package prefix.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(UnnecessaryPackageReferenceRule)),
+            || RuleInstanceImpl::File(Box::new(UnnecessaryPackageReferenceRule)),
         ),
         descriptor(
             RuleMeta::new(
@@ -2386,7 +2480,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Setter calls can use property assignment.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(UnnecessarySetterRule)),
+            || RuleInstanceImpl::File(Box::new(UnnecessarySetterRule)),
         ),
         descriptor(
             RuleMeta::new(

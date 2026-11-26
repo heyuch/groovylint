@@ -2,7 +2,7 @@
 
 use groovylint_core::Severity;
 use groovylint_syntax::ast::{
-    AssignOp, ClassDecl, ClassKind, Expr, ExprKind, Item, Literal, MethodDecl, Stmt, UnaryOp,
+    AssignOp, Block, ClassDecl, ClassKind, Expr, ExprKind, Item, Literal, MethodDecl, Stmt, UnaryOp,
 };
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
@@ -1760,7 +1760,7 @@ impl Rule for ReturnsNullInsteadOfEmptyCollectionRule {}
 
 impl AstRule for ReturnsNullInsteadOfEmptyCollectionRule {
     fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::Method)
+        NodeMask::of(NodeKind::Method).union(NodeMask::of(NodeKind::Expr))
     }
 
     fn enter(
@@ -1769,70 +1769,167 @@ impl AstRule for ReturnsNullInsteadOfEmptyCollectionRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        let NodeRef::Method(method) = node else {
-            return;
-        };
-        let Some(body) = &method.body else {
-            return;
-        };
-        let declared_collection = method.return_type.as_deref().is_some_and(|name| {
-            matches!(
-                simple_name(name),
-                "Iterable" | "Collection" | "List" | "Map" | "Set" | "ArrayList" | "HashSet"
-            )
-        });
-        if !declared_collection && !body_returns_collection(body) {
-            return;
-        }
-        for span in null_returns(body) {
-            sink.report(
-                span,
-                "Returning null from a method that might return a Collection or Map",
-            );
+        match node {
+            NodeRef::Method(method) => {
+                let Some(body) = &method.body else {
+                    return;
+                };
+                let declared = method.return_type.as_deref().is_some_and(collection_type);
+                if !declared && !returns_collection(body) {
+                    return;
+                }
+                for span in null_returns(body) {
+                    sink.report(
+                        span,
+                        "Returning null from a method that might return a Collection or Map",
+                    );
+                }
+            }
+            // A closure can return a collection too, and is then held to the same rule.
+            NodeRef::Expr(Expr {
+                kind: ExprKind::Closure { body, .. },
+                ..
+            }) => {
+                if !returns_collection(body) {
+                    return;
+                }
+                for span in null_returns(body) {
+                    sink.report(
+                        span,
+                        "Returning null from a method that might return a Collection or Map",
+                    );
+                }
+            }
+            _ => {}
         }
     }
 }
 
-fn null_returns(block: &groovylint_syntax::ast::Block) -> Vec<groovylint_core::Span> {
-    struct Finder {
-        nulls: Vec<groovylint_core::Span>,
+/// Collection types whose constructor or cast makes a method a collection producer.
+fn collection_type(name: &str) -> bool {
+    // A qualified type from another package is a different class: `java.awt.List`
+    // is not a collection, and only the compiler could tell them apart.
+    let package = name.rsplit_once('.').map(|(package, _)| package);
+    if let Some(package) = package
+        && package != "java.util"
+        && package != "groovy"
+    {
+        return false;
     }
-    impl crate::traverse::AstVisitor for Finder {
-        fn enter(&mut self, node: NodeRef<'_>) {
-            let NodeRef::Stmt(Stmt::Return(ret)) = node else {
-                return;
-            };
-            if ret.value.as_ref().is_some_and(|value| {
-                matches!(&unparen(value).kind, ExprKind::Literal(Literal::Null))
-            }) {
-                self.nulls.push(ret.span);
-            }
-        }
-        fn exit(&mut self, _node: NodeRef<'_>) {}
-    }
-    let mut finder = Finder { nulls: Vec::new() };
-    crate::traverse::walk_block(block, &mut finder);
-    finder.nulls
+    matches!(
+        simple_name(name),
+        "Iterable"
+            | "Collection"
+            | "List"
+            | "Map"
+            | "Set"
+            | "ArrayList"
+            | "HashSet"
+            | "LinkedList"
+            | "TreeSet"
+            | "HashMap"
+            | "LinkedHashMap"
+    )
 }
 
-fn body_returns_collection(block: &groovylint_syntax::ast::Block) -> bool {
-    struct Finder {
-        found: bool,
-    }
-    impl crate::traverse::AstVisitor for Finder {
-        fn enter(&mut self, node: NodeRef<'_>) {
-            if let NodeRef::Stmt(Stmt::Return(ret)) = node
-                && let Some(value) = &ret.value
-                && matches!(&unparen(value).kind, ExprKind::List(_) | ExprKind::Map(_))
-            {
-                self.found = true;
-            }
-        }
-        fn exit(&mut self, _node: NodeRef<'_>) {}
-    }
-    let mut finder = Finder { found: false };
+/// Whether the block returns a collection, ignoring nested closures.
+fn returns_collection(block: &Block) -> bool {
+    let mut finder = ReturnFinder {
+        closure_depth: 0,
+        returns: Vec::new(),
+    };
     crate::traverse::walk_block(block, &mut finder);
-    finder.found
+    finder
+        .returns
+        .iter()
+        .any(|value| expression_returns_collection(value))
+}
+
+/// Whether a returned expression produces a collection.
+fn expression_returns_collection(expr: &Expr) -> bool {
+    match &unparen(expr).kind {
+        ExprKind::List(_) | ExprKind::Map(_) => true,
+        ExprKind::New { type_name, .. } | ExprKind::Cast { type_name, .. } => {
+            collection_type(type_name)
+        }
+        ExprKind::Ternary {
+            then_expr,
+            else_expr,
+            ..
+        } => expression_returns_collection(then_expr) || expression_returns_collection(else_expr),
+        _ => false,
+    }
+}
+
+/// The `return null` statements of a block, ignoring nested closures.
+fn null_returns(block: &Block) -> Vec<groovylint_core::Span> {
+    let mut finder = ReturnFinder {
+        closure_depth: 0,
+        returns: Vec::new(),
+    };
+    crate::traverse::walk_block(block, &mut finder);
+    finder
+        .returns
+        .iter()
+        .filter(|value| returns_null(value))
+        .map(|value| value.span)
+        .collect()
+}
+
+/// Whether a returned expression can evaluate to `null`.
+fn returns_null(expr: &Expr) -> bool {
+    match &unparen(expr).kind {
+        ExprKind::Literal(Literal::Null) => true,
+        ExprKind::Ternary {
+            then_expr,
+            else_expr,
+            ..
+        } => returns_null(then_expr) || returns_null(else_expr),
+        _ => false,
+    }
+}
+
+/// Collects returned expressions, skipping the bodies of nested closures.
+struct ReturnFinder {
+    closure_depth: usize,
+    returns: Vec<Expr>,
+}
+
+impl crate::traverse::AstVisitor for ReturnFinder {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        match node {
+            NodeRef::Expr(Expr {
+                kind: ExprKind::Closure { .. },
+                ..
+            })
+            | NodeRef::Expr(Expr {
+                kind: ExprKind::New { body: Some(_), .. },
+                ..
+            }) => self.closure_depth += 1,
+            NodeRef::Stmt(Stmt::Return(ret)) if self.closure_depth == 0 => {
+                if let Some(value) = &ret.value {
+                    self.returns.push(value.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn exit(&mut self, node: NodeRef<'_>) {
+        let nested = matches!(
+            node,
+            NodeRef::Expr(Expr {
+                kind: ExprKind::Closure { .. },
+                ..
+            }) | NodeRef::Expr(Expr {
+                kind: ExprKind::New { body: Some(_), .. },
+                ..
+            })
+        );
+        if nested {
+            self.closure_depth = self.closure_depth.saturating_sub(1);
+        }
+    }
 }
 
 /// Descriptors for the design rules.

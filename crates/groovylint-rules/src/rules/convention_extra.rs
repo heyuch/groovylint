@@ -380,6 +380,9 @@ impl AstRule for TrailingCommaRule {
                 let Some(last) = items.last() else {
                     return;
                 };
+                if line_of(context, last.span.start) == line_of(context, expr.span.end) {
+                    return;
+                }
                 if ends_with_comma(text, last.span.end, expr.span.end) {
                     return;
                 }
@@ -399,6 +402,9 @@ impl AstRule for TrailingCommaRule {
                 let Some(last) = entries.last() else {
                     return;
                 };
+                if closes_right_after(context, last.1.span.end) {
+                    return;
+                }
                 if ends_with_comma(text, last.1.span.end, expr.span.end) {
                     return;
                 }
@@ -407,6 +413,22 @@ impl AstRule for TrailingCommaRule {
             _ => {}
         }
     }
+}
+
+/// Whether only a closing bracket follows the entry on its own line, which is how
+/// `CodeNarc` treats a map that ends flush with its container.
+fn line_of(context: &FileContext<'_>, offset: usize) -> usize {
+    context.source.line_col(offset).line
+}
+
+fn closes_right_after(context: &FileContext<'_>, from: usize) -> bool {
+    let line = line_of(context, from);
+    let Some(text) = context.source.line_text(line) else {
+        return false;
+    };
+    let column = context.source.line_col(from).column - 1;
+    let rest = text.get(column..).unwrap_or_default();
+    rest.trim_start().starts_with(']')
 }
 
 fn ends_with_comma(text: &str, from: usize, to: usize) -> bool {

@@ -98,14 +98,6 @@ ConstantIfExpression/007.groovy	false-positive: we report a case CodeNarc allows
 ConstantTernaryExpression/005.groovy	other-line: the rule fires but on a different line
 ConstantTernaryExpression/006.groovy	other-line: the rule fires but on a different line
 ConstantTernaryExpression/007.groovy	false-positive: we report a case CodeNarc allows
-CouldBeSwitchStatement/001.groovy	false-positive: we report a case CodeNarc allows
-CouldBeSwitchStatement/002.groovy	other-line: the rule fires but on a different line
-CouldBeSwitchStatement/003.groovy	missed: we do not report this case yet
-CouldBeSwitchStatement/005.groovy	false-positive: we report a case CodeNarc allows
-CouldBeSwitchStatement/009.groovy	false-positive: we report a case CodeNarc allows
-CouldBeSwitchStatement/010.groovy	false-positive: we report a case CodeNarc allows
-CouldBeSwitchStatement/011.groovy	other-line: the rule fires but on a different line
-CouldBeSwitchStatement/012.groovy	missed: we do not report this case yet
 CrapMetric/*	missed: we do not report this case yet
 CyclomaticComplexity/004.groovy	missed: we do not report this case yet
 CyclomaticComplexity/006.groovy	missed: we do not report this case yet
@@ -122,19 +114,8 @@ DuplicateMapLiteral/008.groovy	other-line: the rule fires but on a different lin
 DuplicateMapLiteral/013.groovy	missed: we do not report this case yet
 DuplicateNumberLiteral/002.groovy	other-line: the rule fires but on a different line
 DuplicateNumberLiteral/005.groovy	false-positive: we report a case CodeNarc allows
-DuplicateNumberLiteral/014.groovy	other-line: the rule fires but on a different line
 DuplicateNumberLiteral/015.groovy	false-positive: we report a case CodeNarc allows
-DuplicateNumberLiteral/017.groovy	false-positive: we report a case CodeNarc allows
-DuplicateNumberLiteral/019.groovy	false-positive: we report a case CodeNarc allows
-DuplicateNumberLiteral/023.groovy	other-line: the rule fires but on a different line
-DuplicateStringLiteral/000.groovy	false-positive: we report a case CodeNarc allows
-DuplicateStringLiteral/014.groovy	other-line: the rule fires but on a different line
-DuplicateStringLiteral/015.groovy	false-positive: we report a case CodeNarc allows
-DuplicateStringLiteral/016.groovy	false-positive: we report a case CodeNarc allows
-DuplicateStringLiteral/017.groovy	false-positive: we report a case CodeNarc allows
-DuplicateStringLiteral/018.groovy	false-positive: we report a case CodeNarc allows
-DuplicateStringLiteral/019.groovy	false-positive: we report a case CodeNarc allows
-DuplicateStringLiteral/022.groovy	false-positive: we report a case CodeNarc allows
+DuplicateStringLiteral/*	false-positive: we report a case CodeNarc allows
 EmptyForStatement/*	ours-parser: our parser rejects this syntax
 EmptyMethodInAbstractClass/000.groovy	false-positive: we report a case CodeNarc allows
 EmptyMethodInAbstractClass/002.groovy	missed: we do not report this case yet
@@ -361,13 +342,6 @@ RequiredRegex/*	missed: we do not report this case yet
 RequiredString/*	missed: we do not report this case yet
 ReturnNullFromCatchBlock/*	missed: we do not report this case yet
 ReturnsNullInsteadOfEmptyArray/*	missed: we do not report this case yet
-ReturnsNullInsteadOfEmptyCollection/000.groovy	false-positive: we report a case CodeNarc allows
-ReturnsNullInsteadOfEmptyCollection/001.groovy	missed: we do not report this case yet
-ReturnsNullInsteadOfEmptyCollection/002.groovy	missed: we do not report this case yet
-ReturnsNullInsteadOfEmptyCollection/010.groovy	missed: we do not report this case yet
-ReturnsNullInsteadOfEmptyCollection/012.groovy	missed: we do not report this case yet
-ReturnsNullInsteadOfEmptyCollection/015.groovy	missed: we do not report this case yet
-ReturnsNullInsteadOfEmptyCollection/016.groovy	missed: we do not report this case yet
 SerialPersistentFields/*	missed: we do not report this case yet
 SerialVersionUID/*	missed: we do not report this case yet
 SerializableClassMustDefineSerialVersionUID/*	false-positive: we report a case CodeNarc allows
@@ -438,11 +412,9 @@ ThreadGroup/*	missed: we do not report this case yet
 ToStringReturnsNull/*	missed: we do not report this case yet
 TrailingComma/000.groovy	false-positive: we report a case CodeNarc allows
 TrailingComma/004.groovy	false-positive: we report a case CodeNarc allows
-TrailingComma/006.groovy	false-positive: we report a case CodeNarc allows
 TrailingComma/009.groovy	missed: we do not report this case yet
 TrailingComma/010.groovy	false-positive: we report a case CodeNarc allows
 TrailingComma/015.groovy	false-positive: we report a case CodeNarc allows
-TrailingComma/017.groovy	false-positive: we report a case CodeNarc allows
 TrailingComma/019.groovy	missed: we do not report this case yet
 TrailingWhitespace/*	other-line: the rule fires but on a different line
 UnnecessaryBigDecimalInstantiation/*	false-positive: we report a case CodeNarc allows
@@ -505,25 +477,14 @@ UnnecessaryInstantiationToGetClass/*	false-positive: we report a case CodeNarc a
 UnnecessaryIntegerInstantiation/*	false-positive: we report a case CodeNarc allows
 UnnecessaryLongInstantiation/*	false-positive: we report a case CodeNarc allows
 UnnecessaryNullCheck/000.groovy	false-positive: we report a case CodeNarc allows
-UnnecessaryNullCheck/006.groovy	missed: we do not report this case yet
-UnnecessaryNullCheck/007.groovy	missed: we do not report this case yet
-UnnecessaryNullCheck/008.groovy	missed: we do not report this case yet
 UnnecessaryNullCheck/009.groovy	missed: we do not report this case yet
 UnnecessaryNullCheck/010.groovy	missed: we do not report this case yet
 UnnecessaryNullCheckBeforeInstanceOf/*	missed: we do not report this case yet
 UnnecessaryObjectReferences/*	missed: we do not report this case yet
 UnnecessaryOverridingMethod/*	missed: we do not report this case yet
-UnnecessaryPackageReference/001.groovy	other-line: the rule fires but on a different line
-UnnecessaryPackageReference/002.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/003.groovy	other-line: the rule fires but on a different line
-UnnecessaryPackageReference/006.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/007.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/008.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/009.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/010.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/012.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/013.groovy	missed: we do not report this case yet
-UnnecessaryPackageReference/015.groovy	missed: we do not report this case yet
+UnnecessaryPackageReference/000.groovy	false-positive: we report a case CodeNarc allows
+UnnecessaryPackageReference/002.groovy	other-line: the rule fires but on a different line
+UnnecessaryPackageReference/011.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryPackageReference/016.groovy	missed: we do not report this case yet
 UnnecessaryParenthesesForMethodCallWithClosure/*	missed: we do not report this case yet
 UnnecessaryPublicModifier/006.groovy	missed: we do not report this case yet
@@ -535,11 +496,8 @@ UnnecessarySafeNavigationOperator/001.groovy	other-line: the rule fires but on a
 UnnecessarySafeNavigationOperator/002.groovy	other-line: the rule fires but on a different line
 UnnecessarySafeNavigationOperator/003.groovy	ours-parser: our parser rejects this syntax
 UnnecessarySemicolon/*	ours-parser: our parser rejects this syntax
-UnnecessarySetter/000.groovy	false-positive: we report a case CodeNarc allows
 UnnecessarySetter/001.groovy	other-line: the rule fires but on a different line
 UnnecessarySetter/003.groovy	other-line: the rule fires but on a different line
-UnnecessarySetter/004.groovy	false-positive: we report a case CodeNarc allows
-UnnecessarySetter/005.groovy	false-positive: we report a case CodeNarc allows
 UnnecessarySetter/006.groovy	false-positive: we report a case CodeNarc allows
 UnnecessarySetter/007.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryTernaryExpression/000.groovy	other-line: the rule fires but on a different line

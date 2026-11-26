@@ -710,12 +710,43 @@ impl AstRule for GroovyLangImmutableRule {
 }
 
 /// Flags repeated number literals.
-#[derive(Default)]
 pub struct DuplicateNumberLiteralRule {
     seen: std::collections::BTreeSet<String>,
+    ignored: Vec<String>,
+    minimum: Option<f64>,
 }
 
-impl Rule for DuplicateNumberLiteralRule {}
+impl Default for DuplicateNumberLiteralRule {
+    fn default() -> Self {
+        Self {
+            seen: std::collections::BTreeSet::new(),
+            ignored: vec!["0".to_string(), "1".to_string()],
+            minimum: None,
+        }
+    }
+}
+
+impl Rule for DuplicateNumberLiteralRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("ignoreNumbers") {
+            self.ignored = value
+                .split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(ToString::to_string)
+                .collect();
+        }
+        if let Some(value) = properties.get("duplicateNumberMinimumValue") {
+            self.minimum = Some(
+                value
+                    .trim()
+                    .parse()
+                    .map_err(|_| "duplicateNumberMinimumValue must be a number".to_string())?,
+            );
+        }
+        Ok(())
+    }
+}
 
 impl AstRule for DuplicateNumberLiteralRule {
     fn interests(&self) -> NodeMask {
@@ -733,10 +764,16 @@ impl AstRule for DuplicateNumberLiteralRule {
         let ExprKind::Literal(Literal::Number(value)) = &expr.kind else {
             return;
         };
-        if matches!(value.as_str(), "0" | "1") {
+        let value = value.trim_end_matches(['d', 'D', 'f', 'F', 'g', 'G', 'l', 'L']);
+        if self.ignored.iter().any(|ignored| ignored == value) {
             return;
         }
-        if !self.seen.insert(value.clone()) {
+        if let Some(minimum) = self.minimum
+            && value.parse::<f64>().is_ok_and(|number| number < minimum)
+        {
+            return;
+        }
+        if !self.seen.insert(value.to_string()) {
             sink.report(
                 expr.span,
                 format!("The number literal {value} is duplicated"),
@@ -746,12 +783,47 @@ impl AstRule for DuplicateNumberLiteralRule {
 }
 
 /// Flags repeated string literals.
-#[derive(Default)]
 pub struct DuplicateStringLiteralRule {
     seen: std::collections::BTreeSet<String>,
+    ignored: Vec<String>,
+    minimum_length: Option<usize>,
 }
 
-impl Rule for DuplicateStringLiteralRule {}
+impl Default for DuplicateStringLiteralRule {
+    fn default() -> Self {
+        Self {
+            seen: std::collections::BTreeSet::new(),
+            ignored: vec![String::new()],
+            minimum_length: None,
+        }
+    }
+}
+
+impl Rule for DuplicateStringLiteralRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("ignoreStrings") {
+            let delimiter = properties
+                .get("ignoreStringsDelimiter")
+                .and_then(|delimiter| delimiter.chars().next())
+                .unwrap_or(',');
+            self.ignored = value
+                .split(delimiter)
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(ToString::to_string)
+                .collect();
+        }
+        if let Some(value) = properties.get("duplicateStringMinimumLength") {
+            self.minimum_length = Some(
+                value
+                    .trim()
+                    .parse()
+                    .map_err(|_| "duplicateStringMinimumLength must be a number".to_string())?,
+            );
+        }
+        Ok(())
+    }
+}
 
 impl AstRule for DuplicateStringLiteralRule {
     fn interests(&self) -> NodeMask {
@@ -770,7 +842,12 @@ impl AstRule for DuplicateStringLiteralRule {
             return;
         };
         let value = value.trim_matches('"').trim_matches('\'');
-        if value.is_empty() {
+        if self.ignored.iter().any(|ignored| ignored == value) {
+            return;
+        }
+        if let Some(minimum) = self.minimum_length
+            && value.chars().count() < minimum
+        {
             return;
         }
         if !self.seen.insert(value.to_string()) {

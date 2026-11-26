@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use groovylint_core::Severity;
-use groovylint_syntax::ast::{AssignOp, Expr, ExprKind, Literal, MethodDecl, Param, Stmt};
+use groovylint_syntax::ast::{AssignOp, Expr, ExprKind, Item, Literal, MethodDecl, Param, Stmt};
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, descriptor};
 use crate::rule::{
@@ -785,11 +785,11 @@ impl FileRule for PublicMethodsBeforeNonPublicMethodsRule {
     }
 }
 
-fn check_public_method_order(item: &groovylint_syntax::ast::Item, sink: &mut DiagnosticSink<'_>) {
-    if let groovylint_syntax::ast::Item::Class(class) = item {
+fn check_public_method_order(item: &Item, sink: &mut DiagnosticSink<'_>) {
+    if let Item::Class(class) = item {
         let mut saw_non_public = false;
         for member in &class.members {
-            if let groovylint_syntax::ast::Item::Method(method) = member {
+            if let Item::Method(method) = member {
                 let public = method.is_public || (!method.is_private && !method.is_protected);
                 if public && saw_non_public {
                     sink.report(
@@ -823,11 +823,11 @@ impl FileRule for StaticFieldsBeforeInstanceFieldsRule {
     }
 }
 
-fn check_static_field_order(item: &groovylint_syntax::ast::Item, sink: &mut DiagnosticSink<'_>) {
-    if let groovylint_syntax::ast::Item::Class(class) = item {
+fn check_static_field_order(item: &Item, sink: &mut DiagnosticSink<'_>) {
+    if let Item::Class(class) = item {
         let mut saw_instance = false;
         for member in &class.members {
-            if let groovylint_syntax::ast::Item::Field(field) = member {
+            if let Item::Field(field) = member {
                 if !field.is_static {
                     saw_instance = true;
                 } else if saw_instance {
@@ -870,11 +870,11 @@ fn visibility(method: &MethodDecl) -> u8 {
     }
 }
 
-fn check_static_method_order(item: &groovylint_syntax::ast::Item, sink: &mut DiagnosticSink<'_>) {
-    if let groovylint_syntax::ast::Item::Class(class) = item {
+fn check_static_method_order(item: &Item, sink: &mut DiagnosticSink<'_>) {
+    if let Item::Class(class) = item {
         let mut saw_instance = [false; 3];
         for member in &class.members {
-            if let groovylint_syntax::ast::Item::Method(method) = member {
+            if let Item::Method(method) = member {
                 let level = visibility(method) as usize;
                 if method.is_static {
                     if saw_instance[level] {
@@ -942,53 +942,108 @@ pub struct CouldBeSwitchStatementRule;
 
 impl Rule for CouldBeSwitchStatementRule {}
 
-impl AstRule for CouldBeSwitchStatementRule {
-    fn interests(&self) -> NodeMask {
-        NodeMask::of(NodeKind::If)
+impl FileRule for CouldBeSwitchStatementRule {
+    fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
+        let mut visitor = SwitchCandidateVisitor {
+            sink,
+            source: context.source.text(),
+        };
+        // Script-level statements are not inside a block, so they are sequenced here.
+        let mut sequence: Vec<&Stmt> = Vec::new();
+        for item in &context.script.items {
+            if let Item::Statement(statement) = item {
+                sequence.push(statement);
+                continue;
+            }
+            visitor.check_statements(&sequence);
+            sequence.clear();
+        }
+        visitor.check_statements(&sequence);
+        crate::traverse::walk_script(context.script, &mut visitor);
+    }
+}
+
+/// Counts consecutive `if` statements that test the same subject.
+///
+/// `CodeNarc` reports once four of them line up, on the line of the first
+/// condition; any other statement resets the count.
+struct SwitchCandidateVisitor<'a, 'b> {
+    sink: &'a mut DiagnosticSink<'b>,
+    source: &'a str,
+}
+
+impl SwitchCandidateVisitor<'_, '_> {
+    fn check_block(&mut self, block: &groovylint_syntax::ast::Block) {
+        self.check_statements(&block.statements.iter().collect::<Vec<_>>());
     }
 
-    fn enter(
-        &mut self,
-        node: NodeRef<'_>,
-        context: &FileContext<'_>,
-        sink: &mut DiagnosticSink<'_>,
-    ) {
-        let NodeRef::Stmt(Stmt::If(if_stmt)) = node else {
-            return;
-        };
-        let Some(subject) = equality_subject(&if_stmt.condition, context.source.text()) else {
-            return;
-        };
-        let mut count = 1;
-        let mut current = if_stmt.else_branch.as_deref();
-        while let Some(Stmt::If(next)) = current {
-            if equality_subject(&next.condition, context.source.text()).as_deref()
-                == Some(subject.as_str())
-            {
-                count += 1;
-                current = next.else_branch.as_deref();
-            } else {
-                break;
+    fn check_statements(&mut self, statements: &[&Stmt]) {
+        let mut subject: Option<String> = None;
+        let mut count = 0;
+        let mut first: Option<groovylint_core::Span> = None;
+        for statement in statements {
+            let mut current: Option<&Stmt> = Some(*statement);
+            let mut is_if = false;
+            while let Some(Stmt::If(if_stmt)) = current {
+                is_if = true;
+                match equality_subject(&if_stmt.condition, self.source) {
+                    Some(next) if subject.as_deref() == Some(next.as_str()) => {
+                        count += 1;
+                    }
+                    Some(next) => {
+                        subject = Some(next);
+                        count = 1;
+                        first = Some(if_stmt.condition.span);
+                    }
+                    None => {
+                        subject = None;
+                        count = 0;
+                        first = None;
+                    }
+                }
+                if count > 2
+                    && let Some(span) = first
+                {
+                    self.sink.report(
+                        span,
+                        "The if/else-if chain can be rewritten as a switch statement",
+                    );
+                    count = 0;
+                    subject = None;
+                    first = None;
+                }
+                current = if_stmt.else_branch.as_deref();
             }
-        }
-        if count >= 2 {
-            sink.report(
-                if_stmt.span,
-                "The if/else-if chain can be rewritten as a switch statement",
-            );
+            if !is_if {
+                subject = None;
+                count = 0;
+                first = None;
+            }
         }
     }
 }
 
+impl crate::traverse::AstVisitor for SwitchCandidateVisitor<'_, '_> {
+    fn enter(&mut self, node: NodeRef<'_>) {
+        if let NodeRef::Stmt(Stmt::Block(block)) = node {
+            self.check_block(block);
+        }
+    }
+
+    fn exit(&mut self, _node: NodeRef<'_>) {}
+}
+
+/// The subject an `if` compares, for the operators a `switch` can replace.
 fn equality_subject(expr: &Expr, source: &str) -> Option<String> {
-    let ExprKind::Binary {
-        op: groovylint_syntax::ast::BinaryOp::Eq,
-        left,
-        ..
-    } = &expr.kind
-    else {
+    let ExprKind::Binary { op, left, .. } = &expr.kind else {
         return None;
     };
+    if !matches!(
+        op,
+        groovylint_syntax::ast::BinaryOp::Eq | groovylint_syntax::ast::BinaryOp::InstanceOf
+    ) {
+        return None;
+    }
     Some(crate::rules::util::expr_text(left, source))
 }
 
@@ -1327,7 +1382,7 @@ pub fn extra_descriptors() -> Vec<RuleDescriptor> {
                 Severity::Warning,
                 "If/else-if chains comparing one value can be a switch.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(CouldBeSwitchStatementRule)),
+            || RuleInstanceImpl::File(Box::new(CouldBeSwitchStatementRule)),
         ),
         descriptor(
             RuleMeta::new(
