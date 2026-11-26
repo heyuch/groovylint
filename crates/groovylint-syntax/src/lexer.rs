@@ -61,7 +61,9 @@ impl<'a> Lexer<'a> {
                     self.pos += 1;
                     self.push(TokenKind::Newline, start, self.pos);
                 }
-                b'#' if self.pos == 0 && self.peek_byte(1) == Some(b'!') => {
+                // A shebang is only meaningful on the first line, but a script pasted
+                // into a template can carry indentation in front of it.
+                b'#' if self.peek_byte(1) == Some(b'!') && self.is_first_code_on_line() => {
                     self.skip_line_comment();
                 }
                 b'/' if self.is_slashy_start() => self.lex_slashy_string()?,
@@ -77,6 +79,15 @@ impl<'a> Lexer<'a> {
         self.tokens
             .push(Token::new(TokenKind::Eof, Span::empty(self.source.len())));
         Ok(self.tokens)
+    }
+
+    /// Whether only whitespace precedes the cursor on this line.
+    fn is_first_code_on_line(&self) -> bool {
+        self.bytes[..self.pos]
+            .iter()
+            .rev()
+            .take_while(|byte| **byte != b'\n')
+            .all(u8::is_ascii_whitespace)
     }
 
     fn peek_byte(&self, offset: usize) -> Option<u8> {

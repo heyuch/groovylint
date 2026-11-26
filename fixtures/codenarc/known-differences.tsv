@@ -336,12 +336,6 @@ StatelessClass/*	missed: we do not report this case yet
 StatelessSingleton/*	missed: we do not report this case yet
 StaticCalendarField/*	missed: we do not report this case yet
 StaticDateFormatField/*	missed: we do not report this case yet
-StaticMethodsBeforeInstanceMethods/003.groovy	ours-parser: our parser rejects this syntax
-StaticMethodsBeforeInstanceMethods/004.groovy	false-positive: we report a case CodeNarc allows
-StaticMethodsBeforeInstanceMethods/005.groovy	false-positive: we report a case CodeNarc allows
-StaticMethodsBeforeInstanceMethods/006.groovy	false-positive: we report a case CodeNarc allows
-StaticMethodsBeforeInstanceMethods/008.groovy	other-line: the rule fires but on a different line
-StaticMethodsBeforeInstanceMethods/009.groovy	false-positive: we report a case CodeNarc allows
 StaticSimpleDateFormatField/*	missed: we do not report this case yet
 SwallowThreadDeath/*	missed: we do not report this case yet
 SynchronizedOnBoxedPrimitive/*	missed: we do not report this case yet
@@ -440,10 +434,8 @@ UnnecessaryTernaryExpression/009.groovy	false-positive: we report a case CodeNar
 UnnecessaryTernaryExpression/011.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryToString/000.groovy	false-positive: we report a case CodeNarc allows
 UnnecessaryToString/001.groovy	other-line: the rule fires but on a different line
-UnnecessaryToString/002.groovy	missed: we do not report this case yet
+UnnecessaryToString/002.groovy	other-line: the rule fires but on a different line
 UnnecessaryToString/003.groovy	missed: we do not report this case yet
-UnnecessaryToString/004.groovy	missed: we do not report this case yet
-UnnecessaryToString/005.groovy	missed: we do not report this case yet
 UnsafeArrayDeclaration/*	missed: we do not report this case yet
 UnsafeImplementationAsMap/*	false-positive: we report a case CodeNarc allows
 UnusedArray/*	missed: we do not report this case yet

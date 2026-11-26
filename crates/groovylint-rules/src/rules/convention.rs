@@ -848,14 +848,29 @@ fn check_static_field_order(item: &Item, sink: &mut DiagnosticSink<'_>) {
 }
 
 /// Flags static methods declared after instance methods of the same visibility.
-pub struct StaticMethodsBeforeInstanceMethodsRule;
+#[derive(Default)]
+pub struct StaticMethodsBeforeInstanceMethodsRule {
+    ignored: Vec<String>,
+}
 
-impl Rule for StaticMethodsBeforeInstanceMethodsRule {}
+impl Rule for StaticMethodsBeforeInstanceMethodsRule {
+    fn configure(&mut self, properties: &RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("ignoreMethodNames") {
+            self.ignored = value
+                .split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(ToString::to_string)
+                .collect();
+        }
+        Ok(())
+    }
+}
 
 impl FileRule for StaticMethodsBeforeInstanceMethodsRule {
     fn check(&mut self, context: &FileContext<'_>, sink: &mut DiagnosticSink<'_>) {
         for item in &context.script.items {
-            check_static_method_order(item, sink);
+            check_static_method_order(item, &self.ignored, sink);
         }
     }
 }
@@ -870,11 +885,17 @@ fn visibility(method: &MethodDecl) -> u8 {
     }
 }
 
-fn check_static_method_order(item: &Item, sink: &mut DiagnosticSink<'_>) {
+fn check_static_method_order(item: &Item, ignored: &[String], sink: &mut DiagnosticSink<'_>) {
     if let Item::Class(class) = item {
         let mut saw_instance = [false; 3];
         for member in &class.members {
             if let Item::Method(method) = member {
+                let skipped = ignored
+                    .iter()
+                    .any(|pattern| crate::rules::types::wildcard_matches(&method.name, pattern));
+                if skipped {
+                    continue;
+                }
                 let level = visibility(method) as usize;
                 if method.is_static {
                     if saw_instance[level] {
@@ -892,7 +913,7 @@ fn check_static_method_order(item: &Item, sink: &mut DiagnosticSink<'_>) {
             }
         }
         for member in &class.members {
-            check_static_method_order(member, sink);
+            check_static_method_order(member, ignored, sink);
         }
     }
 }
@@ -1422,7 +1443,7 @@ pub fn extra_descriptors() -> Vec<RuleDescriptor> {
                 Severity::Info,
                 "Static methods should appear before instance methods.",
             ),
-            || RuleInstanceImpl::File(Box::new(StaticMethodsBeforeInstanceMethodsRule)),
+            || RuleInstanceImpl::File(Box::new(StaticMethodsBeforeInstanceMethodsRule::default())),
         ),
     ]
 }

@@ -2022,13 +2022,32 @@ impl SetterVisitor<'_, '_> {
 }
 
 /// Flags calls to `toString()` on values already known to be strings.
-pub struct UnnecessaryToStringRule;
+pub struct UnnecessaryToStringRule {
+    check_assignments: bool,
+}
 
-impl Rule for UnnecessaryToStringRule {}
+impl Default for UnnecessaryToStringRule {
+    fn default() -> Self {
+        Self {
+            check_assignments: true,
+        }
+    }
+}
+
+impl Rule for UnnecessaryToStringRule {
+    fn configure(&mut self, properties: &crate::rule::RuleProperties) -> Result<(), String> {
+        if let Some(value) = properties.get("checkAssignments") {
+            self.check_assignments = value != "false";
+        }
+        Ok(())
+    }
+}
 
 impl AstRule for UnnecessaryToStringRule {
     fn interests(&self) -> NodeMask {
         NodeMask::of(NodeKind::Expr)
+            .union(NodeMask::of(NodeKind::Field))
+            .union(NodeMask::of(NodeKind::VarDecl))
     }
 
     fn enter(
@@ -2037,30 +2056,94 @@ impl AstRule for UnnecessaryToStringRule {
         _context: &FileContext<'_>,
         sink: &mut DiagnosticSink<'_>,
     ) {
-        let NodeRef::Expr(expr) = node else {
-            return;
-        };
-        let ExprKind::Call {
+        match node {
+            NodeRef::Expr(expr) => check_to_string_expression(expr, sink),
+            NodeRef::Field(field) => {
+                if !self.check_assignments || !is_string_type(field.type_name.as_deref()) {
+                    return;
+                }
+                let Some(init) = &field.init else {
+                    return;
+                };
+                if is_to_string_call(init) {
+                    sink.report(
+                        field.span,
+                        format!(
+                            "Calling toString() when assigning to String field \"{}\" is unnecessary",
+                            field.name
+                        ),
+                    );
+                }
+            }
+            NodeRef::Stmt(Stmt::VarDecl(decl)) => {
+                if !self.check_assignments || !is_string_type(decl.type_name.as_deref()) {
+                    return;
+                }
+                let Some(init) = &decl.init else {
+                    return;
+                };
+                if is_to_string_call(init) {
+                    sink.report(
+                        decl.span,
+                        format!(
+                            "Calling toString() when assigning to String variable \"{}\" is unnecessary",
+                            decl.name
+                        ),
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_to_string_expression(expr: &Expr, sink: &mut DiagnosticSink<'_>) {
+    match &expr.kind {
+        // `"literal".toString()`, and `x + y.toString()` when the left side is a
+        // String: the concatenation already produces a String.
+        ExprKind::Call {
             receiver: Some(receiver),
             name,
             args,
             ..
-        } = &expr.kind
-        else {
-            return;
-        };
-        if name != "toString" || !args.is_empty() {
-            return;
+        } if name == "toString" && args.is_empty() => {
+            let receiver = unparen(receiver);
+            if matches!(&receiver.kind, ExprKind::Literal(Literal::String(_))) {
+                sink.report(
+                    expr.span,
+                    "Calling toString() on a String expression is unnecessary",
+                );
+            }
         }
-        let receiver = unparen(receiver);
-        let is_string = matches!(&receiver.kind, ExprKind::Literal(Literal::String(_)));
-        if is_string {
-            sink.report(
-                expr.span,
-                "Calling toString() on a String expression is unnecessary",
-            );
+        ExprKind::Binary {
+            op: BinaryOp::Add,
+            left,
+            right,
+        } => {
+            let left = unparen(left);
+            let is_string = matches!(&left.kind, ExprKind::Literal(Literal::String(_)));
+            if is_string && is_to_string_call(unparen(right)) {
+                sink.report(
+                    unparen(right).span,
+                    "Calling toString() on the right side of a String concatenation is unnecessary",
+                );
+            }
         }
+        _ => {}
     }
+}
+
+/// Whether the expression is a no-argument `toString()` call.
+fn is_to_string_call(expr: &Expr) -> bool {
+    matches!(
+        &unparen(expr).kind,
+        ExprKind::Call { name, args, .. } if name == "toString" && args.is_empty()
+    )
+}
+
+/// Whether a declared type is `String`.
+fn is_string_type(name: Option<&str>) -> bool {
+    name.is_some_and(|name| name == "String" || name == "java.lang.String")
 }
 
 /// Descriptors for the rules.
@@ -2515,7 +2598,7 @@ pub fn descriptors() -> Vec<RuleDescriptor> {
                 Severity::Warning,
                 "toString() on a String is unnecessary.",
             ),
-            || RuleInstanceImpl::Ast(Box::new(UnnecessaryToStringRule)),
+            || RuleInstanceImpl::Ast(Box::new(UnnecessaryToStringRule::default())),
         ),
     ]
 }

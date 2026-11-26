@@ -55,7 +55,7 @@ What the harvester has to undo, because the tests are Groovy rather than plain t
 
 ```
 2959 cases (1565 expected violations, 1394 expected silence) over 398 rules
-2199 match CodeNarc      617 recorded as known differences      143 for rules out of scope
+2207 match CodeNarc      609 recorded as known differences      143 for rules out of scope
 ```
 
 Of the 382 rules this project registers, 378 have fixtures. The 20 corpus rules without
@@ -66,10 +66,10 @@ Known differences, by cause:
 
 | Cause | Cases | What it means |
 |---|---|---|
-| `missed` | 256 | the rule does not report a case CodeNarc reports |
-| `false-positive` | 201 | the rule reports a case CodeNarc allows |
+| `missed` | 253 | the rule does not report a case CodeNarc reports |
+| `false-positive` | 197 | the rule reports a case CodeNarc allows |
 | `other-line` | 104 | the rule fires, but points at a different line |
-| `ours-parser` | 56 | the snippet uses syntax our parser rejects |
+| `ours-parser` | 55 | the snippet uses syntax our parser rejects |
 
 The `ours-parser` cases are a parser work list, not a rule work list. The first pass
 over them removed the largest clusters: `def` in a parameter list, modifiers after a
@@ -89,7 +89,7 @@ The rules with the most failing cases, and why they are worth starting with:
 
 | Rule | Failing | Cause |
 |---|---|---|
-| `Indentation` | 8 | CodeNarc's indentation state machine differs on nested blocks |
+| `Indentation` | 8 | CodeNarc's indentation state machine differs on nested blocks (deferred by decision) |
 | `CrapMetric` | 3 | needs cyclomatic complexity plus test coverage per method |
 | `IllegalClassMember`, `ImplementationAsType`, `MissingOverrideAnnotation` | 5 each | need type resolution; see `ROADMAP.md` §7.5 |
 | `NestedBlockDepth` | 5 | which statements count as a block |
