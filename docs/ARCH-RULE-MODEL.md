@@ -20,9 +20,9 @@ An architecture rule is a triple:
 (target type T) × (selector over T) × (constraint vocabulary of T)
 ```
 
-- **Target type** — one of a closed set: `module`, `class`, `method`, `field`,
-  `statement`, `expression`. Different types can be constrained in different ways,
-  and the implementation differs, so the type is part of the model.
+- **Target type** — one of a closed set: `module`, `package`, `class`, `method`,
+  `field`. Different types can be constrained in different ways, and the
+  implementation differs, so the type is part of the model.
 - **Selector** — "which of these": name suffix, inheritance, required interface,
   annotation, signature, containment. Selectors compose with `and` / `or` / `not`.
 - **Constraint** — "what they must or must not do". The vocabulary is **closed per
@@ -69,6 +69,12 @@ models         = { on = "class", in = ["*-models", "*-shared-models"] }
 # ─ platform libraries every module may use ─
 shared-domain  = { on = "class", in = "shared-core:shared-core-domain" }
 
+# ─ packages inside a module: the three levels a role actually lives at ─
+domain-api     = { on = "package", name = "**.domain.**.api", under = "*.domain" }
+domain-spi     = { on = "package", name = "**.domain.**.gateway" }
+service-impl   = { on = "package", name = "**.domain.**.service.impl" }
+http-entry     = { on = "package", name = "**.adapter.**.http" }
+
 # ─ external packages and single classes ─
 web            = { on = "package", name = ["org.springframework.web.**", "javax.servlet.**"] }
 persistence    = { on = "package", name = "org.apache.ibatis.**" }
@@ -79,7 +85,7 @@ page           = { on = "class",   name = "com.acme.platform.vo.Page" }
 # ─ shapes ─
 domain-service = { on = "class",  in = "domain", name = ["*Service", "*ServiceImpl"],
                    not = { kind = "interface" } }
-service-impl   = { on = "class",  in = "domain", name = "*ServiceImpl" }
+service-impl-class = { on = "class", in = "domain", name = "*ServiceImpl" }
 repository     = { on = "class",  in = "domain", name = "*Repository" }
 repository-query = { on = "method", in = "repository", name = "query*" }
 repository-load  = { on = "method", in = "repository", name = "load*" }
@@ -97,6 +103,45 @@ Rules for the matcher (unchanged from v2, they were the good part):
 - patterns are anchored; `*` is any run of characters except `:`, `**` crosses `:`,
   `?` is one character, `{slot}` captures one segment for diagnostics; `regex = "…"`
   is the escape hatch for hostile naming.
+
+### 2.1 Containment: module ⊃ package ⊃ class ⊃ member
+
+The target types are not a flat list, they are the containment chain of the language:
+
+```
+module ─┬─ package ─┬─ class ─┬─ field
+        │           │         └─ method ─── parameter
+        │           └─ (sub-packages, recursively)
+        └─ (packages declared by that module)
+```
+
+This is why `package` is a target type and not an attribute of one. In Java and
+Groovy the package *is* the architectural unit: it carries the role (`..service`,
+`..gateway`, `..http`), it is what `package-private` access enforces, what
+`module-info` exports, and what a slice is cut along. A module is the ownership and
+deployment boundary; a package is the role inside it.
+
+Consequences for the model:
+
+- **`in` is containment, at any level**: a class is `in` a package or `in` a module,
+  a method is `in` a class, a package is `in` a module. One keyword, one meaning.
+- **Package patterns are hierarchical**: `com.acme.billing.domain.*` is one segment,
+  `com.acme.billing.domain.**` is that package and everything below it, and
+  `under = "com.acme.billing.domain"` is shorthand for the latter. A class belongs to
+  a package target when its package matches, sub-packages included when the pattern
+  says so.
+- **Package edges are the same edges, projected to packages** — a third projection of
+  the class → class edge, exactly like modules (principle 2 in §1).
+- **`packageMatches` disappears.** It was a class constraint in v2 and an earlier
+  draft of v3; with packages as targets it is just `in = <package target>`. Adding the
+  missing level removed a keyword instead of adding one.
+- **Slices come for free**: a package pattern with `{slot}` captures a segment, and
+  `acyclic` over the capture is the "no cycles between feature slices" rule.
+
+Which level should a rule use? The one whose meaning the team already agreed on:
+cross-module contracts at `module` level (who may depend on whom), intra-module roles
+at `package` level (adapter may not reach `..gateway..`), and `class`/member level for
+conventions that are about the declaration itself.
 
 **Naming is not mandatory.** A selector used once is written inline, so a small
 project does not maintain a name table:
@@ -124,6 +169,27 @@ because = "02 §3.1 domain 只承载领域规则，不能依赖 application/adap
 One target may appear in several blocks (different `because`, different severity
 later); grouping is the default shape, not a restriction. `arch fmt` sorts blocks by
 target so that all constraints on one object read together.
+
+Package-level rules read the same way, because the mechanism is the same:
+
+```toml
+[[rule]]
+target  = "domain-spi"                                  # ..domain..gateway
+must    = { notDependOn  = ["persistence", "web", "spring"],
+            dependOnlyOn = ["any:domain-api", "any:models"] }
+because = "02 §3.7 领域仓储接口不依赖任何技术实现，由 infrastructure 实现"
+
+[[rule]]
+target  = "service-impl"                                # ..domain..service.impl
+must    = { visible = ["self:module"] }
+because = "02 §3.8 Service 实现只在本文档的模块内可见，跨模块只能用 client"
+```
+
+`visible` is the target-side form of a dependency rule — "who may depend on me" — and
+it is what a package-level boundary needs, because writing the same thing as
+`notDependOn` on every possible source is the matrix problem again. Its values are a
+target list plus the keywords `self:`, `any:` and `none` (default: any node in the
+same module).
 
 `except` is the node-level escape, and only that — a list of concrete nodes, not a
 second selector language:
@@ -283,8 +349,8 @@ target  = "domain-service"
 must    = { annotatedWith = "org.springframework.stereotype.Service" }
 
 [[rule]]
-target  = "service-impl"
-must    = { packageMatches = "com.acme.**.domain.**.service.impl" }
+target  = "service-impl-class"          # classes named *ServiceImpl
+must    = { in = "service-impl" }       # the ..service.impl package target
 because = "07 §3 Service 实现统一放 service.impl，与接口包分开"
 
 [[rule]]
@@ -322,6 +388,12 @@ target  = "repository-load"
 must    = { notRawReturnType = ["collection", "page", "java.util.Optional"],
             notAnnotatedWith  = ["Nullable"] }
 
+# ── package layout inside a module ─────────────────────────────────────
+[[rule]]
+target  = "api-class"                   # classes in the ..adapter..http packages
+must    = { notDependOn = ["repository", "persistence"] }
+because = "02 §3.9 HTTP 入口只编排用例，不直接访问仓储与持久化"
+
 # ── module composition ─────────────────────────────────────────────────
 [[rule]]
 target  = "module"
@@ -332,6 +404,17 @@ must    = { children = ["adapter", "application", "domain", "infrastructure", "c
 target  = "module"
 must    = { acyclic = true }
 because = "02 §5 模块之间不得成环"
+
+# ── slices: no cycles between the feature packages of one module ───────
+[[rule]]
+target  = "feature-slice"
+must    = { acyclic = true }
+because = "02 §5 同一模块内的特性包之间不得互相依赖"
+
+[targets.feature-slice]
+on   = "package"
+name = "com.acme.{module}.domain.{feature}"
+slot = "feature"
 ```
 
 What the exercise showed:
@@ -381,7 +464,8 @@ require editing the baseline file, which is reviewable.
 | `deny = [...]` | `notDependOn = [...]` on the same target |
 | `exemptFrom = [...]` on a rule | `except = [...]` node list, or `baseline` |
 | `parent` / `children` / `counts` containment rule | `children` / `counts` constraints on `target = "module"` |
-| `check = "package-root"` / `"declared-dependency"` | `packageMatches` constraint; declared-dependency stays phase 5 |
+| `check = "package-root"` | `target = "package"` + `must = { in = ... }` (was a class constraint) |
+| `check = "declared-dependency"` | unchanged, phase 5 |
 | `nameAliases` / `pathAliases` | a list in `name` / `in` |
 
 ## 10. Open decisions
@@ -399,9 +483,16 @@ require editing the baseline file, which is reviewable.
    dependency edges, or later. Two of the catalog's intents depend on it.
 5. **Where the config lives.** One root file, or per-module files merged by the root
    (per-module files make ownership clear, one file keeps the lattice closed).
-6. **Scope of `acyclic`.** Modules only for the first release, or also packages and
-   classes? Modules is what the catalog asks for; anything finer needs a decision
+6. **Scope of `acyclic`.** Modules and packages for the first release (both are a
+   projection of the same edge), or modules only? Anything finer needs a decision
    about which containment edge forms a cycle.
+7. **Package patterns that span modules.** `com.acme.**.api` matches packages in every
+   module, which is useful for conventions and meaningful for cross-module rules, but
+   it makes `self:` ambiguous (whose module?). Options: forbid crossing modules,
+   resolve `self:` against each node's own module, or scope such a target with `in`.
+8. **Slices as a first-class concept.** A `{slot}` package pattern plus `acyclic` gets
+   the behaviour, but ArchUnit and import-linter give slices a name. Whether to
+   surface `slices = { by = "...", of = "..." }` as sugar, or leave it to patterns.
 
 ## Appendix A: reference vocabulary
 
@@ -413,14 +504,15 @@ keyword it broke.
 
 | Type | Covers |
 |---|---|
-| `module` | a Gradle module or a package root |
+| `module` | a Gradle module |
+| `package` | a package and, when the pattern says so, its sub-packages |
 | `class` | class, interface, trait, enum, annotation type, including nested ones |
 | `method` | methods and constructors |
 | `field` | fields and properties |
 
-Deliberately absent from the first release: `statement`, `expression` (no architecture
-rule needs them), `parameter` (`allParams` covers it), `package` (`packageMatches`
-covers it).
+The five form the containment chain of §2.1. Deliberately absent from the first
+release: `statement`, `expression` (no architecture rule needs them) and `parameter`
+(`allParams` covers it).
 
 ### A.2 Selectors
 
@@ -438,17 +530,23 @@ Additional per type:
 
 | Type | Selectors |
 |---|---|
-| `module` | `path`, `packageMatches` |
-| `class` | `kind` (`class`/`interface`/`trait`/`enum`/`annotation`), `abstract`, `extends`, `implements`, `annotatedWith`, `packageMatches`, `nested` |
+| `module` | `path` |
+| `class` | `kind` (`class`/`interface`/`trait`/`enum`/`annotation`), `abstract`, `extends`, `implements`, `annotatedWith`, `nested` |
 | `method` | `annotatedWith`, `rawReturnType`, `modifiers` (`static`/`public`/`protected`/`private`/`abstract`/`final`), `paramCount` |
 | `field` | `annotatedWith`, `type`, `modifiers` |
+
+`packageMatches` is gone: with packages as targets it is `in = <package target>`, and
+`under` is the shorthand for "this package and everything below it". A package pattern
+that contains `{slot}` is a slice, and `slot` names the capture so rules and
+diagnostics can talk about it.
 
 ### A.3 Constraints
 
 | Type | Constraints |
 |---|---|
 | `module` | `dependOnlyOn`, `notDependOn`, `children`, `counts`, `acyclic` |
-| `class` | `dependOnlyOn`, `notDependOn`, `annotatedWith`, `notAnnotatedWith`, `annotationArgument`, `extend`, `implement`, `packageMatches`, `exist`, `allMembers`, `allMethods`, `allFields` |
+| `package` | `dependOnlyOn`, `notDependOn`, `visible`, `acyclic` |
+| `class` | `dependOnlyOn`, `notDependOn`, `annotatedWith`, `notAnnotatedWith`, `annotationArgument`, `extend`, `implement`, `exist`, `allMembers`, `allMethods`, `allFields` |
 | `method` | `annotatedWith`, `notAnnotatedWith`, `rawReturnType`, `notRawReturnType`, `allParams`, `visibility` |
 | `field` | `annotatedWith`, `notAnnotatedWith`, `type`, `notType` |
 
@@ -457,6 +555,11 @@ Notes that decide behaviour, not syntax:
 - `dependOnlyOn` / `notDependOn` take **target names only**, optionally prefixed
   with `self:` or `any:`. A pattern string is not accepted, so there is exactly one
   matching semantics in the whole language.
+- `visible` is the target-side form: who may depend on this package. Values are
+  target names plus `self:`, `any:`, `none`; the default is `self:` (the same module),
+  which matches what package-private access already enforces at the language level.
+- `acyclic` is available on `module` and on `package`, and with a slice it applies per
+  captured segment rather than to the whole target.
 - `children` and `counts` are allow-lists: a child whose target is not listed is a
   violation, which is what makes module composition closed.
 - `exist = false` states "no node may match this target"; `counts` covers `>=n`,
@@ -494,9 +597,9 @@ The DSL is a shell; the work is underneath it.
    wildcard import → static import → project index. Unresolved names stay symbolic;
    nothing is guessed.
 3. **Project index** — class → module, package, target classification, supertypes,
-   annotations; module → children, package roots.
-4. **Edges and projection** — collect class → class, project to module → module.
-   One edge model, evaluated at either level.
+   annotations; package → sub-packages, module; module → children, package roots.
+4. **Edges and projection** — collect class → class, project to package → package and
+   module → module. One edge model, evaluated at any of the three levels.
 5. **Target matching** — declaration order, first match wins, ambiguity reported.
 6. **Constraint evaluation and diagnostics** — finding site, `because`, baseline key
    (`rule id` + target name + node).
@@ -508,7 +611,7 @@ The DSL is a shell; the work is underneath it.
 
 | Phase | Implements | ArchUnit intents covered |
 |---|---|---:|
-| 1 | facts, resolution, index, class dependencies / annotations / placement | 24 |
+| 1 | facts, resolution, index (module + package tree), class dependencies / annotations / placement | 24 |
 | 2 | method signature constraints (`rawReturnType`, `allParams`, `@Nullable`) | 29 |
 | 3 | field annotations, `annotationArgument`, `extend` / `implement` / `exist` | 34 |
 | 4 | module composition (`children`, `counts`, `acyclic`) | 37 |
