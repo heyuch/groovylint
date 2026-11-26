@@ -13,7 +13,6 @@ pub enum TargetType {
     Package,
     Class,
     Method,
-    Field,
 }
 
 impl TargetType {
@@ -25,7 +24,6 @@ impl TargetType {
             "package" => Some(Self::Package),
             "class" => Some(Self::Class),
             "method" => Some(Self::Method),
-            "field" => Some(Self::Field),
             _ => None,
         }
     }
@@ -38,7 +36,6 @@ impl TargetType {
             Self::Package => "package",
             Self::Class => "class",
             Self::Method => "method",
-            Self::Field => "field",
         }
     }
 
@@ -48,8 +45,8 @@ impl TargetType {
         match self {
             Self::Module => matches!(child, Self::Package | Self::Class),
             Self::Package => matches!(child, Self::Package | Self::Class),
-            Self::Class => matches!(child, Self::Method | Self::Field),
-            Self::Method | Self::Field => false,
+            Self::Class => matches!(child, Self::Method),
+            Self::Method => false,
         }
     }
 }
@@ -61,7 +58,6 @@ pub enum Target {
     Package(PackageTarget),
     Class(ClassTarget),
     Method(MethodTarget),
-    Field(FieldTarget),
 }
 
 impl Target {
@@ -73,7 +69,6 @@ impl Target {
             Self::Package(_) => TargetType::Package,
             Self::Class(_) => TargetType::Class,
             Self::Method(_) => TargetType::Method,
-            Self::Field(_) => TargetType::Field,
         }
     }
 }
@@ -153,20 +148,11 @@ pub enum MethodPredicate {
     RawReturnType(TypeValue),
 }
 
-/// A field target. Fields are contained by a class.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FieldTarget {
-    pub predicates: Vec<FieldPredicate>,
-}
-
-/// Predicates legal on a field.
+/// Predicates legal on a field member (used by `allFields`).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FieldPredicate {
     Name(PatternList),
     NameMatches(String),
-    In(TargetRef),
-    AnyOf(Vec<TargetRef>),
-    Not(Box<FieldTarget>),
     AnnotatedWith(Vec<String>),
     Modifiers(Vec<Modifier>),
     Type(TypeValue),
@@ -352,8 +338,6 @@ pub enum Constraint {
     NotRawReturnType(Vec<TypeValue>),
     AllParams(Vec<ParamPredicate>),
     Visibility(Visibility),
-    Type(TypeValue),
-    NotType(Vec<TypeValue>),
     Children(Vec<String>),
     Counts(BTreeMap<String, Count>),
     Acyclic(bool),

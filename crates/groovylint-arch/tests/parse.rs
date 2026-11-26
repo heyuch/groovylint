@@ -10,15 +10,15 @@ version = 1
 severity = "warn"
 
 [targets]
-domain-module   = { kind = "module", name = "*-domain" }
-adapter-module  = { kind = "module", name = "*-adapter" }
-domain-class    = { kind = "class", in = "domain-module" }
-domain-service  = { kind = "class", in = "domain-module", name = ["*Service", "*ServiceImpl"], not = { classKind = "interface" } }
-repository      = { kind = "class", in = "domain-module", name = "*Repository" }
-repository-query = { kind = "method", in = "repository", name = "query*" }
-domain-api      = { kind = "package", in = "domain-module", name = "**.domain.**.api" }
-domain-api-class = { kind = "class", in = "domain-api" }
-web             = { kind = "package", name = "org.springframework.web.**" }
+domain-module   = { type = "module", name = "*-domain" }
+adapter-module  = { type = "module", name = "*-adapter" }
+domain-class    = { type = "class", in = "domain-module" }
+domain-service  = { type = "class", in = "domain-module", name = ["*Service", "*ServiceImpl"], not = { kind = "interface" } }
+repository      = { type = "class", in = "domain-module", name = "*Repository" }
+repository-query = { type = "method", in = "repository", name = "query*" }
+domain-api      = { type = "package", in = "domain-module", name = "**.domain.**.api" }
+domain-api-class = { type = "class", in = "domain-api" }
+web             = { type = "package", name = "org.springframework.web.**" }
 
 [[rule]]
 id = "domain-dependencies"
@@ -161,8 +161,8 @@ fn rejects_class_contained_by_class() {
         r#"
 version = 1
 [targets]
-domain = { kind = "class", name = "**" }
-service = { kind = "class", in = "domain" }
+domain = { type = "class", name = "**" }
+service = { type = "class", in = "domain" }
 "#,
     )
     .expect_err("class cannot contain class");
@@ -170,19 +170,24 @@ service = { kind = "class", in = "domain" }
 }
 
 #[test]
-fn parses_field_type_selector() {
+fn parses_all_fields_type_selector() {
     let config = parse(
         r#"
 version = 1
 [targets]
-field = { kind = "field", type = "String" }
+domain = { type = "class", name = "*" }
+[[rule]]
+id = "fields"
+target = "domain"
+[rule.must.allFields]
+type = "String"
 "#,
     )
-    .expect("type is the field selector");
-    let Target::Field(field) = &config.targets["field"] else {
-        panic!("expected field");
+    .expect("type is the field member selector");
+    let Constraint::AllFields(fields) = &config.rules[0].must.constraints[0] else {
+        panic!("expected allFields");
     };
-    assert!(matches!(field.predicates[0], FieldPredicate::Type(_)));
+    assert!(matches!(fields[0], FieldPredicate::Type(_)));
 }
 
 #[test]
@@ -191,7 +196,7 @@ fn rejects_unknown_keys_and_bad_constraints() {
         r#"
 version = 1
 [targets]
-domain = { kind = "class", nmae = "*" }
+domain = { type = "class", nmae = "*" }
 "#,
     )
     .expect_err("unknown selector");
@@ -201,7 +206,7 @@ domain = { kind = "class", nmae = "*" }
         r#"
 version = 1
 [targets]
-domain = { kind = "class", name = "*" }
+domain = { type = "class", name = "*" }
 [[rule]]
 id = "bad"
 target = "domain"
@@ -218,10 +223,10 @@ fn parses_inline_rule_target() {
         r#"
 version = 1
 [targets]
-domain-module = { kind = "module", name = "*-domain" }
+domain-module = { type = "module", name = "*-domain" }
 [[rule]]
 id = "inline"
-target = { kind = "class", in = "domain-module" }
+target = { type = "class", in = "domain-module" }
 must = { exist = false }
 "#,
     )
@@ -235,9 +240,9 @@ fn parses_counts_forms() {
         r#"
 version = 1
 [targets]
-m = { kind = "module", name = "**" }
-d = { kind = "module", name = "*-domain" }
-a = { kind = "module", name = "*-adapter" }
+m = { type = "module", name = "**" }
+d = { type = "module", name = "*-domain" }
+a = { type = "module", name = "*-adapter" }
 [[rule]]
 id = "shape"
 target = "m"
@@ -259,20 +264,20 @@ fn parses_nested_target_tables() {
 version = 1
 
 [targets.domain-module]
-kind = "module"
+type = "module"
 name = "*-domain"
 
 [targets.domain-class]
-kind = "class"
+type = "class"
 in = "domain-module"
 
 [targets.domain-service]
-kind = "class"
+type = "class"
 in = "domain-module"
 name = ["*Service", "*ServiceImpl"]
 
 [targets.domain-service.not]
-classKind = "interface"
+kind = "interface"
 "#,
     )
     .expect("nested target tables");

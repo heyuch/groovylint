@@ -12,10 +12,10 @@ use toml::map::Map;
 use crate::error::{ParseError, Result};
 use crate::model::{
     AnnotationArgument, ArchConfig, ClassKind, ClassPredicate, ClassTarget, Constraint, Count,
-    DependencyRef, FieldPredicate, FieldTarget, MemberKind, MemberPredicate, MethodPredicate,
-    MethodTarget, Modifier, ModulePredicate, ModuleTarget, Must, PackagePredicate, PackageTarget,
-    ParamPredicate, PatternList, ProjectConfig, Rule, Severity, SourceSet, Target, TargetRef,
-    TargetType, TypeValue, Visibility,
+    DependencyRef, FieldPredicate, MemberKind, MemberPredicate, MethodPredicate, MethodTarget,
+    Modifier, ModulePredicate, ModuleTarget, Must, PackagePredicate, PackageTarget, ParamPredicate,
+    PatternList, ProjectConfig, Rule, Severity, SourceSet, Target, TargetRef, TargetType,
+    TypeValue, Visibility,
 };
 
 /// Parse an architecture configuration from TOML.
@@ -93,22 +93,22 @@ fn parse_targets(value: Value, path: &str) -> Result<BTreeMap<String, Target>> {
 
 fn parse_target(value: Value, path: &str, expected: Option<TargetType>) -> Result<Target> {
     let mut reader = Reader::new(path, as_table(value, path)?);
-    let target_type = match reader.take("kind") {
+    let target_type = match reader.take("type") {
         Some(value) => {
-            let name = as_string(value, &format!("{path}.kind"))?;
+            let name = as_string(value, &format!("{path}.type"))?;
             TargetType::parse(&name).ok_or_else(|| {
                 ParseError::new(
-                    format!("{path}.kind"),
+                    format!("{path}.type"),
                     format!(
-                        "unknown target kind `{name}`; expected module, package, class, method, or field"
+                        "unknown target type `{name}`; expected module, package, class, or method"
                     ),
                 )
             })?
         }
         None => expected.ok_or_else(|| {
             ParseError::new(
-                format!("{path}.kind"),
-                "target declarations and inline targets require `kind`",
+                format!("{path}.type"),
+                "target declarations and inline targets require `type`",
             )
         })?,
     };
@@ -116,9 +116,9 @@ fn parse_target(value: Value, path: &str, expected: Option<TargetType>) -> Resul
         && target_type != expected
     {
         return Err(ParseError::new(
-            format!("{path}.kind"),
+            format!("{path}.type"),
             format!(
-                "nested target kind `{}` does not match parent kind `{}`",
+                "nested target type `{}` does not match parent type `{}`",
                 target_type.as_str(),
                 expected.as_str()
             ),
@@ -129,7 +129,6 @@ fn parse_target(value: Value, path: &str, expected: Option<TargetType>) -> Resul
         TargetType::Package => Target::Package(parse_package(&mut reader, path)?),
         TargetType::Class => Target::Class(parse_class(&mut reader, path)?),
         TargetType::Method => Target::Method(parse_method(&mut reader, path)?),
-        TargetType::Field => Target::Field(parse_field(&mut reader, path)?),
     };
     reader.finish()?;
     Ok(target)
@@ -179,7 +178,7 @@ fn parse_class(reader: &mut Reader, path: &str) -> Result<ClassTarget> {
             "in" => ClassPredicate::In(parse_ref(value, &item)?),
             "anyOf" => ClassPredicate::AnyOf(parse_refs(value, &item)?),
             "not" => ClassPredicate::Not(Box::new(parse_nested_class(value, &item)?)),
-            "classKind" => {
+            "kind" => {
                 let name = as_string(value, &item)?;
                 ClassPredicate::Kind(ClassKind::parse(&name).ok_or_else(|| {
                     ParseError::new(
@@ -223,24 +222,21 @@ fn parse_method(reader: &mut Reader, path: &str) -> Result<MethodTarget> {
     Ok(MethodTarget { predicates })
 }
 
-fn parse_field(reader: &mut Reader, path: &str) -> Result<FieldTarget> {
+fn parse_field(reader: &mut Reader, path: &str) -> Result<Vec<FieldPredicate>> {
     let mut predicates = Vec::new();
     while let Some((key, value)) = reader.next_entry() {
         let item = format!("{path}.{key}");
         let predicate = match key.as_str() {
             "name" => FieldPredicate::Name(parse_patterns(value, &item)?),
             "nameMatches" => FieldPredicate::NameMatches(as_string(value, &item)?),
-            "in" => FieldPredicate::In(parse_ref(value, &item)?),
-            "anyOf" => FieldPredicate::AnyOf(parse_refs(value, &item)?),
-            "not" => FieldPredicate::Not(Box::new(parse_nested_field(value, &item)?)),
             "annotatedWith" => FieldPredicate::AnnotatedWith(parse_strings(value, &item)?),
             "modifiers" => FieldPredicate::Modifiers(parse_modifiers(value, &item)?),
             "type" => FieldPredicate::Type(TypeValue(as_string(value, &item)?)),
-            _ => return Err(unknown_selector(&item, &key, TargetType::Field)),
+            _ => return Err(unknown_selector(&item, &key, TargetType::Class)),
         };
         predicates.push(predicate);
     }
-    Ok(FieldTarget { predicates })
+    Ok(predicates)
 }
 
 fn parse_nested_module(value: Value, path: &str) -> Result<ModuleTarget> {
@@ -268,13 +264,6 @@ fn parse_nested_method(value: Value, path: &str) -> Result<MethodTarget> {
     match parse_target(value, path, Some(TargetType::Method))? {
         Target::Method(target) => Ok(target),
         _ => Err(ParseError::new(path, "expected a method target")),
-    }
-}
-
-fn parse_nested_field(value: Value, path: &str) -> Result<FieldTarget> {
-    match parse_target(value, path, Some(TargetType::Field))? {
-        Target::Field(target) => Ok(target),
-        _ => Err(ParseError::new(path, "expected a field target")),
     }
 }
 
@@ -363,8 +352,6 @@ fn parse_constraint(key: &str, value: Value, path: &str) -> Result<Constraint> {
         )?)),
         "allParams" => Ok(Constraint::AllParams(parse_param_predicates(value, path)?)),
         "visibility" => Ok(Constraint::Visibility(parse_visibility(value, path)?)),
-        "type" => Ok(Constraint::Type(TypeValue(as_string(value, path)?))),
-        "notType" => Ok(Constraint::NotType(parse_type_values(value, path)?)),
         "children" => Ok(Constraint::Children(parse_strings(value, path)?)),
         "counts" => Ok(Constraint::Counts(parse_counts(value, path)?)),
         "acyclic" => Ok(Constraint::Acyclic(as_bool(value, path)?)),
@@ -428,9 +415,9 @@ fn parse_method_predicates(value: Value, path: &str) -> Result<Vec<MethodPredica
 
 fn parse_field_predicates(value: Value, path: &str) -> Result<Vec<FieldPredicate>> {
     let mut reader = Reader::new(path, as_table(value, path)?);
-    let target = parse_field(&mut reader, path)?;
+    let predicates = parse_field(&mut reader, path)?;
     reader.finish()?;
-    Ok(target.predicates)
+    Ok(predicates)
 }
 
 fn parse_param_predicates(value: Value, path: &str) -> Result<Vec<ParamPredicate>> {
@@ -928,31 +915,6 @@ fn validate_target(target: &Target, config: &ArchConfig, path: &str) -> Result<(
                 }
             }
         }
-        Target::Field(target) => {
-            for predicate in &target.predicates {
-                match predicate {
-                    FieldPredicate::In(reference) => {
-                        validate_container(
-                            reference,
-                            TargetType::Field,
-                            config,
-                            &format!("{path}.in"),
-                        )?;
-                    }
-                    FieldPredicate::AnyOf(refs) => {
-                        validate_refs(refs, TargetType::Field, config, &format!("{path}.anyOf"))?;
-                    }
-                    FieldPredicate::Not(inner) => {
-                        validate_target(
-                            &Target::Field((**inner).clone()),
-                            config,
-                            &format!("{path}.not"),
-                        )?;
-                    }
-                    _ => {}
-                }
-            }
-        }
     }
     Ok(())
 }
@@ -1098,10 +1060,9 @@ fn constraint_allowed(constraint: &Constraint, target_type: TargetType) -> bool 
         Constraint::Visible(_) => target_type == TargetType::Package,
         Constraint::AnnotatedWith(_)
         | Constraint::NotAnnotatedWith(_)
-        | Constraint::AnnotationArgument(_) => matches!(
-            target_type,
-            TargetType::Class | TargetType::Method | TargetType::Field
-        ),
+        | Constraint::AnnotationArgument(_) => {
+            matches!(target_type, TargetType::Class | TargetType::Method)
+        }
         Constraint::Extend(_)
         | Constraint::Implement(_)
         | Constraint::Exist(_)
@@ -1112,7 +1073,6 @@ fn constraint_allowed(constraint: &Constraint, target_type: TargetType) -> bool 
         | Constraint::NotRawReturnType(_)
         | Constraint::AllParams(_)
         | Constraint::Visibility(_) => target_type == TargetType::Method,
-        Constraint::Type(_) | Constraint::NotType(_) => target_type == TargetType::Field,
         Constraint::Children(_) | Constraint::Counts(_) | Constraint::Acyclic(_) => {
             target_type == TargetType::Module
         }
@@ -1137,8 +1097,6 @@ fn constraint_name(constraint: &Constraint) -> &'static str {
         Constraint::NotRawReturnType(_) => "notRawReturnType",
         Constraint::AllParams(_) => "allParams",
         Constraint::Visibility(_) => "visibility",
-        Constraint::Type(_) => "type",
-        Constraint::NotType(_) => "notType",
         Constraint::Children(_) => "children",
         Constraint::Counts(_) => "counts",
         Constraint::Acyclic(_) => "acyclic",

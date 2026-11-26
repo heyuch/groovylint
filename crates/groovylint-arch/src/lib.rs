@@ -8,11 +8,11 @@
 //!
 //! ```toml
 //! [targets.domain-module]
-//! kind = "module"
+//! type = "module"
 //! name = "*-domain"
 //!
 //! [targets.domain-class]
-//! kind = "class"
+//! type = "class"
 //! in = "domain-module"
 //! ```
 //!
@@ -27,9 +27,9 @@ mod parse;
 pub use error::{ParseError, Result};
 pub use model::{
     AnnotationArgument, ArchConfig, ClassKind, ClassPredicate, ClassTarget, Constraint, Count,
-    DependencyRef, FieldPredicate, FieldTarget, MemberKind, MemberPredicate, MethodPredicate,
-    MethodTarget, ModulePredicate, ModuleTarget, Must, PackagePredicate, PackageTarget,
-    ParamPredicate, PatternList, ProjectConfig, Rule, Severity, SourceSet, Target, TargetRef,
-    TargetType, TypeValue, Visibility,
+    DependencyRef, FieldPredicate, MemberKind, MemberPredicate, MethodPredicate, MethodTarget,
+    ModulePredicate, ModuleTarget, Must, PackagePredicate, PackageTarget, ParamPredicate,
+    PatternList, ProjectConfig, Rule, Severity, SourceSet, Target, TargetRef, TargetType,
+    TypeValue, Visibility,
 };
 pub use parse::parse;
