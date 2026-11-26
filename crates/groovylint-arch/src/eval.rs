@@ -365,6 +365,12 @@ impl Evaluator<'_> {
             if !nodes.contains(&source) {
                 continue;
             }
+            // `dependOnlyOn` describes the project's own architecture; JDK and
+            // language runtime types are not something every rule should list.
+            // Explicit `notDependOn` rules still see them.
+            if !forbidden && is_platform_dependency(&edge.to) {
+                continue;
+            }
             let matched = dependencies
                 .iter()
                 .any(|dependency| self.dependency_matches(dependency, edge, &edge.from));
@@ -1177,6 +1183,19 @@ fn glob(pattern: &str, value: &str) -> bool {
     }
     regex.push('$');
     Regex::new(&regex).is_ok_and(|regex| regex.is_match(value))
+}
+
+fn is_platform_dependency(name: &str) -> bool {
+    [
+        "java.",
+        "javax.",
+        "jakarta.",
+        "groovy.",
+        "org.codehaus.groovy.",
+        "kotlin.",
+    ]
+    .iter()
+    .any(|prefix| name.starts_with(prefix))
 }
 
 fn type_matches(written: &str, expected: &TypeValue) -> bool {

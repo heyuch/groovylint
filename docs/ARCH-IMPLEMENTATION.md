@@ -117,6 +117,9 @@ Type names are resolved with this order:
 
 Unresolved names stay symbolic and still participate in package-prefix targets.
 Imports are included as edges; declared type references are included as well.
+`dependOnlyOn` ignores JDK/language runtime edges (`java.`, `javax.`,
+`jakarta.`, `groovy.`, `org.codehaus.groovy.`, `kotlin.`); `notDependOn` still
+sees them when a rule explicitly names one.
 
 ## 4. Target matching
 
