@@ -1,8 +1,8 @@
 //! TOML → [`ArchConfig`] parser.
 //!
-//! The parser is deliberately manual: the DSL is closed, and unknown keys must
-//! fail with a path. This also makes the places where the DSL is awkward
-//! obvious in code instead of hiding them behind `serde(flatten)`.
+//! The target kind is a built-in constructor, written as `kind = "module"` in
+//! TOML. The parser dispatches on it and builds the corresponding typed
+//! [`Target`] variant, so a class target cannot contain a module-only selector.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -11,8 +11,10 @@ use toml::map::Map;
 
 use crate::error::{ParseError, Result};
 use crate::model::{
-    AnnotationArgument, ArchConfig, ClassKind, Constraint, Count, DependencyRef, Modifier, Must,
-    PatternList, Predicate, ProjectConfig, Rule, Severity, SourceSet, TargetRef, TargetSpec,
+    AnnotationArgument, ArchConfig, ClassKind, ClassPredicate, ClassTarget, Constraint, Count,
+    DependencyRef, FieldPredicate, FieldTarget, MemberKind, MemberPredicate, MethodPredicate,
+    MethodTarget, Modifier, ModulePredicate, ModuleTarget, Must, PackagePredicate, PackageTarget,
+    ParamPredicate, PatternList, ProjectConfig, Rule, Severity, SourceSet, Target, TargetRef,
     TargetType, TypeValue, Visibility,
 };
 
@@ -50,8 +52,7 @@ pub fn parse(source: &str) -> Result<ArchConfig> {
     let mut rules = Vec::new();
     if let Some(value) = reader.take("rule") {
         for (index, value) in as_array(value, "rule")?.into_iter().enumerate() {
-            let path = format!("rule[{index}]");
-            rules.push(parse_rule(&value, &path)?);
+            rules.push(parse_rule(&value, &format!("rule[{index}]"))?);
         }
     }
     reader.finish()?;
@@ -77,158 +78,203 @@ fn parse_project(value: Value, path: &str) -> Result<ProjectConfig> {
     Ok(ProjectConfig { severity })
 }
 
-fn parse_targets(value: Value, path: &str) -> Result<BTreeMap<String, TargetSpec>> {
+fn parse_targets(value: Value, path: &str) -> Result<BTreeMap<String, Target>> {
     let table = as_table(value, path)?;
     let mut targets = BTreeMap::new();
     for (name, value) in table {
         if name.is_empty() {
             return Err(ParseError::new(path, "target names must not be empty"));
         }
-        let target_path = format!("{path}.{name}");
-        let spec = parse_target_spec(value, &target_path, None)?;
-        targets.insert(name, spec);
+        let target = parse_target(value, &format!("{path}.{name}"), None)?;
+        targets.insert(name, target);
     }
     Ok(targets)
 }
 
-fn parse_target_spec(
-    value: Value,
-    path: &str,
-    expected_type: Option<TargetType>,
-) -> Result<TargetSpec> {
+fn parse_target(value: Value, path: &str, expected: Option<TargetType>) -> Result<Target> {
     let mut reader = Reader::new(path, as_table(value, path)?);
-    let target_type = match reader.take("type") {
+    let target_type = match reader.take("kind") {
         Some(value) => {
-            let name = as_string(value, &format!("{path}.type"))?;
+            let name = as_string(value, &format!("{path}.kind"))?;
             TargetType::parse(&name).ok_or_else(|| {
                 ParseError::new(
-                    format!("{path}.type"),
+                    format!("{path}.kind"),
                     format!(
-                        "unknown target type `{name}`; expected module, package, class, method, or field"
+                        "unknown target kind `{name}`; expected module, package, class, method, or field"
                     ),
                 )
             })?
         }
-        None => expected_type.ok_or_else(|| {
+        None => expected.ok_or_else(|| {
             ParseError::new(
-                format!("{path}.type"),
-                "target declarations and inline rule targets require `type`",
+                format!("{path}.kind"),
+                "target declarations and inline targets require `kind`",
             )
         })?,
     };
-    if let Some(expected_type) = expected_type
-        && target_type != expected_type
+    if let Some(expected) = expected
+        && target_type != expected
     {
         return Err(ParseError::new(
-            format!("{path}.type"),
+            format!("{path}.kind"),
             format!(
-                "nested selector type `{}` does not match parent type `{}`",
+                "nested target kind `{}` does not match parent kind `{}`",
                 target_type.as_str(),
-                expected_type.as_str()
+                expected.as_str()
             ),
         ));
     }
-    let predicates = parse_predicates(&mut reader, target_type, path, false)?;
+    let target = match target_type {
+        TargetType::Module => Target::Module(parse_module(&mut reader, path)?),
+        TargetType::Package => Target::Package(parse_package(&mut reader, path)?),
+        TargetType::Class => Target::Class(parse_class(&mut reader, path)?),
+        TargetType::Method => Target::Method(parse_method(&mut reader, path)?),
+        TargetType::Field => Target::Field(parse_field(&mut reader, path)?),
+    };
     reader.finish()?;
-    Ok(TargetSpec {
-        target_type,
-        predicates,
-    })
+    Ok(target)
 }
 
-fn parse_predicates(
-    reader: &mut Reader,
-    target_type: TargetType,
-    path: &str,
-    member: bool,
-) -> Result<Vec<Predicate>> {
+fn parse_module(reader: &mut Reader, path: &str) -> Result<ModuleTarget> {
     let mut predicates = Vec::new();
     while let Some((key, value)) = reader.next_entry() {
-        let predicate_path = format!("{path}.{key}");
+        let item = format!("{path}.{key}");
         let predicate = match key.as_str() {
-            "name" => Predicate::Name(parse_patterns(value, &predicate_path)?),
-            "nameMatches" => Predicate::NameMatches(as_string(value, &predicate_path)?),
-            "in" => Predicate::In(parse_target_ref(value, &predicate_path)?),
-            "anyOf" => Predicate::AnyOf(parse_target_refs(value, &predicate_path)?),
-            "not" => Predicate::Not(Box::new(parse_target_spec(
-                value,
-                &predicate_path,
-                Some(target_type),
-            )?)),
-            "path" if target_type == TargetType::Module => {
-                Predicate::Path(parse_patterns(value, &predicate_path)?)
-            }
-            "kind" if target_type == TargetType::Class => {
-                let name = as_string(value, &predicate_path)?;
-                Predicate::Kind(ClassKind::parse(&name).ok_or_else(|| {
+            "name" => ModulePredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => ModulePredicate::NameMatches(as_string(value, &item)?),
+            "path" => ModulePredicate::Path(parse_patterns(value, &item)?),
+            "anyOf" => ModulePredicate::AnyOf(parse_refs(value, &item)?),
+            "not" => ModulePredicate::Not(Box::new(parse_nested_module(value, &item)?)),
+            _ => return Err(unknown_selector(&item, &key, TargetType::Module)),
+        };
+        predicates.push(predicate);
+    }
+    Ok(ModuleTarget { predicates })
+}
+
+fn parse_package(reader: &mut Reader, path: &str) -> Result<PackageTarget> {
+    let mut predicates = Vec::new();
+    while let Some((key, value)) = reader.next_entry() {
+        let item = format!("{path}.{key}");
+        let predicate = match key.as_str() {
+            "name" => PackagePredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => PackagePredicate::NameMatches(as_string(value, &item)?),
+            "in" => PackagePredicate::In(parse_ref(value, &item)?),
+            "anyOf" => PackagePredicate::AnyOf(parse_refs(value, &item)?),
+            "not" => PackagePredicate::Not(Box::new(parse_nested_package(value, &item)?)),
+            _ => return Err(unknown_selector(&item, &key, TargetType::Package)),
+        };
+        predicates.push(predicate);
+    }
+    Ok(PackageTarget { predicates })
+}
+
+fn parse_class(reader: &mut Reader, path: &str) -> Result<ClassTarget> {
+    let mut predicates = Vec::new();
+    while let Some((key, value)) = reader.next_entry() {
+        let item = format!("{path}.{key}");
+        let predicate = match key.as_str() {
+            "name" => ClassPredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => ClassPredicate::NameMatches(as_string(value, &item)?),
+            "in" => ClassPredicate::In(parse_ref(value, &item)?),
+            "anyOf" => ClassPredicate::AnyOf(parse_refs(value, &item)?),
+            "not" => ClassPredicate::Not(Box::new(parse_nested_class(value, &item)?)),
+            "classKind" => {
+                let name = as_string(value, &item)?;
+                ClassPredicate::Kind(ClassKind::parse(&name).ok_or_else(|| {
                     ParseError::new(
-                        &predicate_path,
+                        &item,
                         format!(
                             "unknown class kind `{name}`; expected class, interface, trait, enum, annotation, or record"
                         ),
                     )
                 })?)
             }
-            "abstract" if target_type == TargetType::Class => {
-                Predicate::Abstract(as_bool(value, &predicate_path)?)
-            }
-            "nested" if target_type == TargetType::Class => {
-                Predicate::Nested(as_bool(value, &predicate_path)?)
-            }
-            "extends" if target_type == TargetType::Class => {
-                Predicate::Extends(TypeValue(as_string(value, &predicate_path)?))
-            }
-            "implements" if target_type == TargetType::Class => {
-                Predicate::Implements(parse_type_values(value, &predicate_path)?)
-            }
-            "annotatedWith"
-                if target_type != TargetType::Module && target_type != TargetType::Package =>
-            {
-                Predicate::AnnotatedWith(parse_strings(value, &predicate_path)?)
-            }
-            "modifiers"
-                if member || matches!(target_type, TargetType::Method | TargetType::Field) =>
-            {
-                Predicate::Modifiers(parse_modifiers(value, &predicate_path)?)
-            }
-            "paramCount" if target_type == TargetType::Method => {
-                Predicate::ParamCount(as_usize(value, &predicate_path)?)
-            }
-            "rawReturnType" if target_type == TargetType::Method => {
-                Predicate::RawReturnType(TypeValue(as_string(value, &predicate_path)?))
-            }
-            "fieldType" if target_type == TargetType::Field => {
-                Predicate::FieldType(TypeValue(as_string(value, &predicate_path)?))
-            }
-            _ => {
-                return Err(ParseError::new(
-                    predicate_path,
-                    selector_key_error(&key, target_type),
-                ));
-            }
+            "abstract" => ClassPredicate::Abstract(as_bool(value, &item)?),
+            "nested" => ClassPredicate::Nested(as_bool(value, &item)?),
+            "extends" => ClassPredicate::Extends(TypeValue(as_string(value, &item)?)),
+            "implements" => ClassPredicate::Implements(parse_type_values(value, &item)?),
+            "annotatedWith" => ClassPredicate::AnnotatedWith(parse_strings(value, &item)?),
+            _ => return Err(unknown_selector(&item, &key, TargetType::Class)),
         };
         predicates.push(predicate);
     }
-    Ok(predicates)
+    Ok(ClassTarget { predicates })
 }
 
-fn selector_key_error(key: &str, target_type: TargetType) -> String {
-    match (key, target_type) {
-        ("path", _) => "`path` is a module selector".to_string(),
-        ("kind" | "abstract" | "nested" | "extends" | "implements", _) => {
-            "this selector is only valid on a class target".to_string()
-        }
-        ("paramCount" | "rawReturnType", _) => {
-            "this selector is only valid on a method target".to_string()
-        }
-        ("fieldType", _) => {
-            "this selector is only valid on a field target; note that `type` is the target type, the field selector is `fieldType`"
-                .to_string()
-        }
-        ("modifiers", _) => {
-            "`modifiers` is only valid on method and field targets".to_string()
-        }
-        _ => format!("unknown selector `{key}` for a {} target", target_type.as_str()),
+fn parse_method(reader: &mut Reader, path: &str) -> Result<MethodTarget> {
+    let mut predicates = Vec::new();
+    while let Some((key, value)) = reader.next_entry() {
+        let item = format!("{path}.{key}");
+        let predicate = match key.as_str() {
+            "name" => MethodPredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => MethodPredicate::NameMatches(as_string(value, &item)?),
+            "in" => MethodPredicate::In(parse_ref(value, &item)?),
+            "anyOf" => MethodPredicate::AnyOf(parse_refs(value, &item)?),
+            "not" => MethodPredicate::Not(Box::new(parse_nested_method(value, &item)?)),
+            "annotatedWith" => MethodPredicate::AnnotatedWith(parse_strings(value, &item)?),
+            "modifiers" => MethodPredicate::Modifiers(parse_modifiers(value, &item)?),
+            "paramCount" => MethodPredicate::ParamCount(as_usize(value, &item)?),
+            "rawReturnType" => MethodPredicate::RawReturnType(TypeValue(as_string(value, &item)?)),
+            _ => return Err(unknown_selector(&item, &key, TargetType::Method)),
+        };
+        predicates.push(predicate);
+    }
+    Ok(MethodTarget { predicates })
+}
+
+fn parse_field(reader: &mut Reader, path: &str) -> Result<FieldTarget> {
+    let mut predicates = Vec::new();
+    while let Some((key, value)) = reader.next_entry() {
+        let item = format!("{path}.{key}");
+        let predicate = match key.as_str() {
+            "name" => FieldPredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => FieldPredicate::NameMatches(as_string(value, &item)?),
+            "in" => FieldPredicate::In(parse_ref(value, &item)?),
+            "anyOf" => FieldPredicate::AnyOf(parse_refs(value, &item)?),
+            "not" => FieldPredicate::Not(Box::new(parse_nested_field(value, &item)?)),
+            "annotatedWith" => FieldPredicate::AnnotatedWith(parse_strings(value, &item)?),
+            "modifiers" => FieldPredicate::Modifiers(parse_modifiers(value, &item)?),
+            "type" => FieldPredicate::Type(TypeValue(as_string(value, &item)?)),
+            _ => return Err(unknown_selector(&item, &key, TargetType::Field)),
+        };
+        predicates.push(predicate);
+    }
+    Ok(FieldTarget { predicates })
+}
+
+fn parse_nested_module(value: Value, path: &str) -> Result<ModuleTarget> {
+    match parse_target(value, path, Some(TargetType::Module))? {
+        Target::Module(target) => Ok(target),
+        _ => Err(ParseError::new(path, "expected a module target")),
+    }
+}
+
+fn parse_nested_package(value: Value, path: &str) -> Result<PackageTarget> {
+    match parse_target(value, path, Some(TargetType::Package))? {
+        Target::Package(target) => Ok(target),
+        _ => Err(ParseError::new(path, "expected a package target")),
+    }
+}
+
+fn parse_nested_class(value: Value, path: &str) -> Result<ClassTarget> {
+    match parse_target(value, path, Some(TargetType::Class))? {
+        Target::Class(target) => Ok(target),
+        _ => Err(ParseError::new(path, "expected a class target")),
+    }
+}
+
+fn parse_nested_method(value: Value, path: &str) -> Result<MethodTarget> {
+    match parse_target(value, path, Some(TargetType::Method))? {
+        Target::Method(target) => Ok(target),
+        _ => Err(ParseError::new(path, "expected a method target")),
+    }
+}
+
+fn parse_nested_field(value: Value, path: &str) -> Result<FieldTarget> {
+    match parse_target(value, path, Some(TargetType::Field))? {
+        Target::Field(target) => Ok(target),
+        _ => Err(ParseError::new(path, "expected a field target")),
     }
 }
 
@@ -241,10 +287,8 @@ fn parse_rule(value: &Value, path: &str) -> Result<Rule> {
             "rule id must not be empty",
         ));
     }
-    let target = reader.required("target")?;
-    let target = parse_target_ref(target, &format!("{path}.target"))?;
-    let must = reader.required("must")?;
-    let must = parse_must(value_clone(must), &format!("{path}.must"))?;
+    let target = parse_ref(reader.required("target")?, &format!("{path}.target"))?;
+    let must = parse_must(reader.required("must")?, &format!("{path}.must"))?;
     let because = reader
         .take("because")
         .map(|value| as_string(value, &format!("{path}.because")))
@@ -280,9 +324,7 @@ fn parse_must(value: Value, path: &str) -> Result<Must> {
     let mut reader = Reader::new(path, as_table(value, path)?);
     let mut constraints = Vec::new();
     while let Some((key, value)) = reader.next_entry() {
-        let constraint_path = format!("{path}.{key}");
-        let constraint = parse_constraint(&key, value, &constraint_path)?;
-        constraints.push(constraint);
+        constraints.push(parse_constraint(&key, value, &format!("{path}.{key}"))?);
     }
     if constraints.is_empty() {
         return Err(ParseError::new(
@@ -307,56 +349,129 @@ fn parse_constraint(key: &str, value: Value, path: &str) -> Result<Constraint> {
         "implement" => Ok(Constraint::Implement(parse_type_values(value, path)?)),
         "exist" => Ok(Constraint::Exist(as_bool(value, path)?)),
         "allMembers" => Ok(Constraint::AllMembers(parse_member_predicates(
-            value,
-            path,
-            TargetType::Class,
+            value, path,
         )?)),
-        "allMethods" => Ok(Constraint::AllMethods(parse_member_predicates(
-            value,
-            path,
-            TargetType::Method,
+        "allMethods" => Ok(Constraint::AllMethods(parse_method_predicates(
+            value, path,
         )?)),
-        "allFields" => Ok(Constraint::AllFields(parse_member_predicates(
-            value,
-            path,
-            TargetType::Field,
-        )?)),
+        "allFields" => Ok(Constraint::AllFields(parse_field_predicates(value, path)?)),
         "rawReturnType" => Ok(Constraint::RawReturnType(TypeValue(as_string(
             value, path,
         )?))),
         "notRawReturnType" => Ok(Constraint::NotRawReturnType(parse_type_values(
             value, path,
         )?)),
-        "allParams" => Ok(Constraint::AllParams(parse_member_predicates(
-            value,
-            path,
-            TargetType::Method,
-        )?)),
+        "allParams" => Ok(Constraint::AllParams(parse_param_predicates(value, path)?)),
         "visibility" => Ok(Constraint::Visibility(parse_visibility(value, path)?)),
-        "fieldType" => Ok(Constraint::FieldType(TypeValue(as_string(value, path)?))),
-        "notFieldType" => Ok(Constraint::NotFieldType(parse_type_values(value, path)?)),
+        "type" => Ok(Constraint::Type(TypeValue(as_string(value, path)?))),
+        "notType" => Ok(Constraint::NotType(parse_type_values(value, path)?)),
         "children" => Ok(Constraint::Children(parse_strings(value, path)?)),
         "counts" => Ok(Constraint::Counts(parse_counts(value, path)?)),
         "acyclic" => Ok(Constraint::Acyclic(as_bool(value, path)?)),
-        // `type` is the target declaration key on field targets; the field
-        // selector / constraint is deliberately named fieldType.
-        "type" => Err(ParseError::new(
-            path,
-            "use `fieldType` for a field type; `type` is the target kind",
-        )),
         _ => Err(ParseError::new(path, format!("unknown constraint `{key}`"))),
     }
 }
 
-fn parse_member_predicates(
-    value: Value,
-    path: &str,
-    target_type: TargetType,
-) -> Result<Vec<Predicate>> {
+fn parse_member_predicates(value: Value, path: &str) -> Result<Vec<MemberPredicate>> {
     let mut reader = Reader::new(path, as_table(value, path)?);
-    let predicates = parse_predicates(&mut reader, target_type, path, true)?;
+    let mut predicates = Vec::new();
+    while let Some((key, value)) = reader.next_entry() {
+        let item = format!("{path}.{key}");
+        let predicate = match key.as_str() {
+            "name" => MemberPredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => MemberPredicate::NameMatches(as_string(value, &item)?),
+            "annotatedWith" => MemberPredicate::AnnotatedWith(parse_strings(value, &item)?),
+            "modifiers" => MemberPredicate::Modifiers(parse_modifiers(value, &item)?),
+            "kind" => {
+                let name = as_string(value, &item)?;
+                MemberPredicate::Kind(MemberKind::parse(&name).ok_or_else(|| {
+                    ParseError::new(
+                        &item,
+                        format!("unknown member kind `{name}`; expected field or method"),
+                    )
+                })?)
+            }
+            "not" => MemberPredicate::Not(Box::new(parse_member_predicate(value, &item)?)),
+            _ => {
+                return Err(ParseError::new(
+                    item,
+                    format!("unknown member selector `{key}`"),
+                ));
+            }
+        };
+        predicates.push(predicate);
+    }
+    if predicates.is_empty() {
+        return Err(ParseError::new(path, "member selector must not be empty"));
+    }
     reader.finish()?;
     Ok(predicates)
+}
+
+fn parse_member_predicate(value: Value, path: &str) -> Result<MemberPredicate> {
+    let mut predicates = parse_member_predicates(value, path)?;
+    if predicates.len() != 1 {
+        return Err(ParseError::new(
+            path,
+            "`not` currently accepts exactly one member selector",
+        ));
+    }
+    Ok(predicates.remove(0))
+}
+
+fn parse_method_predicates(value: Value, path: &str) -> Result<Vec<MethodPredicate>> {
+    let mut reader = Reader::new(path, as_table(value, path)?);
+    let target = parse_method(&mut reader, path)?;
+    reader.finish()?;
+    Ok(target.predicates)
+}
+
+fn parse_field_predicates(value: Value, path: &str) -> Result<Vec<FieldPredicate>> {
+    let mut reader = Reader::new(path, as_table(value, path)?);
+    let target = parse_field(&mut reader, path)?;
+    reader.finish()?;
+    Ok(target.predicates)
+}
+
+fn parse_param_predicates(value: Value, path: &str) -> Result<Vec<ParamPredicate>> {
+    let mut reader = Reader::new(path, as_table(value, path)?);
+    let mut predicates = Vec::new();
+    while let Some((key, value)) = reader.next_entry() {
+        let item = format!("{path}.{key}");
+        let predicate = match key.as_str() {
+            "name" => ParamPredicate::Name(parse_patterns(value, &item)?),
+            "nameMatches" => ParamPredicate::NameMatches(as_string(value, &item)?),
+            "annotatedWith" => ParamPredicate::AnnotatedWith(parse_strings(value, &item)?),
+            "type" => ParamPredicate::Type(TypeValue(as_string(value, &item)?)),
+            "not" => ParamPredicate::Not(Box::new(parse_param_predicate(value, &item)?)),
+            _ => {
+                return Err(ParseError::new(
+                    item,
+                    format!("unknown parameter selector `{key}`"),
+                ));
+            }
+        };
+        predicates.push(predicate);
+    }
+    if predicates.is_empty() {
+        return Err(ParseError::new(
+            path,
+            "parameter selector must not be empty",
+        ));
+    }
+    reader.finish()?;
+    Ok(predicates)
+}
+
+fn parse_param_predicate(value: Value, path: &str) -> Result<ParamPredicate> {
+    let mut predicates = parse_param_predicates(value, path)?;
+    if predicates.len() != 1 {
+        return Err(ParseError::new(
+            path,
+            "`not` currently accepts exactly one parameter selector",
+        ));
+    }
+    Ok(predicates.remove(0))
 }
 
 fn parse_annotation_argument(value: Value, path: &str) -> Result<AnnotationArgument> {
@@ -376,8 +491,8 @@ fn parse_counts(value: Value, path: &str) -> Result<BTreeMap<String, Count>> {
     let table = as_table(value, path)?;
     let mut counts = BTreeMap::new();
     for (name, value) in table {
-        let value_path = format!("{path}.{name}");
-        counts.insert(name, parse_count(&value, &value_path)?);
+        let count = parse_count(&value, &format!("{path}.{name}"))?;
+        counts.insert(name, count);
     }
     Ok(counts)
 }
@@ -411,8 +526,8 @@ fn parse_usize_text(text: &str, path: &str) -> Result<usize> {
 fn parse_dependencies(value: Value, path: &str) -> Result<Vec<DependencyRef>> {
     let mut dependencies = Vec::new();
     for (index, value) in as_array(value, path)?.into_iter().enumerate() {
-        let item_path = format!("{path}[{index}]");
-        let text = as_string(value, &item_path)?;
+        let item = format!("{path}[{index}]");
+        let text = as_string(value, &item)?;
         if text == "none" {
             dependencies.push(DependencyRef::None);
             continue;
@@ -427,10 +542,7 @@ fn parse_dependencies(value: Value, path: &str) -> Result<Vec<DependencyRef>> {
             ("any", text.as_str())
         };
         if rest.is_empty() {
-            return Err(ParseError::new(
-                item_path,
-                "dependency target must not be empty",
-            ));
+            return Err(ParseError::new(item, "dependency target must not be empty"));
         }
         let target = TargetRef::Named(rest.to_string());
         dependencies.push(match kind {
@@ -442,7 +554,7 @@ fn parse_dependencies(value: Value, path: &str) -> Result<Vec<DependencyRef>> {
     Ok(dependencies)
 }
 
-fn parse_target_ref(value: Value, path: &str) -> Result<TargetRef> {
+fn parse_ref(value: Value, path: &str) -> Result<TargetRef> {
     match value {
         Value::String(name) => {
             if name.is_empty() {
@@ -451,7 +563,7 @@ fn parse_target_ref(value: Value, path: &str) -> Result<TargetRef> {
                 Ok(TargetRef::Named(name))
             }
         }
-        Value::Table(table) => Ok(TargetRef::Inline(Box::new(parse_target_spec(
+        Value::Table(table) => Ok(TargetRef::Inline(Box::new(parse_target(
             Value::Table(table),
             path,
             None,
@@ -463,11 +575,11 @@ fn parse_target_ref(value: Value, path: &str) -> Result<TargetRef> {
     }
 }
 
-fn parse_target_refs(value: Value, path: &str) -> Result<Vec<TargetRef>> {
+fn parse_refs(value: Value, path: &str) -> Result<Vec<TargetRef>> {
     as_array(value, path)?
         .into_iter()
         .enumerate()
-        .map(|(index, value)| parse_target_ref(value, &format!("{path}[{index}]")))
+        .map(|(index, value)| parse_ref(value, &format!("{path}[{index}]")))
         .collect()
 }
 
@@ -585,8 +697,14 @@ fn parse_strings(value: Value, path: &str) -> Result<Vec<String>> {
     Ok(values)
 }
 
-fn value_clone(value: Value) -> Value {
-    value
+fn unknown_selector(path: &str, key: &str, target_type: TargetType) -> ParseError {
+    ParseError::new(
+        path,
+        format!(
+            "unknown selector `{key}` for a {} target",
+            target_type.as_str()
+        ),
+    )
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -687,8 +805,8 @@ impl Reader {
 }
 
 fn validate(config: &ArchConfig) -> Result<()> {
-    for (name, spec) in &config.targets {
-        validate_spec(spec, config, &format!("targets.{name}"))?;
+    for (name, target) in &config.targets {
+        validate_target(target, config, &format!("targets.{name}"))?;
     }
     let mut ids = BTreeSet::new();
     for (index, rule) in config.rules.iter().enumerate() {
@@ -698,6 +816,9 @@ fn validate(config: &ArchConfig) -> Result<()> {
                 format!("{path}.id"),
                 format!("duplicate rule id `{}`", rule.id),
             ));
+        }
+        if let TargetRef::Inline(target) = &rule.target {
+            validate_target(target, config, &format!("{path}.target"))?;
         }
         let target_type = resolve_rule_target(&rule.target, config, &format!("{path}.target"))?;
         for constraint in &rule.must.constraints {
@@ -717,48 +838,168 @@ fn validate(config: &ArchConfig) -> Result<()> {
     Ok(())
 }
 
-fn validate_spec(spec: &TargetSpec, config: &ArchConfig, path: &str) -> Result<()> {
-    for predicate in &spec.predicates {
-        match predicate {
-            Predicate::In(target) => {
-                let target_type = resolve_target_type(target, config, &format!("{path}.in"))?;
-                if !target_type.can_contain(spec.target_type) {
-                    return Err(ParseError::new(
-                        format!("{path}.in"),
-                        format!(
-                            "a {} target cannot be contained by a {} target",
-                            spec.target_type.as_str(),
-                            target_type.as_str()
-                        ),
-                    ));
+fn validate_target(target: &Target, config: &ArchConfig, path: &str) -> Result<()> {
+    match target {
+        Target::Module(target) => {
+            for predicate in &target.predicates {
+                if let ModulePredicate::AnyOf(refs) = predicate {
+                    validate_refs(refs, TargetType::Module, config, &format!("{path}.anyOf"))?;
+                } else if let ModulePredicate::Not(inner) = predicate {
+                    validate_target(
+                        &Target::Module((**inner).clone()),
+                        config,
+                        &format!("{path}.not"),
+                    )?;
                 }
             }
-            Predicate::AnyOf(targets) => {
-                for target in targets {
-                    let target_type =
-                        resolve_target_type(target, config, &format!("{path}.anyOf"))?;
-                    if target_type != spec.target_type {
-                        return Err(ParseError::new(
-                            format!("{path}.anyOf"),
-                            format!(
-                                "anyOf target type `{}` does not match `{}`",
-                                target_type.as_str(),
-                                spec.target_type.as_str()
-                            ),
-                        ));
+        }
+        Target::Package(target) => {
+            for predicate in &target.predicates {
+                match predicate {
+                    PackagePredicate::In(reference) => {
+                        validate_container(
+                            reference,
+                            TargetType::Package,
+                            config,
+                            &format!("{path}.in"),
+                        )?;
                     }
+                    PackagePredicate::AnyOf(refs) => {
+                        validate_refs(refs, TargetType::Package, config, &format!("{path}.anyOf"))?;
+                    }
+                    PackagePredicate::Not(inner) => {
+                        validate_target(
+                            &Target::Package((**inner).clone()),
+                            config,
+                            &format!("{path}.not"),
+                        )?;
+                    }
+                    _ => {}
                 }
             }
-            Predicate::Not(inner) => {
-                if inner.target_type != spec.target_type {
-                    return Err(ParseError::new(
-                        format!("{path}.not"),
-                        "nested selector type does not match parent target type",
-                    ));
+        }
+        Target::Class(target) => {
+            for predicate in &target.predicates {
+                match predicate {
+                    ClassPredicate::In(reference) => {
+                        validate_container(
+                            reference,
+                            TargetType::Class,
+                            config,
+                            &format!("{path}.in"),
+                        )?;
+                    }
+                    ClassPredicate::AnyOf(refs) => {
+                        validate_refs(refs, TargetType::Class, config, &format!("{path}.anyOf"))?;
+                    }
+                    ClassPredicate::Not(inner) => {
+                        validate_target(
+                            &Target::Class((**inner).clone()),
+                            config,
+                            &format!("{path}.not"),
+                        )?;
+                    }
+                    _ => {}
                 }
-                validate_spec(inner, config, &format!("{path}.not"))?;
             }
-            _ => {}
+        }
+        Target::Method(target) => {
+            for predicate in &target.predicates {
+                match predicate {
+                    MethodPredicate::In(reference) => {
+                        validate_container(
+                            reference,
+                            TargetType::Method,
+                            config,
+                            &format!("{path}.in"),
+                        )?;
+                    }
+                    MethodPredicate::AnyOf(refs) => {
+                        validate_refs(refs, TargetType::Method, config, &format!("{path}.anyOf"))?;
+                    }
+                    MethodPredicate::Not(inner) => {
+                        validate_target(
+                            &Target::Method((**inner).clone()),
+                            config,
+                            &format!("{path}.not"),
+                        )?;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Target::Field(target) => {
+            for predicate in &target.predicates {
+                match predicate {
+                    FieldPredicate::In(reference) => {
+                        validate_container(
+                            reference,
+                            TargetType::Field,
+                            config,
+                            &format!("{path}.in"),
+                        )?;
+                    }
+                    FieldPredicate::AnyOf(refs) => {
+                        validate_refs(refs, TargetType::Field, config, &format!("{path}.anyOf"))?;
+                    }
+                    FieldPredicate::Not(inner) => {
+                        validate_target(
+                            &Target::Field((**inner).clone()),
+                            config,
+                            &format!("{path}.not"),
+                        )?;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_container(
+    reference: &TargetRef,
+    child: TargetType,
+    config: &ArchConfig,
+    path: &str,
+) -> Result<()> {
+    if let TargetRef::Inline(target) = reference {
+        validate_target(target, config, path)?;
+    }
+    let parent = resolve_target_type(reference, config, path)?;
+    if !parent.can_contain(child) {
+        return Err(ParseError::new(
+            path,
+            format!(
+                "a {} target cannot be contained by a {} target",
+                child.as_str(),
+                parent.as_str()
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_refs(
+    refs: &[TargetRef],
+    expected: TargetType,
+    config: &ArchConfig,
+    path: &str,
+) -> Result<()> {
+    for reference in refs {
+        if let TargetRef::Inline(target) = reference {
+            validate_target(target, config, path)?;
+        }
+        let actual = resolve_target_type(reference, config, path)?;
+        if actual != expected {
+            return Err(ParseError::new(
+                path,
+                format!(
+                    "anyOf target type `{}` does not match `{}`",
+                    actual.as_str(),
+                    expected.as_str()
+                ),
+            ));
         }
     }
     Ok(())
@@ -766,11 +1007,42 @@ fn validate_spec(spec: &TargetSpec, config: &ArchConfig, path: &str) -> Result<(
 
 fn validate_constraint(constraint: &Constraint, config: &ArchConfig, path: &str) -> Result<()> {
     match constraint {
+        Constraint::DependOnlyOn(dependencies)
+        | Constraint::NotDependOn(dependencies)
+        | Constraint::Visible(dependencies) => {
+            for dependency in dependencies {
+                match dependency {
+                    DependencyRef::None => {
+                        if !matches!(constraint, Constraint::Visible(_)) {
+                            return Err(ParseError::new(
+                                format!("{path}.visible"),
+                                "`none` is only valid in visible",
+                            ));
+                        }
+                    }
+                    DependencyRef::Any(reference)
+                    | DependencyRef::Self_(reference)
+                    | DependencyRef::Other(reference) => {
+                        let TargetRef::Named(name) = reference else {
+                            return Err(ParseError::new(
+                                path,
+                                "dependency targets must be named, not inline",
+                            ));
+                        };
+                        if !config.targets.contains_key(name) {
+                            return Err(ParseError::new(
+                                path,
+                                format!("unknown target name `{name}`"),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
         Constraint::Children(children) => {
             for name in children {
                 let target = TargetRef::Named(name.clone());
-                let target_type =
-                    resolve_target_type(&target, config, &format!("{path}.children"))?;
+                let target_type = resolve_target_type(&target, config, path)?;
                 if target_type != TargetType::Module {
                     return Err(ParseError::new(
                         format!("{path}.children"),
@@ -782,7 +1054,7 @@ fn validate_constraint(constraint: &Constraint, config: &ArchConfig, path: &str)
         Constraint::Counts(counts) => {
             for name in counts.keys() {
                 let target = TargetRef::Named(name.clone());
-                let target_type = resolve_target_type(&target, config, &format!("{path}.counts"))?;
+                let target_type = resolve_target_type(&target, config, path)?;
                 if target_type != TargetType::Module {
                     return Err(ParseError::new(
                         format!("{path}.counts"),
@@ -797,29 +1069,21 @@ fn validate_constraint(constraint: &Constraint, config: &ArchConfig, path: &str)
 }
 
 fn resolve_rule_target(target: &TargetRef, config: &ArchConfig, path: &str) -> Result<TargetType> {
-    match target {
-        TargetRef::Named(name) => {
-            let spec = config
-                .targets
-                .get(name)
-                .ok_or_else(|| ParseError::new(path, format!("unknown target name `{name}`")))?;
-            Ok(spec.target_type)
-        }
-        TargetRef::Inline(spec) => {
-            validate_spec(spec, config, path)?;
-            Ok(spec.target_type)
-        }
-    }
+    resolve_target_type(target, config, path)
 }
 
-fn resolve_target_type(target: &TargetRef, config: &ArchConfig, path: &str) -> Result<TargetType> {
-    match target {
+fn resolve_target_type(
+    reference: &TargetRef,
+    config: &ArchConfig,
+    path: &str,
+) -> Result<TargetType> {
+    match reference {
         TargetRef::Named(name) => config
             .targets
             .get(name)
-            .map(|spec| spec.target_type)
+            .map(Target::target_type)
             .ok_or_else(|| ParseError::new(path, format!("unknown target name `{name}`"))),
-        TargetRef::Inline(spec) => Ok(spec.target_type),
+        TargetRef::Inline(target) => Ok(target.target_type()),
     }
 }
 
@@ -848,7 +1112,7 @@ fn constraint_allowed(constraint: &Constraint, target_type: TargetType) -> bool 
         | Constraint::NotRawReturnType(_)
         | Constraint::AllParams(_)
         | Constraint::Visibility(_) => target_type == TargetType::Method,
-        Constraint::FieldType(_) | Constraint::NotFieldType(_) => target_type == TargetType::Field,
+        Constraint::Type(_) | Constraint::NotType(_) => target_type == TargetType::Field,
         Constraint::Children(_) | Constraint::Counts(_) | Constraint::Acyclic(_) => {
             target_type == TargetType::Module
         }
@@ -873,8 +1137,8 @@ fn constraint_name(constraint: &Constraint) -> &'static str {
         Constraint::NotRawReturnType(_) => "notRawReturnType",
         Constraint::AllParams(_) => "allParams",
         Constraint::Visibility(_) => "visibility",
-        Constraint::FieldType(_) => "fieldType",
-        Constraint::NotFieldType(_) => "notFieldType",
+        Constraint::Type(_) => "type",
+        Constraint::NotType(_) => "notType",
         Constraint::Children(_) => "children",
         Constraint::Counts(_) => "counts",
         Constraint::Acyclic(_) => "acyclic",

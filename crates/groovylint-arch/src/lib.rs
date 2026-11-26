@@ -8,16 +8,17 @@
 //!
 //! ```toml
 //! [targets.domain-module]
-//! type = "module"
+//! kind = "module"
 //! name = "*-domain"
 //!
 //! [targets.domain-class]
-//! type = "class"
+//! kind = "class"
 //! in = "domain-module"
 //! ```
 //!
-//! Inline tables are accepted but TOML requires them to be single-line. `type`
-//! is the target kind; a field's type selector is `fieldType`.
+//! Inline tables are accepted but TOML requires them to be single-line. `kind`
+//! is the built-in target type; `classKind` selects the class declaration kind,
+//! and `type` remains the field type selector.
 
 mod error;
 mod model;
@@ -25,8 +26,10 @@ mod parse;
 
 pub use error::{ParseError, Result};
 pub use model::{
-    AnnotationArgument, ArchConfig, ClassKind, Constraint, Count, DependencyRef, Must, PatternList,
-    Predicate, ProjectConfig, Rule, Severity, SourceSet, TargetRef, TargetSpec, TargetType,
-    TypeValue, Visibility,
+    AnnotationArgument, ArchConfig, ClassKind, ClassPredicate, ClassTarget, Constraint, Count,
+    DependencyRef, FieldPredicate, FieldTarget, MemberKind, MemberPredicate, MethodPredicate,
+    MethodTarget, ModulePredicate, ModuleTarget, Must, PackagePredicate, PackageTarget,
+    ParamPredicate, PatternList, ProjectConfig, Rule, Severity, SourceSet, Target, TargetRef,
+    TargetType, TypeValue, Visibility,
 };
 pub use parse::parse;

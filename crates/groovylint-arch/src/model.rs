@@ -1,13 +1,12 @@
 //! In-memory architecture model.
 //!
-//! The model deliberately keeps target definitions, selectors, and constraints
-//! separate. `in` is structural containment only; narrowing a target by another
-//! target is expressed by repeating the owner predicate (`in = "domain-module"`)
-//! or, if added later, by explicit set intersection.
+//! Target types are built in, so they are represented as an enum rather than a
+//! `type` field plus a bag of predicates. Each member of [`Target`] owns exactly
+//! the predicates that are legal for that target type.
 
 use std::collections::BTreeMap;
 
-/// The kind of a target node.
+/// The kind of a target node, kept for diagnostics and type checks.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TargetType {
     Module,
@@ -18,7 +17,7 @@ pub enum TargetType {
 }
 
 impl TargetType {
-    /// Parses the `type` field used in target declarations.
+    /// Parses the target kind used by target declarations and inline targets.
     #[must_use]
     pub fn parse(value: &str) -> Option<Self> {
         match value {
@@ -55,56 +54,129 @@ impl TargetType {
     }
 }
 
-/// One selector predicate. Predicates in a target are `AND`ed; a `name` list is
-/// `OR`ed, and `anyOf` is an explicit union of target selectors.
+/// A parsed target declaration or inline target.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Predicate {
-    /// Simple-name pattern list. A list is a union.
-    Name(PatternList),
-    /// Anchored regular expression over the simple name.
-    NameMatches(String),
-    /// Structural containment (`in`).
-    In(TargetRef),
-    /// Union of target selectors.
-    AnyOf(Vec<TargetRef>),
-    /// Negated selector of the same target type.
-    Not(Box<TargetSpec>),
-    /// Module Gradle path pattern list.
-    Path(PatternList),
-    /// Class-like kind.
-    Kind(ClassKind),
-    /// Class is abstract.
-    Abstract(bool),
-    /// Class is nested.
-    Nested(bool),
-    /// Direct superclass.
-    Extends(TypeValue),
-    /// Direct interfaces.
-    Implements(Vec<TypeValue>),
-    /// Any of these annotations.
-    AnnotatedWith(Vec<String>),
-    /// Declaration modifiers; all listed modifiers must be present.
-    Modifiers(Vec<Modifier>),
-    /// Method parameter count.
-    ParamCount(usize),
-    /// Method raw return type.
-    RawReturnType(TypeValue),
-    /// Field type.
-    FieldType(TypeValue),
+pub enum Target {
+    Module(ModuleTarget),
+    Package(PackageTarget),
+    Class(ClassTarget),
+    Method(MethodTarget),
+    Field(FieldTarget),
 }
 
-/// A named target definition.
+impl Target {
+    /// The target's built-in type.
+    #[must_use]
+    pub const fn target_type(&self) -> TargetType {
+        match self {
+            Self::Module(_) => TargetType::Module,
+            Self::Package(_) => TargetType::Package,
+            Self::Class(_) => TargetType::Class,
+            Self::Method(_) => TargetType::Method,
+            Self::Field(_) => TargetType::Field,
+        }
+    }
+}
+
+/// A module target. Modules are roots: they have no `in` selector.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TargetSpec {
-    pub target_type: TargetType,
-    pub predicates: Vec<Predicate>,
+pub struct ModuleTarget {
+    pub predicates: Vec<ModulePredicate>,
+}
+
+/// Predicates legal on a module.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ModulePredicate {
+    Name(PatternList),
+    NameMatches(String),
+    Path(PatternList),
+    AnyOf(Vec<TargetRef>),
+    Not(Box<ModuleTarget>),
+}
+
+/// A package target. Packages may be contained by a module or another package.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PackageTarget {
+    pub predicates: Vec<PackagePredicate>,
+}
+
+/// Predicates legal on a package.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PackagePredicate {
+    Name(PatternList),
+    NameMatches(String),
+    In(TargetRef),
+    AnyOf(Vec<TargetRef>),
+    Not(Box<PackageTarget>),
+}
+
+/// A class target. Classes may be contained by a module, package, or another
+/// class target only through a valid structural owner.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClassTarget {
+    pub predicates: Vec<ClassPredicate>,
+}
+
+/// Predicates legal on a class.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ClassPredicate {
+    Name(PatternList),
+    NameMatches(String),
+    In(TargetRef),
+    AnyOf(Vec<TargetRef>),
+    Not(Box<ClassTarget>),
+    Kind(ClassKind),
+    Abstract(bool),
+    Nested(bool),
+    Extends(TypeValue),
+    Implements(Vec<TypeValue>),
+    AnnotatedWith(Vec<String>),
+}
+
+/// A method target. Methods are contained by a class.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MethodTarget {
+    pub predicates: Vec<MethodPredicate>,
+}
+
+/// Predicates legal on a method.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MethodPredicate {
+    Name(PatternList),
+    NameMatches(String),
+    In(TargetRef),
+    AnyOf(Vec<TargetRef>),
+    Not(Box<MethodTarget>),
+    AnnotatedWith(Vec<String>),
+    Modifiers(Vec<Modifier>),
+    ParamCount(usize),
+    RawReturnType(TypeValue),
+}
+
+/// A field target. Fields are contained by a class.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldTarget {
+    pub predicates: Vec<FieldPredicate>,
+}
+
+/// Predicates legal on a field.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FieldPredicate {
+    Name(PatternList),
+    NameMatches(String),
+    In(TargetRef),
+    AnyOf(Vec<TargetRef>),
+    Not(Box<FieldTarget>),
+    AnnotatedWith(Vec<String>),
+    Modifiers(Vec<Modifier>),
+    Type(TypeValue),
 }
 
 /// A reference to a target, by name or inline.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TargetRef {
     Named(String),
-    Inline(Box<TargetSpec>),
+    Inline(Box<Target>),
 }
 
 /// A simple-name, path, or literal pattern list.
@@ -134,6 +206,24 @@ impl ClassKind {
             "enum" => Some(Self::Enum),
             "annotation" => Some(Self::Annotation),
             "record" => Some(Self::Record),
+            _ => None,
+        }
+    }
+}
+
+/// The kind of a class member in `allMembers`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MemberKind {
+    Field,
+    Method,
+}
+
+impl MemberKind {
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "field" => Some(Self::Field),
+            "method" => Some(Self::Method),
             _ => None,
         }
     }
@@ -221,7 +311,28 @@ pub struct AnnotationArgument {
     pub value: String,
 }
 
-/// A rule constraint. The valid variants are checked against the resolved target
+/// A selector over members in `allMembers`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MemberPredicate {
+    Name(PatternList),
+    NameMatches(String),
+    AnnotatedWith(Vec<String>),
+    Modifiers(Vec<Modifier>),
+    Kind(MemberKind),
+    Not(Box<MemberPredicate>),
+}
+
+/// A selector over method parameters in `allParams`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ParamPredicate {
+    Name(PatternList),
+    NameMatches(String),
+    AnnotatedWith(Vec<String>),
+    Type(TypeValue),
+    Not(Box<ParamPredicate>),
+}
+
+/// A rule constraint. The variant set is checked against the resolved target
 /// type after parsing.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Constraint {
@@ -234,15 +345,15 @@ pub enum Constraint {
     Extend(TypeValue),
     Implement(Vec<TypeValue>),
     Exist(bool),
-    AllMembers(Vec<Predicate>),
-    AllMethods(Vec<Predicate>),
-    AllFields(Vec<Predicate>),
+    AllMembers(Vec<MemberPredicate>),
+    AllMethods(Vec<MethodPredicate>),
+    AllFields(Vec<FieldPredicate>),
     RawReturnType(TypeValue),
     NotRawReturnType(Vec<TypeValue>),
-    AllParams(Vec<Predicate>),
+    AllParams(Vec<ParamPredicate>),
     Visibility(Visibility),
-    FieldType(TypeValue),
-    NotFieldType(Vec<TypeValue>),
+    Type(TypeValue),
+    NotType(Vec<TypeValue>),
     Children(Vec<String>),
     Counts(BTreeMap<String, Count>),
     Acyclic(bool),
@@ -293,6 +404,6 @@ pub struct ProjectConfig {
 pub struct ArchConfig {
     pub version: u32,
     pub project: ProjectConfig,
-    pub targets: BTreeMap<String, TargetSpec>,
+    pub targets: BTreeMap<String, Target>,
     pub rules: Vec<Rule>,
 }

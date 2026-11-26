@@ -1,6 +1,6 @@
 use groovylint_arch::{
-    ClassKind, Constraint, Count, DependencyRef, Predicate, Severity, SourceSet, TargetRef,
-    TargetType, parse,
+    ClassKind, ClassPredicate, ClassTarget, Constraint, Count, DependencyRef, FieldPredicate,
+    Severity, SourceSet, Target, TargetRef, TargetType, parse,
 };
 
 const CONFIG: &str = r#"
@@ -10,15 +10,15 @@ version = 1
 severity = "warn"
 
 [targets]
-domain-module   = { type = "module", name = "*-domain" }
-adapter-module  = { type = "module", name = "*-adapter" }
-domain-class    = { type = "class", in = "domain-module" }
-domain-service  = { type = "class", in = "domain-module", name = ["*Service", "*ServiceImpl"], not = { kind = "interface" } }
-repository      = { type = "class", in = "domain-module", name = "*Repository" }
-repository-query = { type = "method", in = "repository", name = "query*" }
-domain-api      = { type = "package", in = "domain-module", name = "**.domain.**.api" }
-domain-api-class = { type = "class", in = "domain-api" }
-web             = { type = "package", name = "org.springframework.web.**" }
+domain-module   = { kind = "module", name = "*-domain" }
+adapter-module  = { kind = "module", name = "*-adapter" }
+domain-class    = { kind = "class", in = "domain-module" }
+domain-service  = { kind = "class", in = "domain-module", name = ["*Service", "*ServiceImpl"], not = { classKind = "interface" } }
+repository      = { kind = "class", in = "domain-module", name = "*Repository" }
+repository-query = { kind = "method", in = "repository", name = "query*" }
+domain-api      = { kind = "package", in = "domain-module", name = "**.domain.**.api" }
+domain-api-class = { kind = "class", in = "domain-api" }
+web             = { kind = "package", name = "org.springframework.web.**" }
 
 [[rule]]
 id = "domain-dependencies"
@@ -68,22 +68,34 @@ annotatedWith = ["com.acme.Marker"]
 modifiers = ["private"]
 "#;
 
+fn class_target<'a>(config: &'a groovylint_arch::ArchConfig, name: &str) -> &'a ClassTarget {
+    match &config.targets[name] {
+        Target::Class(target) => target,
+        other => panic!("expected class target, got {other:?}"),
+    }
+}
+
 #[test]
 fn parses_revised_targets_and_rules() {
     let config = parse(CONFIG).expect("configuration parses");
     assert_eq!(config.version, 1);
     assert_eq!(config.project.severity, Severity::Warn);
     assert_eq!(
-        config.targets["domain-class"].target_type,
+        config.targets["domain-class"].target_type(),
         TargetType::Class
     );
+    let service = class_target(&config, "domain-service");
+    assert!(matches!(service.predicates[1], ClassPredicate::Name(_)));
+    assert!(matches!(service.predicates[2], ClassPredicate::Not(_)));
+    assert_eq!(
+        class_target(&config, "domain-service").predicates[2],
+        ClassPredicate::Not(Box::new(ClassTarget {
+            predicates: vec![ClassPredicate::Kind(ClassKind::Interface)],
+        }))
+    );
     assert!(matches!(
-        config.targets["domain-service"].predicates[1],
-        Predicate::Name(_)
-    ));
-    assert!(matches!(
-        config.targets["domain-class"].predicates[0],
-        Predicate::In(TargetRef::Named(_))
+        class_target(&config, "domain-class").predicates[0],
+        ClassPredicate::In(TargetRef::Named(_))
     ));
     assert_eq!(config.rules.len(), 5);
     assert_eq!(config.rules[0].severity, Severity::Error);
@@ -121,13 +133,6 @@ fn parses_revised_targets_and_rules() {
             .iter()
             .any(|constraint| matches!(constraint, Constraint::AllMembers(_)))
     );
-    assert_eq!(
-        config.targets["domain-service"].predicates[2],
-        Predicate::Not(Box::new(groovylint_arch::TargetSpec {
-            target_type: TargetType::Class,
-            predicates: vec![Predicate::Kind(ClassKind::Interface)],
-        }))
-    );
 }
 
 #[test]
@@ -156,8 +161,8 @@ fn rejects_class_contained_by_class() {
         r#"
 version = 1
 [targets]
-domain = { type = "class", name = "**" }
-service = { type = "class", in = "domain" }
+domain = { kind = "class", name = "**" }
+service = { kind = "class", in = "domain" }
 "#,
     )
     .expect_err("class cannot contain class");
@@ -165,19 +170,19 @@ service = { type = "class", in = "domain" }
 }
 
 #[test]
-fn parses_field_type_selector_as_field_type() {
+fn parses_field_type_selector() {
     let config = parse(
         r#"
 version = 1
 [targets]
-field = { type = "field", fieldType = "String" }
+field = { kind = "field", type = "String" }
 "#,
     )
-    .expect("fieldType is the field selector");
-    assert!(matches!(
-        config.targets["field"].predicates[0],
-        Predicate::FieldType(_)
-    ));
+    .expect("type is the field selector");
+    let Target::Field(field) = &config.targets["field"] else {
+        panic!("expected field");
+    };
+    assert!(matches!(field.predicates[0], FieldPredicate::Type(_)));
 }
 
 #[test]
@@ -186,7 +191,7 @@ fn rejects_unknown_keys_and_bad_constraints() {
         r#"
 version = 1
 [targets]
-domain = { type = "class", nmae = "*" }
+domain = { kind = "class", nmae = "*" }
 "#,
     )
     .expect_err("unknown selector");
@@ -196,7 +201,7 @@ domain = { type = "class", nmae = "*" }
         r#"
 version = 1
 [targets]
-domain = { type = "class", name = "*" }
+domain = { kind = "class", name = "*" }
 [[rule]]
 id = "bad"
 target = "domain"
@@ -213,10 +218,10 @@ fn parses_inline_rule_target() {
         r#"
 version = 1
 [targets]
-domain-module = { type = "module", name = "*-domain" }
+domain-module = { kind = "module", name = "*-domain" }
 [[rule]]
 id = "inline"
-target = { type = "class", in = "domain-module" }
+target = { kind = "class", in = "domain-module" }
 must = { exist = false }
 "#,
     )
@@ -230,9 +235,9 @@ fn parses_counts_forms() {
         r#"
 version = 1
 [targets]
-m = { type = "module", name = "**" }
-d = { type = "module", name = "*-domain" }
-a = { type = "module", name = "*-adapter" }
+m = { kind = "module", name = "**" }
+d = { kind = "module", name = "*-domain" }
+a = { kind = "module", name = "*-adapter" }
 [[rule]]
 id = "shape"
 target = "m"
@@ -254,29 +259,32 @@ fn parses_nested_target_tables() {
 version = 1
 
 [targets.domain-module]
-type = "module"
+kind = "module"
 name = "*-domain"
 
 [targets.domain-class]
-type = "class"
+kind = "class"
 in = "domain-module"
 
 [targets.domain-service]
-type = "class"
+kind = "class"
 in = "domain-module"
 name = ["*Service", "*ServiceImpl"]
 
 [targets.domain-service.not]
-kind = "interface"
+classKind = "interface"
 "#,
     )
     .expect("nested target tables");
     assert_eq!(
-        config.targets["domain-class"].target_type,
+        config.targets["domain-class"].target_type(),
         TargetType::Class
     );
+    let Target::Class(service) = &config.targets["domain-service"] else {
+        panic!("expected class");
+    };
     assert!(matches!(
-        config.targets["domain-service"].predicates.last(),
-        Some(Predicate::Not(_))
+        service.predicates.last(),
+        Some(ClassPredicate::Not(_))
     ));
 }
