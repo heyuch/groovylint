@@ -119,7 +119,7 @@ fn unnecessary_rules_report_redundant_code() {
 def a = "hello"
 def b = "hello".toString()
 def c = (1 as Integer)
-def d = obj.setName("x")
+obj.setName("x")
 def run() { return 1 }
 "#;
     let diagnostics = lint(

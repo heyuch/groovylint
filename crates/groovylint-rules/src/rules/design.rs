@@ -1839,10 +1839,7 @@ fn returns_collection(block: &Block) -> bool {
         returns: Vec::new(),
     };
     crate::traverse::walk_block(block, &mut finder);
-    finder
-        .returns
-        .iter()
-        .any(|value| expression_returns_collection(value))
+    finder.returns.iter().any(expression_returns_collection)
 }
 
 /// Whether a returned expression produces a collection.
@@ -1899,11 +1896,7 @@ impl crate::traverse::AstVisitor for ReturnFinder {
     fn enter(&mut self, node: NodeRef<'_>) {
         match node {
             NodeRef::Expr(Expr {
-                kind: ExprKind::Closure { .. },
-                ..
-            })
-            | NodeRef::Expr(Expr {
-                kind: ExprKind::New { body: Some(_), .. },
+                kind: ExprKind::Closure { .. } | ExprKind::New { body: Some(_), .. },
                 ..
             }) => self.closure_depth += 1,
             NodeRef::Stmt(Stmt::Return(ret)) if self.closure_depth == 0 => {
@@ -1919,10 +1912,7 @@ impl crate::traverse::AstVisitor for ReturnFinder {
         let nested = matches!(
             node,
             NodeRef::Expr(Expr {
-                kind: ExprKind::Closure { .. },
-                ..
-            }) | NodeRef::Expr(Expr {
-                kind: ExprKind::New { body: Some(_), .. },
+                kind: ExprKind::Closure { .. } | ExprKind::New { body: Some(_), .. },
                 ..
             })
         );
