@@ -1,12 +1,17 @@
 name: Release
 
+# Driven by publishing a GitHub Release rather than by pushing a tag. A Maven Central
+# coordinate is permanent, so the trigger has to be the deliberate act that says these
+# artifacts are worth keeping — not a tag that a script or a stray push can create.
+# workflow_dispatch retries a partial failure; the version then comes from the repository
+# (gradle.properties and Cargo.toml), never from the branch name.
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -23,6 +28,8 @@ jobs:
       fail-fast: true
       matrix:
         include:
+          # This list is also what gradle-plugin's verifyNativeBinaries checks for.
+          # Adding a platform means adding it here and there.
           - platform: osx-aarch64
             runner: macos-15
             target: aarch64-apple-darwin
@@ -34,14 +41,28 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          # A release event checks out the default branch unless told otherwise, which
+          # would ship whatever happens to be on main instead of the released commit.
+          ref: ${{ github.event.release.tag_name || github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.100.0
+          targets: ${{ matrix.target }}
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform }}
+
+      # The gate, run where the toolchain already is. CI on main already ran it for every
+      # commit, but a tag can point at a commit that predates a fix, and publishing a
+      # broken binary to Central cannot be undone.
+      - name: Test (linux only)
+        if: matrix.platform == 'linux-x86_64'
+        run: cargo test --workspace --all-features
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }} -p groovylint
@@ -65,16 +86,19 @@ jobs:
     needs: native
     runs-on: ubuntu-22.04
     timeout-minutes: 45
+    # Attaching the archives needs to write repository contents; the default token is
+    # read-only. Scoped to this job so the read default still applies elsewhere.
+    permissions:
+      contents: write
+    # The signing key and the Central token live on this environment. A job that does not
+    # declare it receives empty strings for those secrets rather than an error, so this
+    # line is what actually gates them.
+    environment: release
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Download native artifacts
-        uses: actions/download-artifact@v4
         with:
-          pattern: native-*
-          path: gradle-plugin/build/native
-          merge-multiple: true
+          ref: ${{ github.event.release.tag_name || github.ref }}
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -85,42 +109,55 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Verify release versions
+      # The tag, the plugin version and the crate version have to agree: the plugin reads
+      # its version from gradle.properties and embeds the binary built from Cargo.toml, so
+      # a mismatch would publish a jar whose version says nothing about what is inside.
+      - name: Check the tag matches the declared versions
         shell: bash
         run: |
           set -euo pipefail
-          gradle_version=$(awk -F= '/^version=/{print $2}' gradle-plugin/gradle.properties)
-          cargo_version=$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
-          test "v${gradle_version}" = "${GITHUB_REF_NAME}" || {
-            echo "Tag ${GITHUB_REF_NAME} does not match plugin version v${gradle_version}" >&2
+          declared="$(sed -n 's/^version=//p' gradle-plugin/gradle.properties)"
+          crate="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          test "$crate" = "$declared" || {
+            echo "::error::Cargo.toml version '$crate' does not match gradle.properties version '$declared'"
             exit 1
           }
-          test "${cargo_version}" = "${gradle_version}" || {
-            echo "Cargo version ${cargo_version} does not match plugin version ${gradle_version}" >&2
-            exit 1
-          }
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            test "$tag" = "$declared" || {
+              echo "::error::tag '$tag' does not match the declared version '$declared'"
+              exit 1
+            }
+          fi
+          echo "releasing $declared"
 
-      - name: Verify embedded native binaries
-        run: ./gradlew -p gradle-plugin verifyNativeBinaries --no-configuration-cache
+      - name: Download native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: gradle-plugin/build/native
+          merge-multiple: true
 
-      - name: Publish to Maven Central and Gradle Plugin Portal
-        run: |
-          ./gradlew -p gradle-plugin \
-            publishToMavenCentral publishPlugins \
-            --no-configuration-cache --stacktrace
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
-          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
-          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+      # Both halves of the gate: the plugin's TestKit functional tests and the check that
+      # every expected platform binary really arrived (publish tasks depend on it too, but
+      # an explicit step fails with a clearer message).
+      - name: Check plugin
+        working-directory: gradle-plugin
+        run: ./gradlew check validatePlugins --no-configuration-cache --stacktrace
 
-      - name: Build release archives
+      - name: Verify the embedded native binaries
+        working-directory: gradle-plugin
+        run: ./gradlew verifyNativeBinaries --no-configuration-cache
+
+      # The archives go onto the Release page before the Central upload rather than after
+      # it. A first submission to Central is reviewed by hand, which can take days; a
+      # release whose only artifacts appear after that window is a release with nothing in
+      # it. A GitHub asset is also easier to withdraw than a Central coordinate.
+      - name: Build the release archives
         shell: bash
         run: |
           set -euo pipefail
-          version=$(awk -F= '/^version=/{print $2}' gradle-plugin/gradle.properties)
+          version="$(sed -n 's/^version=//p' gradle-plugin/gradle.properties)"
           mkdir -p dist
           for platform in osx-aarch64 linux-x86_64; do
             tar -czf "dist/groovylint-${version}-${platform}.tar.gz" \
@@ -128,16 +165,29 @@ jobs:
           done
           (cd dist && sha256sum *.tar.gz > SHA256SUMS)
 
-      - name: Create or update GitHub release
-        shell: bash
+      - name: Attach the archives to the Release
+        if: github.event_name == 'release'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
-          else
-            gh release create "${GITHUB_REF_NAME}" dist/* \
-              --title "${GITHUB_REF_NAME}" \
-              --generate-notes
-          fi
+          gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+          gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name' | sed 's/^/attached: /'
+
+      # The names on the left are what the build reads; the ones on the right are what the
+      # release environment stores. They differ, so the mapping is stated here rather than
+      # left for the next person to rediscover.
+      - name: Publish to Maven Central
+        working-directory: gradle-plugin
+        run: ./gradlew publishToMavenCentral --no-configuration-cache --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Publish the plugin to the Gradle Plugin Portal
+        working-directory: gradle-plugin
+        run: ./gradlew publishPlugins --no-configuration-cache --stacktrace
+        env:
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}

@@ -18,6 +18,39 @@ make onboarding one line.
 This is already a working distribution. The question is whether it is the *best*
 one, and what to change before recommending it to other projects.
 
+## 1.1 How a release is produced
+
+`.github/workflows/release.yml`, triggered by **publishing a GitHub Release** (plus a
+manual `workflow_dispatch` for retries). Publishing a Maven Central coordinate is
+permanent, so the trigger is the deliberate act, not a tag push.
+
+1. `native` builds `groovylint` for every platform in the matrix and uploads each
+   binary as an artifact. This is where the full test suite runs.
+2. `publish` runs on the `release` environment — the only place the signing key and
+   the Central token exist, so a job that forgets `environment: release` gets empty
+   strings and fails at signing rather than publishing something unsigned.
+3. It checks that the release tag, `gradle.properties` and `Cargo.toml` all carry the
+   same version, copies the native artifacts into `gradle-plugin/build/native/`, runs
+   the plugin's TestKit suite, and verifies that every expected platform binary
+   arrived.
+4. The platform archives and `SHA256SUMS` go onto the release page **before** the
+   Central upload: a first submission to Central is reviewed by hand and can take
+   days, and a GitHub asset is easier to withdraw than a Central coordinate.
+5. Then `publishToMavenCentral` (plugin, marker, sources, javadoc, signed) and
+   `publishPlugins` (Plugin Portal).
+
+Secret names on the environment and the names the build reads differ, so the mapping
+lives in one place in the workflow:
+
+| Environment secret | Read by the build as |
+|---|---|
+| `MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD` | `ORG_GRADLE_PROJECT_mavenCentralUsername` / `…Password` |
+| `GPG_PRIVATE_KEY` / `GPG_PASSPHRASE` | `ORG_GRADLE_PROJECT_signingInMemoryKey` / `…KeyPassword` |
+| `GRADLE_PUBLISH_KEY` / `GRADLE_PUBLISH_SECRET` | the same names, as environment variables |
+
+Adding a platform means adding it to the matrix **and** to `verifyNativeBinaries` in
+`gradle-plugin/build.gradle.kts`; the two lists are meant to be the same list.
+
 ## 2. What "simplest for a Gradle user" actually means
 
 Ordered by what breaks adoption, based on the failures other native analyzers hit:
