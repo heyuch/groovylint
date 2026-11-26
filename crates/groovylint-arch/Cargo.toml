@@ -10,7 +10,13 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+groovylint-core = { path = "../groovylint-core" }
+groovylint-syntax = { path = "../groovylint-syntax" }
+regex.workspace = true
 toml.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

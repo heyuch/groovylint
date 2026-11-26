@@ -6,7 +6,7 @@ mod discovery;
 mod report;
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread::available_parallelism;
 
@@ -37,6 +37,7 @@ fn try_run(cli: cli::Cli) -> Result<ExitCode> {
     match cli.command {
         cli::Command::Check(args) => run_check(&args),
         cli::Command::Nullcheck(args) => run_nullcheck(&args),
+        cli::Command::Arch(args) => run_arch(&args),
     }
 }
 
@@ -107,6 +108,87 @@ fn run_check(args: &cli::CheckArgs) -> Result<ExitCode> {
     }
 }
 
+fn run_arch(args: &cli::ArchArgs) -> Result<ExitCode> {
+    let text = fs::read_to_string(&args.config)
+        .with_context(|| format!("failed to read {}", args.config.display()))?;
+    let config = groovylint_arch::parse(&text)
+        .map_err(|error| anyhow::anyhow!("{}: {error}", args.config.display()))?;
+    let (files, filter) = select_files(&args.paths, &args.changed, &args.exclude)?;
+    if files.is_empty() {
+        return Ok(ExitCode::SUCCESS);
+    }
+    let root = project_root(&args.paths);
+    let threads = args
+        .threads
+        .unwrap_or_else(|| available_parallelism().map_or(1, std::num::NonZeroUsize::get));
+    if threads == 0 {
+        bail!("--threads must be greater than zero");
+    }
+    let pool = ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .context("failed to create worker thread pool")?;
+    let facts = pool.install(|| {
+        files
+            .par_iter()
+            .map(|path| {
+                let source = SourceFile::new(path.clone(), fs::read_to_string(path)?);
+                let parsed = parse(source.text())
+                    .map_err(|error| anyhow::anyhow!("{}: {}", path.display(), error.message))?;
+                let module = groovylint_arch::module_for(path, &root);
+                Ok(groovylint_arch::collect(path, &module, &parsed.script))
+            })
+            .collect::<Result<Vec<_>>>()
+    })?;
+    let project = groovylint_arch::Project::new(&root, facts);
+    let findings = groovylint_arch::check(&config, &project);
+    let mut by_path: std::collections::BTreeMap<PathBuf, Vec<Diagnostic>> =
+        std::collections::BTreeMap::new();
+    for finding in findings {
+        let severity = finding.severity;
+        let mut diagnostic = Diagnostic::new(finding.rule, severity, finding.message, finding.span);
+        if let Some(help) = finding.help {
+            diagnostic = diagnostic.with_help(help);
+        }
+        by_path.entry(finding.path).or_default().push(diagnostic);
+    }
+    let reports: Vec<FileReport> = by_path
+        .into_iter()
+        .map(|(path, diagnostics)| {
+            let text = fs::read_to_string(&path).unwrap_or_default();
+            FileReport {
+                source: SourceFile::new(path, text),
+                diagnostics,
+            }
+        })
+        .collect();
+    let summary = summarize(&reports);
+    match args.format {
+        cli::OutputFormat::Text => {
+            write_text(&reports);
+            eprintln!("{}{}", summary_line(summary), filter_note(filter.as_ref()));
+        }
+        cli::OutputFormat::Json => print!("{}", write_json(&reports, summary)?),
+    }
+    if summary.total() > 0 {
+        Ok(ExitCode::from(1))
+    } else {
+        Ok(ExitCode::SUCCESS)
+    }
+}
+
+fn project_root(paths: &[PathBuf]) -> PathBuf {
+    let Some(first) = paths.first() else {
+        return std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    };
+    let root = if first.is_dir() {
+        first.clone()
+    } else {
+        first.parent().unwrap_or(first).to_path_buf()
+    };
+    fs::canonicalize(&root).unwrap_or(root)
+}
+
 fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
     let (files, filter) = select_files(&args.paths, &args.changed, &args.exclude)?;
     if files.is_empty() {
@@ -164,10 +246,10 @@ fn run_nullcheck(args: &cli::NullcheckArgs) -> Result<ExitCode> {
 /// Collects the files to analyze and, when a filter was requested, the summary
 /// note that says how many files were checked out of how many.
 fn select_files(
-    paths: &[std::path::PathBuf],
+    paths: &[PathBuf],
     changed: &changed::ChangedArgs,
     excludes: &[String],
-) -> Result<(Vec<std::path::PathBuf>, Option<String>)> {
+) -> Result<(Vec<PathBuf>, Option<String>)> {
     let excluded = if excludes.is_empty() {
         String::new()
     } else {

@@ -52,7 +52,11 @@ pub fn parse(source: &str) -> Result<ArchConfig> {
     let mut rules = Vec::new();
     if let Some(value) = reader.take("rule") {
         for (index, value) in as_array(value, "rule")?.into_iter().enumerate() {
-            rules.push(parse_rule(&value, &format!("rule[{index}]"))?);
+            rules.push(parse_rule(
+                &value,
+                &format!("rule[{index}]"),
+                project.severity,
+            )?);
         }
     }
     reader.finish()?;
@@ -267,7 +271,7 @@ fn parse_nested_method(value: Value, path: &str) -> Result<MethodTarget> {
     }
 }
 
-fn parse_rule(value: &Value, path: &str) -> Result<Rule> {
+fn parse_rule(value: &Value, path: &str, default_severity: Severity) -> Result<Rule> {
     let mut reader = Reader::new(path, as_table(value.clone(), path)?);
     let id = reader.required_string("id")?;
     if id.trim().is_empty() {
@@ -286,7 +290,7 @@ fn parse_rule(value: &Value, path: &str) -> Result<Rule> {
         .take("severity")
         .map(|value| parse_severity(&value, &format!("{path}.severity")))
         .transpose()?
-        .unwrap_or_default();
+        .unwrap_or(default_severity);
     let on = reader
         .take("on")
         .map(|value| parse_source_set(&value, &format!("{path}.on")))

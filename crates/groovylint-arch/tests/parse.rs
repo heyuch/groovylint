@@ -98,7 +98,7 @@ fn parses_revised_targets_and_rules() {
         ClassPredicate::In(TargetRef::Named(_))
     ));
     assert_eq!(config.rules.len(), 5);
-    assert_eq!(config.rules[0].severity, Severity::Error);
+    assert_eq!(config.rules[0].severity, Severity::Warn);
     assert_eq!(config.rules[1].severity, Severity::Warn);
     assert_eq!(config.rules[1].on, SourceSet::Test);
     assert!(matches!(

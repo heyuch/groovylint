@@ -21,6 +21,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap.workspace = true
 groovylint-analysis = { path = "../groovylint-analysis" }
+groovylint-arch = { path = "../groovylint-arch" }
 groovylint-config = { path = "../groovylint-config" }
 groovylint-core = { path = "../groovylint-core" }
 groovylint-rules = { path = "../groovylint-rules" }

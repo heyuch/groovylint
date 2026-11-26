@@ -22,6 +22,8 @@ pub enum Command {
     Check(CheckArgs),
     /// Run annotation-free nullness analysis.
     Nullcheck(NullcheckArgs),
+    /// Run project architecture rules.
+    Arch(ArchArgs),
 }
 
 /// Arguments for `groovylint check`.
@@ -38,6 +40,34 @@ pub struct CheckArgs {
     /// Skip every path containing this substring. Repeatable.
     ///
     /// Use it to mirror a main-only `CodeNarc` setup: `--exclude /src/test/`.
+    #[arg(long, value_name = "SUBSTRING")]
+    pub exclude: Vec<String>,
+
+    /// Diagnostic output format.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+    pub format: OutputFormat,
+
+    /// Number of worker threads. Defaults to available parallelism.
+    #[arg(long, value_name = "N")]
+    pub threads: Option<usize>,
+
+    /// Restrict the analysis to files the branch changed.
+    #[command(flatten)]
+    pub changed: ChangedArgs,
+}
+
+/// Arguments for `groovylint arch`.
+#[derive(Debug, Args)]
+pub struct ArchArgs {
+    /// Files or directories to analyze.
+    #[arg(value_name = "PATH", default_value = ".")]
+    pub paths: Vec<PathBuf>,
+
+    /// Architecture TOML configuration.
+    #[arg(short, long, value_name = "FILE")]
+    pub config: PathBuf,
+
+    /// Skip every path containing this substring. Repeatable.
     #[arg(long, value_name = "SUBSTRING")]
     pub exclude: Vec<String>,
 

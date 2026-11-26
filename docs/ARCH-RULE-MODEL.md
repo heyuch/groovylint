@@ -1,7 +1,8 @@
 # Architecture rule model: design v3
 
-Status: **design accepted, keywords frozen, not implemented.** The settling decisions
-are in §10. Supersedes the module DSL of
+Status: **design accepted; model/parser/runtime prototype implemented.** See
+[`ARCH-IMPLEMENTATION.md`](ARCH-IMPLEMENTATION.md) for current behaviour, coverage,
+and limits. The settling decisions are in §10. Supersedes the module DSL of
 [`ARCH-MODULE-RULES.md`](ARCH-MODULE-RULES.md) (v2) and the DSL sketch in
 [`ARCHITECTURE-RULES.md`](ARCHITECTURE-RULES.md) §3.
 

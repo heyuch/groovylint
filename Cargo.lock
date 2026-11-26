@@ -355,6 +355,7 @@ dependencies = [
  "clap",
  "criterion",
  "groovylint-analysis",
+ "groovylint-arch",
  "groovylint-config",
  "groovylint-core",
  "groovylint-rules",
@@ -380,6 +381,10 @@ dependencies = [
 name = "groovylint-arch"
 version = "0.1.0"
 dependencies = [
+ "groovylint-core",
+ "groovylint-syntax",
+ "regex",
+ "tempfile",
  "toml",
 ]
 

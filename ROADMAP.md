@@ -244,9 +244,12 @@ Exit criteria:
 - No rule writes files directly.
 - `check` never mutates source.
 
-### M4 — Project graph and ArchUnit-like rules (0.6, deferred)
+### M4 — Project graph and ArchUnit-like rules (0.6, in progress)
 
-**Status: proposal.** The rule model (target type × selector × constraint, named
+**Status: prototype implemented.** A FileFacts/ProjectIndex/dependency-graph
+prototype and `groovylint arch` exist; see
+[`docs/ARCH-IMPLEMENTATION.md`](docs/ARCH-IMPLEMENTATION.md). Java sources,
+baseline, slices, and the FactPlan optimization remain pending. The rule model (target type × selector × constraint, named
 targets, relations, quantifiers) is in
 [`docs/ARCH-RULE-MODEL.md`](docs/ARCH-RULE-MODEL.md); rule families, source-vs-bytecode
 and phasing are in [`docs/ARCHITECTURE-RULES.md`](docs/ARCHITECTURE-RULES.md). Both are
