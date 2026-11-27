@@ -573,6 +573,30 @@ reports nothing rather than guessing, which keeps the "no new false positives"
 promise. Nothing here is scheduled; it is the largest single piece of work left and
 it should be designed before it is built.
 
+## 7.6 XML sources: Liquibase and MyBatis
+
+The Groovy analyser will not grow an XML parser inside its rule engine. Schema and SQL
+constraints are a separate front end with its own facts and its own rules, for two
+reasons: the files are not Groovy (no AST to share), and the constraints are about
+structure the Groovy side never sees — a changeset's author, a column's tenant index, a
+`<foreach>` that is doing a conditional's job.
+
+What it has to cover, in the order the two ecosystems matter:
+
+1. **Liquibase changesets.** A production project already enforces a set of these with
+   its own ad-hoc tooling; migrating those rules is the first deliverable. Typical shape:
+   every changeset declares an author and an id, `id` is unique per logical file, no
+   destructive operation without a matching backup step, table and column names come from
+   the naming conventions, tenant tables carry `tenant_code` first in unique indexes.
+2. **MyBatis mappers.** The rules a source analyser cannot see: no `<if>`, `<choose>` or
+   `<where>` deciding query shape, `<foreach>` only for `IN` lists, every parameter bound
+   with `@Param`, explicit `tenant_code` on tenant tables, no dynamic `ORDER BY`.
+
+Delivery shape follows §7.5's tiers: parse, build facts, evaluate the same
+target × selector × constraint model. A mapper's XML and its Java/Groovy interface can be
+joined later through the method name, which is the one place the two front ends should
+meet.
+
 ## 8. Non-goals and anti-goals
 
 - Do not implement Grails, Jenkins, or Spock rules.

@@ -611,6 +611,43 @@ the findings are design questions, not bugs:
    sources. Decide whether `except` accepts both sides or whether `notDependOn` entries
    carry their own exceptions.
 
+### 10.2 Scope settled by the field run
+
+Decisions taken while encoding a real catalog (the full mapping is in the local,
+unversioned note; the shape is in §7):
+
+- **Groovy sources only.** No Gradle metadata is read: "the dependency must be declared in
+  `build.gradle`" is out of scope, and `acyclic` therefore judges the *observed* graph.
+  A cycle that exists only in the declared graph is invisible, which is acceptable while
+  the rules are advisory.
+- **Annotation-argument combinations are out of scope.** `@ApiScope(TENANT)` requiring a
+  non-empty `apps`, or `@ApiSecurity(PUBLIC)` forbidding permission groups, is a rule
+  about an annotation's internals; `annotationArgument` compares a written fragment and
+  stops there.
+- **Return-type constraints accept a target, not only a type name.** "A client method must
+  not return a `*DO`" is `notRawReturnType = ["do-class"]` where `do-class` is a class
+  target. No new target type is needed: a return type is a name that resolves to a class,
+  so the existing class targets answer it.
+- **`visibility` keeps its name on both target types.** It means method accessibility on a
+  `method` and boundary visibility on a `module`. Constraint resolution is already keyed
+  by target type, so there is no ambiguity to resolve — but a wrongly paired constraint
+  must fail with a message that says which meaning it expected.
+- **Baseline is a prerequisite, not a nicety.** A ruleset that is right about an existing
+  codebase will report hundreds of violations on day one; adoption needs the freeze from
+  §8 before any of it can be enforced.
+- **Body predicates are a new family.** Two real rules ask about a method's *return
+  expression* — "the table name must come from a constant, not a string literal" and "the
+  master-table name must be a constant declared in a `*MasterTableConst` class, or null".
+  Neither is a signature question, so the vocabulary needs `allMethods = { match = ...,
+  must = ... }` (a quantified member constraint, not only a member selector) plus
+  `returnsConstant` / `returnsConstantOf = { from = [...], orNull = true }`. That requires
+  return-expression facts and a small amount of symbol resolution (a bare identifier must
+  be traced to a static final field or a static import), which is the first place the
+  architecture rules need something closer to §7.5 tier 2.
+- **Transitive supertypes.** `BasePoModel` subclasses reach it through two intermediate
+  classes, so `extends` needs a `transitive` flag; the project index already holds the
+  closure for project classes.
+
 ## Appendix A: reference vocabulary
 
 The complete keyword surface. Everything not listed here does not exist, which is
