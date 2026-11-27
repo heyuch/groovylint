@@ -47,6 +47,11 @@ pub fn check(config: &ArchConfig, project: &Project) -> Vec<ArchFinding> {
             .then_with(|| left.rule.cmp(&right.rule))
             .then_with(|| left.message.cmp(&right.message))
     });
+    // An edge can be reached through more than one route (a file-level import
+    // applies to every class in the file), and each route produced its own copy of
+    // the same finding. Sorting first makes the copies adjacent, so one pass
+    // removes them without touching findings that only share a line.
+    evaluator.findings.dedup_by(|left, right| left == right);
     evaluator.findings
 }
 
@@ -1149,7 +1154,10 @@ impl Evaluator<'_> {
 
     fn node_location(&self, target_type: TargetType, node: &str) -> (PathBuf, Span) {
         match target_type {
-            TargetType::Class => self.class_location(node, Span::empty(0)),
+            TargetType::Class => self.project.class(node).map_or_else(
+                || (self.project.root.clone(), Span::empty(0)),
+                |class| self.class_location(&class.fqn, class.span),
+            ),
             TargetType::Method => self.method(node).map_or_else(
                 || (self.project.root.clone(), Span::empty(0)),
                 |method| self.class_location(&method.owner, method.span),

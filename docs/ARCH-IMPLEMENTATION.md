@@ -220,9 +220,9 @@ single source span.
 - **`extend` / `implement` are direct/written relationships.** No transitive
   supertype closure.
 - **No package/class cycle check.** `acyclic` is module-only.
-- **Edge collection is not deduplicated** (D3): the same reference seen through an import
-  and through a type reference produces two findings on the same line. Fixing it changes
-  the count, so it is tracked rather than silently patched.
+- **An import is attributed to every class in its file** (D6): the name is available to
+  the whole file, but only the classes that use it depend on it. Findings are
+  deduplicated, so the symptom is hidden, not fixed.
 - **Facts and CodeNarc rules are fused only when requested.** `Engine::lint`
   skips facts; `Engine::lint_with_facts` runs both in one traversal. The
   architecture CLI uses the latter with an empty rule set.
@@ -235,7 +235,8 @@ as 112 ArchUnit test methods.
 
 | Run | Findings | Files | Time |
 |---|---:|---:|---:|
-| whole repository | 2,951 | 885 | 3m55s |
+| whole repository, before the D1/D3/D5 fixes | 2,951 | 885 | 3m55s |
+| whole repository, after D1 + D3 + D5 | 2,067 | 885 | 6.4s |
 | the three module groups that have ArchUnit tests | 695 | 230 | 13.8s |
 | same repository with `check` (CodeNarc rules) | 972 | — | 4.6s |
 
@@ -253,14 +254,21 @@ gone.
 
 | # | Symptom | Cause | Class |
 |---|---|---|---|
-| D1 | every class- and method-level finding points at line 1 | the fact spans for class/method declarations are not carried into the diagnostic; only dependency findings (which use the reference span) have a real position | correctness |
+| D1 | every class- and method-level finding points at line 1 | `node_location` passed `Span::empty(0)` for class targets instead of the declaration span | **fixed** |
 | D2 | `annotatedWith = ["com.acme.ApiSecurity"]` never matches, so every annotated method is reported | `has_annotations` (`eval.rs`) compares against the **simple** name only, with no suffix match; an FQN silently matches nothing | correctness |
-| D3 | 935 of 2,951 findings (32%) are exact duplicates: same rule, line and message | edges are collected once per reference occurrence and never deduplicated before evaluation | correctness |
+| D3 | 935 of 2,951 findings (32%) are exact duplicates: same rule, line and message | one import becomes one edge per class in the file, so a fifteen-class file produced fifteen copies of the same finding | **fixed** (see D6) |
 | D4 | `name = "com.acme.**.service.impl.**"` does not match the package `…service.impl` itself, so its own classes are reported | `**` compiles to `.*`, which needs at least one character after the dot | correctness (silent) |
 | D5 | 3m55s for 24.7k files against 4.6s for `check` | three stacked causes, see §8.3 | **fixed** |
 
-D1 detail: 110 of 110, 80 of 80, 29 of 29, 7 of 7, 3 of 3 and 1 of 1 findings across six
-class/method rules reported `line = 1`.
+D1 was 110 of 110, 80 of 80, 29 of 29, 7 of 7, 3 of 3 and 1 of 1 findings across six
+class/method rules at `line = 1`. After the fix, no finding in the sample project lands
+on line 1; a class finding now points at the class declaration and a nested enum at its
+own `enum` line.
+
+D3 was fixed in two steps: identical findings (same path, span, rule and message) are now
+printed once, which removed 884 of the 2,951. The cause is still there and is D6 below.
+The 49 remaining pairs that share a line but not a column are real: two references on one
+line.
 
 D4 detail: a package target is a predicate over package names, and the tree walk does not
 visit the package that a class *declares* separately from its sub-packages — so a
@@ -292,6 +300,24 @@ per node:
 
 For reference, `check` over the same repository takes 4.6s, so the architecture pass now
 costs about the parsing it shares with it plus 2s of rule evaluation.
+
+### 8.1.1 D6: a file-level import is attributed to every class in the file
+
+Found while fixing D3, and left in place because fixing it changes what a rule means.
+
+`Project::new` turns each import into one edge **per class declared in that file**. For a
+file with fifteen classes and one import, fifteen edges exist, and a rule targeting one of
+those classes reports a dependency it may not have: Groovy's file-scoped import only says
+the name is *available*, not that this class uses it. The deduplication in D3 hides the
+visible symptom (fifteen identical findings became one), but the attribution is still
+wrong, and it over-reports whenever two classes in one file are targeted by different
+rules.
+
+The fix is to attribute an import edge only to the classes that reference the imported
+name, which the facts already know: `references` records, per class, the type names it
+writes. An unused import then produces no dependency edge at all, which is what CodeNarc's
+bytecode view does too. It is listed as the next correctness item rather than folded into
+D3 because it changes finding counts in a way that deserves its own measurement.
 
 ### 8.2 Gaps found in the DSL, not the engine
 
@@ -334,9 +360,9 @@ is left is correctness, then completeness:
 
 1. ~~**Make it fast.**~~ D5 is done (§8.3): 34x, same findings. It went first because
    every later fix needs a run short enough to iterate on.
-2. **Make the diagnostics land.** D1 (class/method spans), D2 (annotation names),
-   D3 (duplicate edges). Without these three the tool produces a list nobody can act
-   on, and every later feature is judged by that list.
+2. **Make the diagnostics land.** D1 and D3 are done. What remains is D2 (annotation
+   names) and D6 (import attribution), both of which change the numbers, so they need a
+   before/after comparison rather than a silent patch.
 3. **Make the pattern language honest.** D4, and the `x.**` question it raises: state
    whether `**` includes the node itself, implement it that way, and let
    `arch validate` reject a target that matches nothing.
