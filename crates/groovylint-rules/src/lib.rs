@@ -10,7 +10,7 @@ pub mod rule;
 pub mod rules;
 pub mod traverse;
 
-pub use engine::Engine;
+pub use engine::{Engine, FileAnalysis};
 pub use registry::{RuleDescriptor, RuleInstanceImpl, RuleRegistry};
 pub use rule::{
     AstRule, Category, DiagnosticSink, FileContext, FileRule, NodeKind, NodeMask, NodeRef, Rule,

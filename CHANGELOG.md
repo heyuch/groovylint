@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Architecture rules: a typed TOML target/rule model, FileFacts extraction,
   project index, dependency graph, target matchers, most shape/dependency/
-  composition constraints, and a `groovylint arch` command.
+  composition constraints, a `FactPlan`, fused FileFacts collection in the
+  existing AST traversal, and a `groovylint arch` command.
 - Nullness analysis (`groovylint nullcheck`) with a CFG/dataflow core,
   local/field access paths, guard refinement, conservative/inferred modes,
   `@Nullable`/`@NonNull`/contract annotations, built-in JDK/collection models,

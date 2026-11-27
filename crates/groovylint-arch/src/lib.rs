@@ -31,7 +31,8 @@ mod project;
 pub use error::{ParseError, Result};
 pub use eval::{ArchFinding, check};
 pub use facts::{
-    ClassFact, FieldFact, FileFacts, ImportFact, MethodFact, ReferenceKind, collect, module_for,
+    ClassFact, FactCollector, FactPlan, FieldFact, FileFacts, ImportFact, MethodFact,
+    ReferenceKind, collect, module_for,
 };
 pub use model::{
     AnnotationArgument, ArchConfig, ClassKind, ClassPredicate, ClassTarget, Constraint, Count,

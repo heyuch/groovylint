@@ -404,6 +404,7 @@ name = "groovylint-rules"
 version = "0.1.0"
 dependencies = [
  "fancy-regex",
+ "groovylint-arch",
  "groovylint-core",
  "groovylint-syntax",
  "regex",

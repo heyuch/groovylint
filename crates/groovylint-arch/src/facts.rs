@@ -8,6 +8,140 @@ use groovylint_syntax::ast::{
     Script, Stmt,
 };
 
+use crate::model::{ArchConfig, ClassPredicate, Constraint, MethodPredicate, Target};
+
+/// Which fact categories a configuration needs.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct FactPlan(u16);
+
+impl FactPlan {
+    pub const IMPORTS: Self = Self(1 << 0);
+    pub const CLASSES: Self = Self(1 << 1);
+    pub const METHODS: Self = Self(1 << 2);
+    pub const FIELDS: Self = Self(1 << 3);
+    pub const ANNOTATIONS: Self = Self(1 << 4);
+    pub const TYPE_REFS: Self = Self(1 << 5);
+    pub const PARAMS: Self = Self(1 << 6);
+
+    #[must_use]
+    pub const fn all() -> Self {
+        Self(
+            Self::IMPORTS.0
+                | Self::CLASSES.0
+                | Self::METHODS.0
+                | Self::FIELDS.0
+                | Self::ANNOTATIONS.0
+                | Self::TYPE_REFS.0
+                | Self::PARAMS.0,
+        )
+    }
+
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    #[must_use]
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// Derives a plan from targets and constraints.
+    #[must_use]
+    pub fn from_config(config: &ArchConfig) -> Self {
+        let mut plan = Self::default();
+        for target in config.targets.values() {
+            plan = plan.union(target_requirements(target));
+        }
+        for rule in &config.rules {
+            plan = plan.union(rule_target_requirements(&rule.target, config));
+            for constraint in &rule.must.constraints {
+                plan = plan.union(constraint_requirements(constraint));
+            }
+        }
+        plan
+    }
+}
+
+fn rule_target_requirements(reference: &crate::model::TargetRef, config: &ArchConfig) -> FactPlan {
+    match reference {
+        crate::model::TargetRef::Named(name) => config
+            .targets
+            .get(name)
+            .map_or_else(FactPlan::default, target_requirements),
+        crate::model::TargetRef::Inline(target) => target_requirements(target),
+    }
+}
+
+fn target_requirements(target: &Target) -> FactPlan {
+    match target {
+        Target::Module(_) => FactPlan::default(),
+        Target::Package(_) => FactPlan::CLASSES,
+        Target::Class(target) => {
+            let mut plan = FactPlan::CLASSES;
+            for predicate in &target.predicates {
+                if matches!(predicate, ClassPredicate::AnnotatedWith(_)) {
+                    plan = plan.union(FactPlan::ANNOTATIONS);
+                }
+            }
+            plan
+        }
+        Target::Method(target) => {
+            let mut plan = FactPlan::METHODS.union(FactPlan::CLASSES);
+            for predicate in &target.predicates {
+                match predicate {
+                    MethodPredicate::AnnotatedWith(_) => {
+                        plan = plan.union(FactPlan::ANNOTATIONS);
+                    }
+                    MethodPredicate::ParamCount(_) => {
+                        plan = plan.union(FactPlan::PARAMS);
+                    }
+                    _ => {}
+                }
+            }
+            plan
+        }
+    }
+}
+
+fn constraint_requirements(constraint: &Constraint) -> FactPlan {
+    match constraint {
+        Constraint::DependOnlyOn(_) | Constraint::NotDependOn(_) | Constraint::Visible(_) => {
+            FactPlan::IMPORTS
+                .union(FactPlan::TYPE_REFS)
+                .union(FactPlan::CLASSES)
+        }
+        Constraint::AnnotatedWith(_)
+        | Constraint::NotAnnotatedWith(_)
+        | Constraint::AnnotationArgument(_) => FactPlan::ANNOTATIONS,
+        Constraint::Extend(_) | Constraint::Implement(_) | Constraint::Exist(_) => {
+            FactPlan::CLASSES
+        }
+        Constraint::AllMembers(_) => FactPlan::CLASSES
+            .union(FactPlan::METHODS)
+            .union(FactPlan::FIELDS)
+            .union(FactPlan::ANNOTATIONS)
+            .union(FactPlan::PARAMS),
+        Constraint::AllMethods(_) => FactPlan::METHODS
+            .union(FactPlan::ANNOTATIONS)
+            .union(FactPlan::PARAMS),
+        Constraint::AllFields(_) => FactPlan::FIELDS.union(FactPlan::ANNOTATIONS),
+        Constraint::RawReturnType(_)
+        | Constraint::NotRawReturnType(_)
+        | Constraint::Visibility(_) => FactPlan::METHODS,
+        Constraint::AllParams(_) => FactPlan::METHODS
+            .union(FactPlan::PARAMS)
+            .union(FactPlan::ANNOTATIONS),
+        Constraint::Children(_) | Constraint::Counts(_) => FactPlan::default(),
+        Constraint::Acyclic(_) => FactPlan::CLASSES.union(FactPlan::TYPE_REFS),
+    }
+}
+
 /// One import declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImportFact {
@@ -119,9 +253,336 @@ pub struct FileFacts {
     pub path: PathBuf,
     pub module: String,
     pub package: Option<String>,
+    pub plan: FactPlan,
     pub imports: Vec<ImportFact>,
     pub classes: Vec<ClassFact>,
     pub references: Vec<ReferenceFact>,
+}
+
+/// Event-driven fact collector used by the single AST traversal.
+pub struct FactCollector {
+    plan: FactPlan,
+    path: PathBuf,
+    module: String,
+    package: Option<String>,
+    imports: Vec<ImportFact>,
+    classes: Vec<ClassFact>,
+    references: Vec<ReferenceFact>,
+    class_stack: Vec<usize>,
+}
+
+impl FactCollector {
+    #[must_use]
+    pub fn new(path: &Path, module: &str, plan: FactPlan) -> Self {
+        Self {
+            plan,
+            path: path.to_path_buf(),
+            module: module.to_string(),
+            package: None,
+            imports: Vec::new(),
+            classes: Vec::new(),
+            references: Vec::new(),
+            class_stack: Vec::new(),
+        }
+    }
+
+    pub fn enter_script(&mut self, script: &Script) {
+        self.package = script.package.as_ref().map(|package| package.name.clone());
+        if self.plan.contains(FactPlan::IMPORTS) {
+            self.imports = script
+                .imports
+                .iter()
+                .map(|import| ImportFact {
+                    path: import.path.clone(),
+                    alias: import.alias.clone(),
+                    is_static: import.is_static,
+                    span: import.span,
+                })
+                .collect();
+        }
+    }
+
+    pub fn enter_class(&mut self, class: &ClassDecl) {
+        if !self.plan.contains(FactPlan::CLASSES) {
+            return;
+        }
+        let outer = self
+            .class_stack
+            .last()
+            .and_then(|index| self.classes.get(*index))
+            .map(|class| class.fqn.clone());
+        let fqn = match &outer {
+            Some(outer) => format!("{outer}${}", class.name),
+            None => match &self.package {
+                Some(package) => format!("{package}.{}", class.name),
+                None => class.name.clone(),
+            },
+        };
+        let annotations = if self.plan.contains(FactPlan::ANNOTATIONS) {
+            class
+                .annotation_details
+                .iter()
+                .map(AnnotationFact::from_ast)
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let fact = ClassFact {
+            fqn: fqn.clone(),
+            name: class.name.clone(),
+            package: self.package.clone(),
+            module: self.module.clone(),
+            kind: class.kind,
+            is_abstract: class.is_abstract,
+            is_nested: outer.is_some(),
+            annotations,
+            extends: class.extends.clone(),
+            implements: class.implements.clone(),
+            methods: Vec::new(),
+            fields: Vec::new(),
+            span: class.span,
+        };
+        if self.plan.contains(FactPlan::TYPE_REFS) {
+            if let Some(extends) = &class.extends {
+                self.references.push(ReferenceFact {
+                    from: fqn.clone(),
+                    to: extends.clone(),
+                    kind: ReferenceKind::Extends,
+                    span: class.span,
+                });
+            }
+            for interface in &class.implements {
+                self.references.push(ReferenceFact {
+                    from: fqn.clone(),
+                    to: interface.clone(),
+                    kind: ReferenceKind::Implements,
+                    span: class.span,
+                });
+            }
+            if self.plan.contains(FactPlan::ANNOTATIONS) {
+                for annotation in &class.annotation_details {
+                    self.references.push(ReferenceFact {
+                        from: fqn.clone(),
+                        to: annotation.name.clone(),
+                        kind: ReferenceKind::Annotation,
+                        span: class.span,
+                    });
+                }
+            }
+        }
+        let index = self.classes.len();
+        self.classes.push(fact);
+        self.class_stack.push(index);
+    }
+
+    pub fn exit_class(&mut self) {
+        self.class_stack.pop();
+    }
+
+    pub fn enter_field(&mut self, field: &groovylint_syntax::ast::FieldDecl) {
+        let Some(index) = self.class_stack.last().copied() else {
+            return;
+        };
+        if !self.plan.contains(FactPlan::FIELDS) {
+            return;
+        }
+        let owner = self.classes[index].fqn.clone();
+        let fact = self.field_fact(field, &owner);
+        self.classes[index].fields.push(fact);
+    }
+
+    pub fn enter_method(&mut self, method: &MethodDecl) {
+        let Some(index) = self.class_stack.last().copied() else {
+            return;
+        };
+        if !self.plan.contains(FactPlan::METHODS) {
+            return;
+        }
+        let owner = self.classes[index].fqn.clone();
+        let fact = self.method_fact(method, &owner);
+        self.classes[index].methods.push(fact);
+    }
+
+    pub fn enter_stmt(&mut self, stmt: &Stmt) {
+        if !self.plan.contains(FactPlan::TYPE_REFS) {
+            return;
+        }
+        if let Some(owner) = self.owner() {
+            if let Stmt::VarDecl(decl) = stmt
+                && let Some(type_name) = &decl.type_name
+            {
+                self.references.push(ReferenceFact {
+                    from: owner.to_string(),
+                    to: type_name.clone(),
+                    kind: ReferenceKind::LocalType,
+                    span: decl.span,
+                });
+            } else if let Stmt::ForEach(for_each) = stmt
+                && let Some(type_name) = &for_each.var_type
+            {
+                self.references.push(ReferenceFact {
+                    from: owner.to_string(),
+                    to: type_name.clone(),
+                    kind: ReferenceKind::LocalType,
+                    span: for_each.span,
+                });
+            }
+        }
+    }
+
+    pub fn enter_expr(&mut self, expr: &Expr) {
+        if !self.plan.contains(FactPlan::TYPE_REFS) {
+            return;
+        }
+        let Some(owner) = self.owner().map(ToString::to_string) else {
+            return;
+        };
+        match &expr.kind {
+            ExprKind::New { type_name, .. } => self.references.push(ReferenceFact {
+                from: owner,
+                to: type_name.clone(),
+                kind: ReferenceKind::New,
+                span: expr.span,
+            }),
+            ExprKind::Cast { type_name, .. } => self.references.push(ReferenceFact {
+                from: owner,
+                to: type_name.clone(),
+                kind: ReferenceKind::Cast,
+                span: expr.span,
+            }),
+            _ => {}
+        }
+    }
+
+    #[must_use]
+    pub fn finish(self) -> FileFacts {
+        FileFacts {
+            path: self.path,
+            module: self.module,
+            package: self.package,
+            plan: self.plan,
+            imports: self.imports,
+            classes: self.classes,
+            references: self.references,
+        }
+    }
+
+    fn owner(&self) -> Option<&str> {
+        self.class_stack
+            .last()
+            .and_then(|index| self.classes.get(*index))
+            .map(|class| class.fqn.as_str())
+    }
+
+    fn field_fact(&mut self, field: &groovylint_syntax::ast::FieldDecl, owner: &str) -> FieldFact {
+        if self.plan.contains(FactPlan::TYPE_REFS) {
+            if let Some(type_name) = &field.type_name {
+                self.references.push(ReferenceFact {
+                    from: owner.to_string(),
+                    to: type_name.clone(),
+                    kind: ReferenceKind::FieldType,
+                    span: field.span,
+                });
+            }
+            if self.plan.contains(FactPlan::ANNOTATIONS) {
+                for annotation in &field.annotation_details {
+                    self.references.push(ReferenceFact {
+                        from: owner.to_string(),
+                        to: annotation.name.clone(),
+                        kind: ReferenceKind::Annotation,
+                        span: field.span,
+                    });
+                }
+            }
+        }
+        FieldFact {
+            owner: owner.to_string(),
+            name: field.name.clone(),
+            type_name: field.type_name.clone(),
+            annotations: if self.plan.contains(FactPlan::ANNOTATIONS) {
+                field
+                    .annotation_details
+                    .iter()
+                    .map(AnnotationFact::from_ast)
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            modifiers: field_modifiers(field),
+            span: field.span,
+        }
+    }
+
+    fn method_fact(&mut self, method: &MethodDecl, owner: &str) -> MethodFact {
+        if self.plan.contains(FactPlan::TYPE_REFS) {
+            if let Some(return_type) = &method.return_type {
+                self.references.push(ReferenceFact {
+                    from: owner.to_string(),
+                    to: return_type.clone(),
+                    kind: ReferenceKind::ReturnType,
+                    span: method.span,
+                });
+            }
+            for param in &method.params {
+                if let Some(type_name) = &param.type_name {
+                    self.references.push(ReferenceFact {
+                        from: owner.to_string(),
+                        to: type_name.clone(),
+                        kind: ReferenceKind::ParamType,
+                        span: param.span,
+                    });
+                }
+            }
+            if self.plan.contains(FactPlan::ANNOTATIONS) {
+                for annotation in &method.annotation_details {
+                    self.references.push(ReferenceFact {
+                        from: owner.to_string(),
+                        to: annotation.name.clone(),
+                        kind: ReferenceKind::Annotation,
+                        span: method.span,
+                    });
+                }
+            }
+        }
+        let parameters = if self.plan.contains(FactPlan::PARAMS) {
+            method
+                .params
+                .iter()
+                .map(|param| ParameterFact {
+                    name: param.name.clone(),
+                    type_name: param.type_name.clone(),
+                    annotations: if self.plan.contains(FactPlan::ANNOTATIONS) {
+                        param
+                            .annotation_details
+                            .iter()
+                            .map(AnnotationFact::from_ast)
+                            .collect()
+                    } else {
+                        Vec::new()
+                    },
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        MethodFact {
+            owner: owner.to_string(),
+            name: method.name.clone(),
+            return_type: method.return_type.clone(),
+            annotations: if self.plan.contains(FactPlan::ANNOTATIONS) {
+                method
+                    .annotation_details
+                    .iter()
+                    .map(AnnotationFact::from_ast)
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            modifiers: method_modifiers(method),
+            parameters,
+            span: method.span,
+        }
+    }
 }
 
 /// Extract facts from a parsed script.
@@ -142,6 +603,7 @@ pub fn collect(path: &Path, module: &str, script: &Script) -> FileFacts {
         path: path.to_path_buf(),
         module: module.to_string(),
         package: package.clone(),
+        plan: FactPlan::all(),
         imports,
         classes: Vec::new(),
         references: Vec::new(),

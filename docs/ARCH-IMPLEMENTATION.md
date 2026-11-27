@@ -73,7 +73,10 @@ A class target contained by another class target is rejected at parse time.
 ```text
 source files
   -> parse
-  -> FileFacts             one recursive AST collection per file
+  -> one AST traversal
+       ├─ existing CodeNarc AstRule dispatch
+       └─ FactCollector (enter/exit)
+  -> FileFacts
   -> Project index         modules, packages, classes, methods
   -> Dependency graph      imports + declared type references
   -> target matcher        typed target predicates -> node sets
@@ -81,7 +84,28 @@ source files
   -> diagnostics           existing Diagnostic + FileReport format
 ```
 
-### 3.1 FileFacts
+The architecture command uses `Engine::empty().lint_with_facts(...)`, so facts
+and ordinary rules share the same `walk_script` call. `FactCollector` is a
+first-class analysis participant, not a registered `AstRule`: it has no rule
+name, severity, suppression, or configuration entry.
+
+### 3.1 FactPlan and FileFacts
+
+`FactPlan::from_config` derives the needed fact categories from all targets and
+constraints:
+
+- `IMPORTS`
+- `CLASSES`
+- `METHODS`
+- `FIELDS`
+- `ANNOTATIONS`
+- `TYPE_REFS`
+- `PARAMS`
+
+Expensive categories (`IMPORTS`, `TYPE_REFS`, member details) are skipped when
+no rule needs them. Class declarations/packages are kept for target matching and
+diagnostics. `Engine::lint` does not collect facts at all;
+`Engine::lint_with_facts` takes a `FactPlan` and returns `FileAnalysis`.
 
 [`facts.rs`](../crates/groovylint-arch/src/facts.rs) extracts:
 
@@ -187,8 +211,8 @@ single source span.
   `arch doctor` are not implemented yet.
 - **No Gradle settings integration.** Module ownership comes from the nearest
   build file and command root.
-- **No FactPlan optimization.** Facts are collected unselectively; the
-  `FactPlan` discussion remains a later optimization.
+- **FactPlan is coarse.** It selects fact categories, not individual fields or
+  references. More precise pruning is a later optimization.
 - **Target order is not used.** Removing first-match semantics is required for
   the multi-predicate model.
 - **Annotation arguments are raw text.** No constant resolution or expression
@@ -196,13 +220,15 @@ single source span.
 - **`extend` / `implement` are direct/written relationships.** No transitive
   supertype closure.
 - **No package/class cycle check.** `acyclic` is module-only.
-- **Facts collector is not yet fused into `Engine`.** The `arch` command performs
-  one AST collection pass; the existing `check` engine is unchanged.
+- **Facts and CodeNarc rules are fused only when requested.** `Engine::lint`
+  skips facts; `Engine::lint_with_facts` runs both in one traversal. The
+  architecture CLI uses the latter with an empty rule set.
 
 ## 8. Tests
 
 ```bash
 cargo test -p groovylint-arch
+cargo test -p groovylint-rules --test facts
 cargo test -p groovylint --test arch
 cargo test --workspace
 ```

@@ -2,7 +2,9 @@
 
 use std::collections::BTreeSet;
 
+use groovylint_arch::{FactCollector, FactPlan, FileFacts};
 use groovylint_core::{Diagnostic, Severity, SourceFile};
+use groovylint_syntax::ast::Stmt;
 use groovylint_syntax::parser::ParseOutput;
 
 use crate::registry::{RuleDescriptor, RuleInstanceImpl, RuleRegistry};
@@ -25,6 +27,12 @@ struct ConfiguredRule {
 pub struct Engine {
     rules: Vec<ConfiguredRule>,
     unsupported: Vec<String>,
+}
+
+/// Diagnostics plus optional file facts from one analysis pass.
+pub struct FileAnalysis {
+    pub diagnostics: Vec<Diagnostic>,
+    pub facts: Option<FileFacts>,
 }
 
 impl Engine {
@@ -97,9 +105,40 @@ impl Engine {
         self.rules.len()
     }
 
+    /// An engine with no `CodeNarc` rules; useful for fact extraction alone.
+    #[must_use]
+    pub fn empty() -> Self {
+        Self {
+            rules: Vec::new(),
+            unsupported: Vec::new(),
+        }
+    }
+
     /// Runs all enabled rules against one parsed file.
     #[must_use]
     pub fn lint(&self, source: &SourceFile, parsed: &ParseOutput) -> Vec<Diagnostic> {
+        self.analyze(source, parsed, "", None).diagnostics
+    }
+
+    /// Runs rules and collects file facts in the same AST traversal.
+    #[must_use]
+    pub fn lint_with_facts(
+        &self,
+        source: &SourceFile,
+        parsed: &ParseOutput,
+        module: &str,
+        plan: FactPlan,
+    ) -> FileAnalysis {
+        self.analyze(source, parsed, module, Some(plan))
+    }
+
+    fn analyze(
+        &self,
+        source: &SourceFile,
+        parsed: &ParseOutput,
+        module: &str,
+        facts_plan: Option<FactPlan>,
+    ) -> FileAnalysis {
         let mut diagnostics = Vec::new();
         let mut ast_rules = Vec::new();
         let mut token_rules = Vec::new();
@@ -134,6 +173,7 @@ impl Engine {
             }
         }
 
+        let mut facts = facts_plan.map(|plan| FactCollector::new(source.path(), module, plan));
         let context = FileContext {
             source,
             script: &parsed.script,
@@ -148,6 +188,7 @@ impl Engine {
         {
             let mut dispatcher = Dispatcher {
                 rules: &mut ast_rules,
+                facts: facts.as_mut(),
                 context: &context,
                 diagnostics: &mut diagnostics,
             };
@@ -169,7 +210,10 @@ impl Engine {
                 .then_with(|| left.rule.cmp(&right.rule))
                 .then_with(|| left.message.cmp(&right.message))
         });
-        diagnostics
+        FileAnalysis {
+            diagnostics,
+            facts: facts.map(FactCollector::finish),
+        }
     }
 }
 
@@ -254,12 +298,36 @@ struct ActiveFileRule {
 
 struct Dispatcher<'a, 'b> {
     rules: &'b mut [ActiveAstRule],
+    facts: Option<&'b mut FactCollector>,
     context: &'b FileContext<'a>,
     diagnostics: &'b mut Vec<Diagnostic>,
 }
 
 impl AstVisitor for Dispatcher<'_, '_> {
     fn enter(&mut self, node: crate::rule::NodeRef<'_>) {
+        if let Some(facts) = &mut self.facts {
+            match node {
+                crate::rule::NodeRef::Script(script) => facts.enter_script(script),
+                crate::rule::NodeRef::Class(class) => facts.enter_class(class),
+                crate::rule::NodeRef::Method(method) => facts.enter_method(method),
+                crate::rule::NodeRef::Field(field) => facts.enter_field(field),
+                crate::rule::NodeRef::Stmt(stmt) => {
+                    if matches!(stmt, Stmt::VarDecl(_) | Stmt::ForEach(_)) {
+                        facts.enter_stmt(stmt);
+                    }
+                }
+                crate::rule::NodeRef::Expr(expr) => {
+                    if matches!(
+                        expr.kind,
+                        groovylint_syntax::ast::ExprKind::New { .. }
+                            | groovylint_syntax::ast::ExprKind::Cast { .. }
+                    ) {
+                        facts.enter_expr(expr);
+                    }
+                }
+                _ => {}
+            }
+        }
         let kind = node.kind();
         for active in self.rules.iter_mut() {
             if active.mask.contains(kind) {
@@ -270,6 +338,11 @@ impl AstVisitor for Dispatcher<'_, '_> {
     }
 
     fn exit(&mut self, node: crate::rule::NodeRef<'_>) {
+        if let Some(facts) = &mut self.facts
+            && matches!(node, crate::rule::NodeRef::Class(_))
+        {
+            facts.exit_class();
+        }
         let kind = node.kind();
         for active in self.rules.iter_mut() {
             if active.mask.contains(kind) {

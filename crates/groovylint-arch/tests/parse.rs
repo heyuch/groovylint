@@ -293,3 +293,28 @@ kind = "interface"
         Some(ClassPredicate::Not(_))
     ));
 }
+
+#[test]
+fn derives_a_fact_plan_from_targets_and_constraints() {
+    let config = parse(
+        r#"
+version = 1
+[targets.domain-module]
+type = "module"
+name = "*-domain"
+[targets.domain-class]
+type = "class"
+in = "domain-module"
+[[rule]]
+id = "deps"
+target = "domain-class"
+[rule.must]
+notDependOn = ["domain-module"]
+"#,
+    )
+    .expect("config");
+    let plan = groovylint_arch::FactPlan::from_config(&config);
+    assert!(plan.contains(groovylint_arch::FactPlan::CLASSES));
+    assert!(plan.contains(groovylint_arch::FactPlan::IMPORTS));
+    assert!(plan.contains(groovylint_arch::FactPlan::TYPE_REFS));
+}

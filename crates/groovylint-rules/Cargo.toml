@@ -10,6 +10,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+groovylint-arch = { path = "../groovylint-arch" }
 groovylint-core = { path = "../groovylint-core" }
 groovylint-syntax = { path = "../groovylint-syntax" }
 fancy-regex = { workspace = true }

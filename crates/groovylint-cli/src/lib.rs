@@ -117,6 +117,8 @@ fn run_arch(args: &cli::ArchArgs) -> Result<ExitCode> {
     if files.is_empty() {
         return Ok(ExitCode::SUCCESS);
     }
+    let plan = groovylint_arch::FactPlan::from_config(&config);
+    let engine = Engine::empty();
     let root = project_root(&args.paths);
     let threads = args
         .threads
@@ -136,7 +138,8 @@ fn run_arch(args: &cli::ArchArgs) -> Result<ExitCode> {
                 let parsed = parse(source.text())
                     .map_err(|error| anyhow::anyhow!("{}: {}", path.display(), error.message))?;
                 let module = groovylint_arch::module_for(path, &root);
-                Ok(groovylint_arch::collect(path, &module, &parsed.script))
+                let analysis = engine.lint_with_facts(&source, &parsed, &module, plan);
+                Ok(analysis.facts.expect("facts requested"))
             })
             .collect::<Result<Vec<_>>>()
     })?;

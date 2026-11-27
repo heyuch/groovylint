@@ -247,7 +247,8 @@ Exit criteria:
 ### M4 — Project graph and ArchUnit-like rules (0.6, in progress)
 
 **Status: prototype implemented.** A FileFacts/ProjectIndex/dependency-graph
-prototype and `groovylint arch` exist; see
+prototype, `FactPlan`, fused fact collection in the existing AST traversal, and
+`groovylint arch` exist; see
 [`docs/ARCH-IMPLEMENTATION.md`](docs/ARCH-IMPLEMENTATION.md). Java sources,
 baseline, slices, and the FactPlan optimization remain pending. The rule model (target type × selector × constraint, named
 targets, relations, quantifiers) is in
