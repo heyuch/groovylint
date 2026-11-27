@@ -220,9 +220,8 @@ single source span.
 - **`extend` / `implement` are direct/written relationships.** No transitive
   supertype closure.
 - **No package/class cycle check.** `acyclic` is module-only.
-- **An import is attributed to every class in its file** (D6): the name is available to
-  the whole file, but only the classes that use it depend on it. Findings are
-  deduplicated, so the symptom is hidden, not fixed.
+- **Static imports are attributed to the first class of their file** (D6): member uses
+  are not references, so the file keeps one edge rather than losing a real dependency.
 - **Facts and CodeNarc rules are fused only when requested.** `Engine::lint`
   skips facts; `Engine::lint_with_facts` runs both in one traversal. The
   architecture CLI uses the latter with an empty rule set.
@@ -237,6 +236,7 @@ as 112 ArchUnit test methods.
 |---|---:|---:|---:|
 | whole repository, before the D1/D3/D5 fixes | 2,951 | 885 | 3m55s |
 | whole repository, after D1 + D3 + D5 | 2,067 | 885 | 6.4s |
+| whole repository, after D2 + D4 + D6 | 1,503 | 732 | 6.8s |
 | the three module groups that have ArchUnit tests | 695 | 230 | 13.8s |
 | same repository with `check` (CodeNarc rules) | 972 | — | 4.6s |
 
@@ -255,10 +255,15 @@ gone.
 | # | Symptom | Cause | Class |
 |---|---|---|---|
 | D1 | every class- and method-level finding points at line 1 | `node_location` passed `Span::empty(0)` for class targets instead of the declaration span | **fixed** |
-| D2 | `annotatedWith = ["com.acme.ApiSecurity"]` never matches, so every annotated method is reported | `has_annotations` (`eval.rs`) compares against the **simple** name only, with no suffix match; an FQN silently matches nothing | correctness |
+| D2 | `annotatedWith = ["com.acme.ApiSecurity"]` never matches, so every annotated method is reported | `has_annotations` compared against the written simple name only; annotation facts carried no resolved name | **fixed** |
 | D3 | 935 of 2,951 findings (32%) are exact duplicates: same rule, line and message | one import becomes one edge per class in the file, so a fifteen-class file produced fifteen copies of the same finding | **fixed** (see D6) |
-| D4 | `name = "com.acme.**.service.impl.**"` does not match the package `…service.impl` itself, so its own classes are reported | `**` compiles to `.*`, which needs at least one character after the dot | correctness (silent) |
+| D4 | `name = "com.acme.**.service.impl.**"` does not match the package `…service.impl` itself, so its own classes are reported | `**` compiled to `.*`, which needs a character after the dot; a trailing `.**` now means "this package and everything below it" | **fixed** |
 | D5 | 3m55s for 24.7k files against 4.6s for `check` | three stacked causes, see §8.3 | **fixed** |
+
+D2 detail: annotation facts now carry the fully qualified name resolved through the
+file's imports, and a configured value is compared against the written name and the
+resolved one in both directions. A configuration may name the annotation in full — which
+is how a team writes it, because simple names collide.
 
 D1 was 110 of 110, 80 of 80, 29 of 29, 7 of 7, 3 of 3 and 1 of 1 findings across six
 class/method rules at `line = 1`. After the fix, no finding in the sample project lands
@@ -266,15 +271,15 @@ on line 1; a class finding now points at the class declaration and a nested enum
 own `enum` line.
 
 D3 was fixed in two steps: identical findings (same path, span, rule and message) are now
-printed once, which removed 884 of the 2,951. The cause is still there and is D6 below.
+printed once, which removed 884 of the 2,951; D6 then removed the cause in the edge table
+and took the reporter's deduplication away with it.
 The 49 remaining pairs that share a line but not a column are real: two references on one
 line.
 
-D4 detail: a package target is a predicate over package names, and the tree walk does not
-visit the package that a class *declares* separately from its sub-packages — so a
-trailing `.**` both excludes the package itself and reads as if it included it. Whatever
-the fix, the pattern language must say which one it means, because "the package and
-everything below it" is the common case.
+D4 detail: a trailing `.**` used to compile to `.*`, which needs at least one character
+after the dot, so `…service.impl.**` excluded `…service.impl` itself and reported every
+class the rule was written to protect. A package pattern ending in `.**` now also matches
+the package it names; `*` remains the single-segment form.
 
 ### 8.3 D5: how the run got 34x faster
 
@@ -301,23 +306,44 @@ per node:
 For reference, `check` over the same repository takes 4.6s, so the architecture pass now
 costs about the parsing it shares with it plus 2s of rule evaluation.
 
-### 8.1.1 D6: a file-level import is attributed to every class in the file
+### 8.1.1 D6: the edge table was not the single source of truth
 
-Found while fixing D3, and left in place because fixing it changes what a rule means.
+Found while fixing D3, and fixed in the same working session.
 
-`Project::new` turns each import into one edge **per class declared in that file**. For a
-file with fifteen classes and one import, fifteen edges exist, and a rule targeting one of
-those classes reports a dependency it may not have: Groovy's file-scoped import only says
-the name is *available*, not that this class uses it. The deduplication in D3 hides the
-visible symptom (fifteen identical findings became one), but the attribution is still
-wrong, and it over-reports whenever two classes in one file are targeted by different
-rules.
+`Project::new` turned each import into one edge **per class declared in that file**, so a
+fifteen-class file with one import produced fifteen edges for one dependency. Two rules
+were fighting the symptom instead of the cause: the reporter deduplicated identical
+findings, which hid the copies from the output but left the edge table carrying them.
 
-The fix is to attribute an import edge only to the classes that reference the imported
-name, which the facts already know: `references` records, per class, the type names it
-writes. An unused import then produces no dependency edge at all, which is what CodeNarc's
-bytecode view does too. It is listed as the next correctness item rather than folded into
-D3 because it changes finding counts in a way that deserves its own measurement.
+Fixing it exposed a worse defect underneath. Member facts were gated behind
+`FactPlan::FIELDS` and `FactPlan::METHODS`, and the **type references of fields, parameters
+and return types were collected inside those facts**. A config made of dependency rules
+alone never asked for member facts, so it saw no field, parameter or return type
+dependencies at all — a service field holding a repository query class was invisible
+unless the same class was also named in an import, which is why one real dependency
+appeared only on the import line. `check`-only users would never notice; the architecture
+rules under-reported silently.
+
+The model is now:
+
+- **references are the edges.** A field, parameter, return type, local, cast, `new`,
+  supertype or annotation is a reference from the class that writes it, collected
+  whenever a config asks for type references, independent of whether a rule inspects the
+  member.
+- **imports are bindings, not dependencies.** A non-static import creates no edge: every
+  use of the imported name is already a reference, and an unused import is not a
+  dependency at all — `UnusedImport` is the rule for that. A static import binds a member,
+  member uses are not references, so the file keeps exactly one edge for it rather than
+  losing the dependency.
+- **edges are deduplicated where they are built**, by source, target, path and span, with
+  the more specific reference kind winning over the import placeholder. The reporter no
+  longer deduplicates anything: what the graph contains is what gets reported.
+
+The observable change on the sample project: dependencies are now reported at the
+*declaration site* instead of the import line (`private SalesChannelQueryService
+salesChannelQueryService` is a finding again, where before only its import was), and 405
+member-type dependencies that the plan had hidden came back. 1,503 findings, no duplicate
+lines, no finding on line 1.
 
 ### 8.2 Gaps found in the DSL, not the engine
 
@@ -360,9 +386,10 @@ is left is correctness, then completeness:
 
 1. ~~**Make it fast.**~~ D5 is done (§8.3): 34x, same findings. It went first because
    every later fix needs a run short enough to iterate on.
-2. **Make the diagnostics land.** D1 and D3 are done. What remains is D2 (annotation
-   names) and D6 (import attribution), both of which change the numbers, so they need a
-   before/after comparison rather than a silent patch.
+2. ~~**Make the diagnostics land.**~~ D1, D2, D3 and D6 are done: findings point at the
+   declaration, annotation names may be written in full, dependencies come from one
+   deduplicated edge table, and member type references are collected whether or not a
+   rule looks at the member.
 3. **Make the pattern language honest.** D4, and the `x.**` question it raises: state
    whether `**` includes the node itself, implement it that way, and let
    `arch validate` reject a target that matches nothing.

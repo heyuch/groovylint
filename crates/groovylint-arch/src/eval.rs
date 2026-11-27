@@ -47,11 +47,9 @@ pub fn check(config: &ArchConfig, project: &Project) -> Vec<ArchFinding> {
             .then_with(|| left.rule.cmp(&right.rule))
             .then_with(|| left.message.cmp(&right.message))
     });
-    // An edge can be reached through more than one route (a file-level import
-    // applies to every class in the file), and each route produced its own copy of
-    // the same finding. Sorting first makes the copies adjacent, so one pass
-    // removes them without touching findings that only share a line.
-    evaluator.findings.dedup_by(|left, right| left == right);
+    // The edge table is deduplicated where it is built, so a dependency yields one
+    // finding per site. Deduplicating here would hide a duplicate that the graph
+    // export would still see.
     evaluator.findings
 }
 
@@ -256,7 +254,10 @@ impl Evaluator<'_> {
                 })
             }
             Target::Package(target) => target.predicates.iter().all(|predicate| match predicate {
-                PackagePredicate::Name(patterns) => matches_name(patterns, node),
+                PackagePredicate::Name(patterns) => patterns
+                    .patterns
+                    .iter()
+                    .any(|pattern| matches_package(pattern, node)),
                 PackagePredicate::NameMatches(pattern) => matches_regex(pattern, node),
                 PackagePredicate::In(reference) => self.node_in_target(node, reference),
                 PackagePredicate::AnyOf(refs) => self.target_nodes_any(refs, node),
@@ -1225,6 +1226,21 @@ fn modifier_name(modifier: crate::model::Modifier) -> String {
     .to_string()
 }
 
+/// Matches a package pattern, where a trailing `.**` includes the package itself.
+///
+/// `com.acme.domain.**` is how a rule says "this package and everything below it";
+/// compiling it to `.*` alone silently excluded `com.acme.domain` and reported every
+/// class of the package the rule was written to protect.
+fn matches_package(pattern: &str, package: &str) -> bool {
+    if glob(pattern, package) {
+        return true;
+    }
+    match pattern.strip_suffix(".**") {
+        Some(prefix) => glob(prefix, package),
+        None => false,
+    }
+}
+
 fn matches_name(patterns: &PatternList, name: &str) -> bool {
     patterns.patterns.iter().any(|pattern| glob(pattern, name))
 }
@@ -1297,12 +1313,30 @@ fn type_matches(written: &str, expected: &TypeValue) -> bool {
         || expected.0.ends_with(&format!(".{written}"))
 }
 
+/// Whether any of the expected annotation names is present.
+///
+/// A configuration names annotations in full; the source usually writes a simple
+/// name, so both sides are compared in both forms. Matching only the written name
+/// made every fully qualified entry in a config match nothing at all.
 fn has_annotations(annotations: &[AnnotationFact], expected: &[String]) -> bool {
     expected.iter().any(|expected| {
-        annotations.iter().any(|annotation| {
-            annotation.name == *expected || annotation.name.ends_with(&format!(".{expected}"))
-        })
+        annotations
+            .iter()
+            .any(|annotation| annotation_matches(annotation, expected))
     })
+}
+
+fn annotation_matches(annotation: &AnnotationFact, expected: &str) -> bool {
+    if annotation.name == expected {
+        return true;
+    }
+    if let Some(qualified) = &annotation.qualified
+        && (qualified == expected || qualified.ends_with(&format!(".{expected}")))
+    {
+        return true;
+    }
+    // A config may still name the simple form while the source wrote it in full.
+    expected.ends_with(&format!(".{}", annotation.name))
 }
 
 fn normalize(value: &str) -> String {

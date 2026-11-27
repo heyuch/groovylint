@@ -154,7 +154,13 @@ pub struct ImportFact {
 /// One annotation on a declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AnnotationFact {
+    /// The name as written, usually a simple name.
     pub name: String,
+    /// The resolved fully qualified name, when the imports answer it.
+    ///
+    /// Configurations name annotations in full, so matching only the written name
+    /// made every FQN in a config match nothing.
+    pub qualified: Option<String>,
     pub raw_arguments: Option<String>,
 }
 
@@ -162,6 +168,7 @@ impl AnnotationFact {
     fn from_ast(annotation: &Annotation) -> Self {
         Self {
             name: annotation.name.clone(),
+            qualified: None,
             raw_arguments: annotation.raw_arguments.clone(),
         }
     }
@@ -383,24 +390,94 @@ impl FactCollector {
         let Some(index) = self.class_stack.last().copied() else {
             return;
         };
+        let owner = self.classes[index].fqn.clone();
+        // A field's declared type is a dependency whether or not any rule inspects
+        // the member, so the reference is collected before the member facts are
+        // gated: a config with only dependency rules used to see no field types at
+        // all, and therefore none of the dependencies they declare.
+        self.field_type_reference(field, &owner);
         if !self.plan.contains(FactPlan::FIELDS) {
             return;
         }
-        let owner = self.classes[index].fqn.clone();
         let fact = self.field_fact(field, &owner);
         self.classes[index].fields.push(fact);
+    }
+
+    fn field_type_reference(&mut self, field: &groovylint_syntax::ast::FieldDecl, owner: &str) {
+        if !self.plan.contains(FactPlan::TYPE_REFS) {
+            return;
+        }
+        let Some(type_name) = &field.type_name else {
+            return;
+        };
+        self.references.push(ReferenceFact {
+            from: owner.to_string(),
+            to: type_name.clone(),
+            kind: ReferenceKind::FieldType,
+            span: field.span,
+        });
+        if !self.plan.contains(FactPlan::ANNOTATIONS) {
+            return;
+        }
+        for annotation in &field.annotation_details {
+            self.references.push(ReferenceFact {
+                from: owner.to_string(),
+                to: annotation.name.clone(),
+                kind: ReferenceKind::Annotation,
+                span: field.span,
+            });
+        }
     }
 
     pub fn enter_method(&mut self, method: &MethodDecl) {
         let Some(index) = self.class_stack.last().copied() else {
             return;
         };
+        let owner = self.classes[index].fqn.clone();
+        // Same rule as fields: the signature is a dependency even when no rule looks
+        // at the member itself.
+        self.method_type_references(method, &owner);
         if !self.plan.contains(FactPlan::METHODS) {
             return;
         }
-        let owner = self.classes[index].fqn.clone();
         let fact = self.method_fact(method, &owner);
         self.classes[index].methods.push(fact);
+    }
+
+    fn method_type_references(&mut self, method: &MethodDecl, owner: &str) {
+        if !self.plan.contains(FactPlan::TYPE_REFS) {
+            return;
+        }
+        if let Some(return_type) = &method.return_type {
+            self.references.push(ReferenceFact {
+                from: owner.to_string(),
+                to: return_type.clone(),
+                kind: ReferenceKind::ReturnType,
+                span: method.span,
+            });
+        }
+        for param in &method.params {
+            let Some(type_name) = &param.type_name else {
+                continue;
+            };
+            self.references.push(ReferenceFact {
+                from: owner.to_string(),
+                to: type_name.clone(),
+                kind: ReferenceKind::ParamType,
+                span: param.span,
+            });
+        }
+        if !self.plan.contains(FactPlan::ANNOTATIONS) {
+            return;
+        }
+        for annotation in &method.annotation_details {
+            self.references.push(ReferenceFact {
+                from: owner.to_string(),
+                to: annotation.name.clone(),
+                kind: ReferenceKind::Annotation,
+                span: method.span,
+            });
+        }
     }
 
     pub fn enter_stmt(&mut self, stmt: &Stmt) {
@@ -475,26 +552,6 @@ impl FactCollector {
     }
 
     fn field_fact(&mut self, field: &groovylint_syntax::ast::FieldDecl, owner: &str) -> FieldFact {
-        if self.plan.contains(FactPlan::TYPE_REFS) {
-            if let Some(type_name) = &field.type_name {
-                self.references.push(ReferenceFact {
-                    from: owner.to_string(),
-                    to: type_name.clone(),
-                    kind: ReferenceKind::FieldType,
-                    span: field.span,
-                });
-            }
-            if self.plan.contains(FactPlan::ANNOTATIONS) {
-                for annotation in &field.annotation_details {
-                    self.references.push(ReferenceFact {
-                        from: owner.to_string(),
-                        to: annotation.name.clone(),
-                        kind: ReferenceKind::Annotation,
-                        span: field.span,
-                    });
-                }
-            }
-        }
         FieldFact {
             owner: owner.to_string(),
             name: field.name.clone(),
@@ -514,36 +571,6 @@ impl FactCollector {
     }
 
     fn method_fact(&mut self, method: &MethodDecl, owner: &str) -> MethodFact {
-        if self.plan.contains(FactPlan::TYPE_REFS) {
-            if let Some(return_type) = &method.return_type {
-                self.references.push(ReferenceFact {
-                    from: owner.to_string(),
-                    to: return_type.clone(),
-                    kind: ReferenceKind::ReturnType,
-                    span: method.span,
-                });
-            }
-            for param in &method.params {
-                if let Some(type_name) = &param.type_name {
-                    self.references.push(ReferenceFact {
-                        from: owner.to_string(),
-                        to: type_name.clone(),
-                        kind: ReferenceKind::ParamType,
-                        span: param.span,
-                    });
-                }
-            }
-            if self.plan.contains(FactPlan::ANNOTATIONS) {
-                for annotation in &method.annotation_details {
-                    self.references.push(ReferenceFact {
-                        from: owner.to_string(),
-                        to: annotation.name.clone(),
-                        kind: ReferenceKind::Annotation,
-                        span: method.span,
-                    });
-                }
-            }
-        }
         let parameters = if self.plan.contains(FactPlan::PARAMS) {
             method
                 .params

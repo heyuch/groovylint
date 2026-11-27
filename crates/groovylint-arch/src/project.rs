@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use groovylint_core::Span;
 
-use crate::facts::{ClassFact, FileFacts, ReferenceKind};
+use crate::facts::{ClassFact, FileFacts, ImportFact, ReferenceKind};
 
 /// A Gradle module (or a directory-derived module when no build file exists).
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -72,16 +72,29 @@ impl Project {
                 .or_insert_with(|| class.module.clone());
         }
         for file in &files {
+            // Imports bind names; they are not dependencies. Every use of an imported
+            // name is already a reference from the class that writes it, so adding an
+            // import edge per class in the file both duplicated those dependencies and
+            // invented ones for classes that never use the name. An unused import is
+            // UnusedImport's job, not an architecture dependency.
+            //
+            // A static import binds a member, and member uses are not references, so
+            // the file keeps a single edge for it: the file does depend on the class,
+            // and losing that would hide real violations.
             for import in &file.imports {
-                for class in &file.classes {
-                    project.edges.push(Edge {
-                        from: class.fqn.clone(),
-                        to: import.path.clone(),
-                        kind: ReferenceKind::Import,
-                        span: import.span,
-                        path: file.path.clone(),
-                    });
+                if !import.is_static {
+                    continue;
                 }
+                let Some(class) = file.classes.first() else {
+                    continue;
+                };
+                project.edges.push(Edge {
+                    from: class.fqn.clone(),
+                    to: import.path.clone(),
+                    kind: ReferenceKind::Import,
+                    span: import.span,
+                    path: file.path.clone(),
+                });
             }
             for reference in &file.references {
                 let Some(class) = project.classes.get(&reference.from) else {
@@ -105,11 +118,91 @@ impl Project {
                 });
             }
         }
+        project.deduplicate_edges();
+        project.resolve_annotation_names(&files);
         project.files = files
             .into_iter()
             .map(|file| (file.path.clone(), file))
             .collect();
         project
+    }
+
+    /// Collapses edges that describe the same dependency at the same place.
+    ///
+    /// The edge table is the single source of truth: findings, and any later graph
+    /// export, read this one list. Deduplicating in the reporter instead left the
+    /// table holding the same dependency twice.
+    fn deduplicate_edges(&mut self) {
+        self.edges.sort_by(|left, right| {
+            left.from
+                .cmp(&right.from)
+                .then_with(|| left.to.cmp(&right.to))
+                .then_with(|| left.path.cmp(&right.path))
+                .then_with(|| left.span.start.cmp(&right.span.start))
+                .then_with(|| left.span.end.cmp(&right.span.end))
+                .then_with(|| edge_kind_rank(left.kind).cmp(&edge_kind_rank(right.kind)))
+        });
+        self.edges.dedup_by(|left, right| {
+            left.from == right.from
+                && left.to == right.to
+                && left.path == right.path
+                && left.span == right.span
+        });
+    }
+
+    /// Fills in the fully qualified name of every annotation whose simple name the
+    /// file's imports can resolve.
+    fn resolve_annotation_names(&mut self, files: &[FileFacts]) {
+        let imports: BTreeMap<&Path, &[ImportFact]> = files
+            .iter()
+            .map(|file| (file.path.as_path(), file.imports.as_slice()))
+            .collect();
+        let packages: BTreeMap<&Path, Option<&str>> = files
+            .iter()
+            .map(|file| (file.path.as_path(), file.package.as_deref()))
+            .collect();
+        let mut resolved: BTreeMap<String, BTreeMap<String, Option<String>>> = BTreeMap::new();
+        for file in files {
+            let file_imports = imports.get(file.path.as_path()).copied().unwrap_or(&[]);
+            let package = packages.get(file.path.as_path()).copied().flatten();
+            for class in &file.classes {
+                let mut names = BTreeMap::new();
+                for annotation in class
+                    .annotations
+                    .iter()
+                    .chain(class.methods.iter().flat_map(|method| &method.annotations))
+                    .chain(class.fields.iter().flat_map(|field| &field.annotations))
+                {
+                    if names.contains_key(&annotation.name) {
+                        continue;
+                    }
+                    let qualified =
+                        resolve_annotation(&annotation.name, package, file_imports, &self.classes);
+                    names.insert(annotation.name.clone(), qualified);
+                }
+                if !names.is_empty() {
+                    resolved.insert(class.fqn.clone(), names);
+                }
+            }
+        }
+        for (fqn, names) in resolved {
+            let Some(class) = self.classes.get_mut(&fqn) else {
+                continue;
+            };
+            for annotation in &mut class.annotations {
+                annotation.qualified = names.get(&annotation.name).cloned().flatten();
+            }
+            for method in &mut class.methods {
+                for annotation in &mut method.annotations {
+                    annotation.qualified = names.get(&annotation.name).cloned().flatten();
+                }
+            }
+            for field in &mut class.fields {
+                for annotation in &mut field.annotations {
+                    annotation.qualified = names.get(&annotation.name).cloned().flatten();
+                }
+            }
+        }
     }
 
     fn add_module(&mut self, id: &str) {
@@ -192,10 +285,33 @@ fn package_of(name: &str) -> Option<String> {
     }
 }
 
+/// Ordering for edges that differ only in why the name appeared: a member's declared
+/// type is more specific than a placeholder import edge, so it sorts first and wins.
+const fn edge_kind_rank(kind: ReferenceKind) -> u8 {
+    match kind {
+        ReferenceKind::Import => 1,
+        _ => 0,
+    }
+}
+
+/// Resolves an annotation's written name the way a type name is resolved.
+fn resolve_annotation(
+    written: &str,
+    package: Option<&str>,
+    imports: &[ImportFact],
+    classes: &BTreeMap<String, ClassFact>,
+) -> Option<String> {
+    if written.contains('.') {
+        return Some(written.to_string());
+    }
+    let resolved = resolve_type(written, package, imports, classes);
+    (!resolved.is_empty()).then_some(resolved)
+}
+
 fn resolve_type(
     written: &str,
     package: Option<&str>,
-    imports: &[crate::facts::ImportFact],
+    imports: &[ImportFact],
     classes: &BTreeMap<String, ClassFact>,
 ) -> String {
     let written = written.trim();
