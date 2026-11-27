@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use groovylint_core::{Severity, Span};
 use regex::Regex;
@@ -34,6 +35,7 @@ pub fn check(config: &ArchConfig, project: &Project) -> Vec<ArchFinding> {
         target_cache: BTreeMap::new(),
         target_stack: BTreeSet::new(),
         findings: Vec::new(),
+        index: EdgeIndex::default(),
     };
     for rule in &config.rules {
         evaluator.evaluate_rule(rule);
@@ -51,9 +53,57 @@ pub fn check(config: &ArchConfig, project: &Project) -> Vec<ArchFinding> {
 struct Evaluator<'a> {
     config: &'a ArchConfig,
     project: &'a Project,
-    target_cache: BTreeMap<String, BTreeSet<String>>,
+    // Shared rather than cloned: a containing target is resolved once per node
+    // that asks about it, and a set of every class FQN is not cheap to copy.
+    target_cache: BTreeMap<String, Rc<BTreeSet<String>>>,
     target_stack: BTreeSet<String>,
     findings: Vec<ArchFinding>,
+    index: EdgeIndex,
+}
+
+/// Edges grouped by the node they leave from, one map per source granularity.
+///
+/// Dependency rules ask "what does this node depend on". Walking every edge of
+/// the project to answer that for every rule made a 24k-file run take minutes;
+/// the index turns it into one lookup per matched node.
+#[derive(Default)]
+#[allow(clippy::struct_field_names)]
+struct EdgeIndex {
+    by_class: Option<BTreeMap<String, Vec<usize>>>,
+    by_package: Option<BTreeMap<String, Vec<usize>>>,
+    by_module: Option<BTreeMap<String, Vec<usize>>>,
+}
+
+impl EdgeIndex {
+    fn get(&self, target_type: TargetType) -> Option<&BTreeMap<String, Vec<usize>>> {
+        match target_type {
+            TargetType::Class => self.by_class.as_ref(),
+            TargetType::Package => self.by_package.as_ref(),
+            TargetType::Module => self.by_module.as_ref(),
+            TargetType::Method => None,
+        }
+    }
+
+    fn slot(
+        &mut self,
+        target_type: TargetType,
+    ) -> Option<&mut Option<BTreeMap<String, Vec<usize>>>> {
+        match target_type {
+            TargetType::Class => Some(&mut self.by_class),
+            TargetType::Package => Some(&mut self.by_package),
+            TargetType::Module => Some(&mut self.by_module),
+            TargetType::Method => None,
+        }
+    }
+}
+
+/// A dependency entry with its target set resolved once per rule.
+///
+/// Resolving inside the edge loop cloned a set of every matching FQN per edge.
+struct Resolved {
+    same_module: bool,
+    target_type: TargetType,
+    nodes: Rc<BTreeSet<String>>,
 }
 
 impl Evaluator<'_> {
@@ -139,14 +189,14 @@ impl Evaluator<'_> {
         }
     }
 
-    fn target_nodes(&mut self, reference: &TargetRef) -> BTreeSet<String> {
+    fn target_nodes(&mut self, reference: &TargetRef) -> Rc<BTreeSet<String>> {
         match reference {
             TargetRef::Named(name) => {
                 if let Some(cached) = self.target_cache.get(name) {
-                    return cached.clone();
+                    return Rc::clone(cached);
                 }
                 if !self.target_stack.insert(name.clone()) {
-                    return BTreeSet::new();
+                    return Rc::new(BTreeSet::new());
                 }
                 let nodes = if let Some(target) = self.config.targets.get(name) {
                     self.evaluate_target(target)
@@ -154,10 +204,11 @@ impl Evaluator<'_> {
                     BTreeSet::new()
                 };
                 self.target_stack.remove(name);
-                self.target_cache.insert(name.clone(), nodes.clone());
-                nodes
+                let shared = Rc::new(nodes);
+                self.target_cache.insert(name.clone(), Rc::clone(&shared));
+                shared
             }
-            TargetRef::Inline(target) => self.evaluate_target(target),
+            TargetRef::Inline(target) => Rc::new(self.evaluate_target(target)),
         }
     }
 
@@ -350,6 +401,47 @@ impl Evaluator<'_> {
             .find(|method| method.name == name && method.parameters.len() == arity)
     }
 
+    /// Builds the edge index for one source granularity, once.
+    fn ensure_index(&mut self, target_type: TargetType) {
+        let Some(slot) = self.index.slot(target_type) else {
+            return;
+        };
+        if slot.is_some() {
+            return;
+        }
+        let mut map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        for (index, edge) in self.project.edges.iter().enumerate() {
+            let Some(node) = source_node_of(self.project, target_type, edge) else {
+                continue;
+            };
+            map.entry(node).or_default().push(index);
+        }
+        *slot = Some(map);
+    }
+
+    /// Resolves a rule's dependency entries into target sets, once per rule.
+    fn resolve_dependencies(&mut self, dependencies: &[DependencyRef]) -> Vec<Resolved> {
+        let mut resolved = Vec::new();
+        for dependency in dependencies {
+            let (reference, same_module) = match dependency {
+                DependencyRef::None => continue,
+                DependencyRef::Any(reference) | DependencyRef::Other(reference) => {
+                    (reference, false)
+                }
+                DependencyRef::Self_(reference) => (reference, true),
+            };
+            let Some(target_type) = self.target_type(reference) else {
+                continue;
+            };
+            resolved.push(Resolved {
+                same_module,
+                target_type,
+                nodes: self.target_nodes(reference),
+            });
+        }
+        resolved
+    }
+
     fn evaluate_dependencies(
         &mut self,
         rule: &Rule,
@@ -358,30 +450,40 @@ impl Evaluator<'_> {
         dependencies: &[DependencyRef],
         forbidden: bool,
     ) {
-        for edge in &self.project.edges {
-            let Some(source) = self.source_node(target_type, edge) else {
-                continue;
-            };
-            if !nodes.contains(&source) {
-                continue;
-            }
-            // `dependOnlyOn` describes the project's own architecture; JDK and
-            // language runtime types are not something every rule should list.
-            // Explicit `notDependOn` rules still see them.
-            if !forbidden && is_platform_dependency(&edge.to) {
-                continue;
-            }
-            let matched = dependencies
-                .iter()
-                .any(|dependency| self.dependency_matches(dependency, edge, &edge.from));
-            if (forbidden && matched) || (!forbidden && !matched) {
-                let (verb, relation) = if forbidden {
-                    ("must not depend on", "forbidden dependency")
-                } else {
-                    ("depends on a target outside", "dependency not allowed")
+        self.ensure_index(target_type);
+        let resolved = self.resolve_dependencies(dependencies);
+        let mut violations: Vec<(usize, String)> = Vec::new();
+        {
+            let index = self.index.get(target_type);
+            for node in nodes {
+                let Some(candidates) = index.and_then(|map| map.get(node)) else {
+                    continue;
                 };
-                self.push_edge(rule, edge, format!("{verb} `{}` ({relation})", edge.to));
+                for &position in candidates {
+                    let edge = &self.project.edges[position];
+                    // `dependOnlyOn` describes the project's own architecture; JDK
+                    // and language runtime types are not something every rule should
+                    // list. Explicit `notDependOn` rules still see them.
+                    if !forbidden && is_platform_dependency(&edge.to) {
+                        continue;
+                    }
+                    let matched = resolved
+                        .iter()
+                        .any(|entry| self.edge_in_target(edge, entry, node));
+                    if (forbidden && matched) || (!forbidden && !matched) {
+                        let (verb, relation) = if forbidden {
+                            ("must not depend on", "forbidden dependency")
+                        } else {
+                            ("depends on a target outside", "dependency not allowed")
+                        };
+                        violations.push((position, format!("{verb} `{}` ({relation})", edge.to)));
+                    }
+                }
             }
+        }
+        for (position, message) in violations {
+            let edge = self.project.edges[position].clone();
+            self.push_edge(rule, &edge, message);
         }
     }
 
@@ -395,55 +497,37 @@ impl Evaluator<'_> {
         if target_type != TargetType::Package {
             return;
         }
-        for edge in &self.project.edges {
-            let target_package = self.project.package_of_type(&edge.to);
-            if !nodes.contains(&target_package) {
-                continue;
+        self.ensure_index(target_type);
+        let resolved = self.resolve_dependencies(dependencies);
+        let mut violations: Vec<(usize, String)> = Vec::new();
+        {
+            let index = self.index.get(target_type);
+            for node in nodes {
+                let Some(candidates) = index.and_then(|map| map.get(node)) else {
+                    continue;
+                };
+                for &position in candidates {
+                    let edge = &self.project.edges[position];
+                    let allowed = resolved
+                        .iter()
+                        .any(|entry| self.edge_in_target(edge, entry, &edge.from));
+                    if !allowed {
+                        violations.push((
+                            position,
+                            format!("`{}` must not depend on this package", edge.from),
+                        ));
+                    }
+                }
             }
-            if self.project.class(&edge.from).is_none() {
-                continue;
-            }
-            let allowed = dependencies
-                .iter()
-                .any(|dependency| self.dependency_matches(dependency, edge, &edge.from));
-            if !allowed {
-                self.push_edge(
-                    rule,
-                    edge,
-                    format!("`{}` must not depend on this package", edge.from),
-                );
-            }
+        }
+        for (position, message) in violations {
+            let edge = self.project.edges[position].clone();
+            self.push_edge(rule, &edge, message);
         }
     }
 
-    fn dependency_matches(
-        &mut self,
-        dependency: &DependencyRef,
-        edge: &Edge,
-        source_node: &str,
-    ) -> bool {
-        match dependency {
-            DependencyRef::None => false,
-            DependencyRef::Any(reference) | DependencyRef::Other(reference) => {
-                self.edge_in_target(edge, reference, source_node, false)
-            }
-            DependencyRef::Self_(reference) => {
-                self.edge_in_target(edge, reference, source_node, true)
-            }
-        }
-    }
-
-    fn edge_in_target(
-        &mut self,
-        edge: &Edge,
-        reference: &TargetRef,
-        source_node: &str,
-        same_module: bool,
-    ) -> bool {
-        let Some(target_type) = self.target_type(reference) else {
-            return false;
-        };
-        let target_node = match target_type {
+    fn edge_in_target(&self, edge: &Edge, resolved: &Resolved, source_node: &str) -> bool {
+        let target_node = match resolved.target_type {
             TargetType::Class => edge.to.clone(),
             TargetType::Package => self.project.package_of_type(&edge.to),
             TargetType::Module => self
@@ -452,17 +536,17 @@ impl Evaluator<'_> {
                 .map_or_else(String::new, |class| class.module.clone()),
             TargetType::Method => return false,
         };
-        if !self.target_nodes(reference).contains(&target_node) {
+        if !resolved.nodes.contains(&target_node) {
             return false;
         }
-        if !same_module {
+        if !resolved.same_module {
             return true;
         }
         let source_module = self
             .project
             .class(source_node)
             .map(|class| class.module.as_str());
-        let target_module = match target_type {
+        let target_module = match resolved.target_type {
             TargetType::Class => self.project.class_module(&edge.to),
             TargetType::Package => Some(
                 self.project
@@ -473,21 +557,6 @@ impl Evaluator<'_> {
             TargetType::Method => None,
         };
         source_module.is_some() && source_module == target_module
-    }
-
-    fn source_node(&self, target_type: TargetType, edge: &Edge) -> Option<String> {
-        let class = self.project.class(&edge.from)?;
-        match target_type {
-            TargetType::Class => Some(class.fqn.clone()),
-            TargetType::Package => Some(
-                class
-                    .package
-                    .clone()
-                    .unwrap_or_else(|| "(default)".to_string()),
-            ),
-            TargetType::Module => Some(class.module.clone()),
-            TargetType::Method => None,
-        }
     }
 
     fn evaluate_annotations(
@@ -1183,6 +1252,22 @@ fn glob(pattern: &str, value: &str) -> bool {
     }
     regex.push('$');
     Regex::new(&regex).is_ok_and(|regex| regex.is_match(value))
+}
+
+/// The node an edge leaves from, at the requested granularity.
+fn source_node_of(project: &Project, target_type: TargetType, edge: &Edge) -> Option<String> {
+    let class = project.class(&edge.from)?;
+    match target_type {
+        TargetType::Class => Some(class.fqn.clone()),
+        TargetType::Package => Some(
+            class
+                .package
+                .clone()
+                .unwrap_or_else(|| "(default)".to_string()),
+        ),
+        TargetType::Module => Some(class.module.clone()),
+        TargetType::Method => None,
+    }
 }
 
 fn is_platform_dependency(name: &str) -> bool {

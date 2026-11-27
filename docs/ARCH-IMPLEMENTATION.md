@@ -220,6 +220,9 @@ single source span.
 - **`extend` / `implement` are direct/written relationships.** No transitive
   supertype closure.
 - **No package/class cycle check.** `acyclic` is module-only.
+- **Edge collection is not deduplicated** (D3): the same reference seen through an import
+  and through a type reference produces two findings on the same line. Fixing it changes
+  the count, so it is tracked rather than silently patched.
 - **Facts and CodeNarc rules are fused only when requested.** `Engine::lint`
   skips facts; `Engine::lint_with_facts` runs both in one traversal. The
   architecture CLI uses the latter with an empty rule set.
@@ -254,7 +257,7 @@ gone.
 | D2 | `annotatedWith = ["com.acme.ApiSecurity"]` never matches, so every annotated method is reported | `has_annotations` (`eval.rs`) compares against the **simple** name only, with no suffix match; an FQN silently matches nothing | correctness |
 | D3 | 935 of 2,951 findings (32%) are exact duplicates: same rule, line and message | edges are collected once per reference occurrence and never deduplicated before evaluation | correctness |
 | D4 | `name = "com.acme.**.service.impl.**"` does not match the package `…service.impl` itself, so its own classes are reported | `**` compiles to `.*`, which needs at least one character after the dot | correctness (silent) |
-| D5 | 3m55s for 24.7k files against 4.6s for `check` | `evaluate_dependencies` walks every edge per rule, and `target_nodes()` **clones** a `BTreeSet` of every matching FQN on each call | performance |
+| D5 | 3m55s for 24.7k files against 4.6s for `check` | three stacked causes, see §8.3 | **fixed** |
 
 D1 detail: 110 of 110, 80 of 80, 29 of 29, 7 of 7, 3 of 3 and 1 of 1 findings across six
 class/method rules reported `line = 1`.
@@ -264,6 +267,31 @@ visit the package that a class *declares* separately from its sub-packages — s
 trailing `.**` both excludes the package itself and reads as if it included it. Whatever
 the fix, the pattern language must say which one it means, because "the package and
 everything below it" is the common case.
+
+### 8.3 D5: how the run got 34x faster
+
+Nothing about the rules changed: the same config produces the same 2,951 findings, at
+the same lines, in the same order. Three things were doing redundant work per edge or
+per node:
+
+1. **Every rule walked every edge.** Dependency rules asked "what does this node depend
+   on" by scanning the whole edge list and filtering on the source. An edge index
+   (`source node → edge positions`, one map per source granularity) turns that into one
+   lookup per matched node, built lazily for the granularities a config actually uses.
+2. **`target_nodes()` cloned its result set on every call**, and `in = <target>` calls it
+   once per candidate node — so placing a class inside a module copied the set of every
+   class in the project, per class. The cache now hands out `Rc<BTreeSet<String>>`, and a
+   reference count bump replaced the copy.
+3. **`package_module()` scanned every class to find a package's module**, and `self:`
+   dependencies call it per edge. The mapping is built once when the project is built.
+
+| Run | Before | After |
+|---|---:|---:|
+| whole repository (24.7k files, 2,951 findings) | 3m55s | **6.4s** |
+| three module groups (230 files, 695 findings) | 13.8s | **1.4s** |
+
+For reference, `check` over the same repository takes 4.6s, so the architecture pass now
+costs about the parsing it shares with it plus 2s of rule evaluation.
 
 ### 8.2 Gaps found in the DSL, not the engine
 
@@ -301,21 +329,21 @@ The synthetic fixtures cover:
 
 ## 10. Next steps
 
-In the order the field run implies — correctness, then completeness, then speed:
+Speed went first (§8.3) because a run measured in minutes cannot be iterated on. What
+is left is correctness, then completeness:
 
-1. **Make the diagnostics land.** D1 (class/method spans), D2 (annotation names),
+1. ~~**Make it fast.**~~ D5 is done (§8.3): 34x, same findings. It went first because
+   every later fix needs a run short enough to iterate on.
+2. **Make the diagnostics land.** D1 (class/method spans), D2 (annotation names),
    D3 (duplicate edges). Without these three the tool produces a list nobody can act
    on, and every later feature is judged by that list.
-2. **Make the pattern language honest.** D4, and the `x.**` question it raises: state
+3. **Make the pattern language honest.** D4, and the `x.**` question it raises: state
    whether `**` includes the node itself, implement it that way, and let
    `arch validate` reject a target that matches nothing.
-3. **Add the one missing relation.** G1 (`other:`), which unblocks the three
+4. **Add the one missing relation.** G1 (`other:`), which unblocks the three
    cross-module rules of the catalog.
-4. **Close the small gaps.** G4 (`except` on targets), G2 (meta-annotation), G3
+5. **Close the small gaps.** G4 (`except` on targets), G2 (meta-annotation), G3
    (supertype closure) — each is a few lines once the model above is settled.
-5. **Then make it fast.** D5: hoist the target node sets out of the edge loop and stop
-   cloning them per edge. Expected effect is orders of magnitude, and it is the last
-   thing to do because a fast wrong answer is not progress.
 6. Add Java source facts or explicitly gate architecture rules to Groovy.
 7. Add baseline and `arch validate` / `arch doctor`.
 8. Add package-level cycle checks and slice support.

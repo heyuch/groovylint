@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 
 /// The kind of a target node, kept for diagnostics and type checks.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum TargetType {
     Module,
     Package,

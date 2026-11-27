@@ -35,6 +35,10 @@ pub struct Project {
     pub classes: BTreeMap<String, ClassFact>,
     pub edges: Vec<Edge>,
     pub files: BTreeMap<PathBuf, FileFacts>,
+    /// Package to module, resolved once: a package is looked up for every edge a
+    /// `self:` dependency is evaluated against, and finding it by scanning the
+    /// classes made that a full pass over the project per edge.
+    package_modules: BTreeMap<String, String>,
 }
 
 impl Project {
@@ -56,6 +60,16 @@ impl Project {
                 );
                 project.classes.insert(class.fqn.clone(), class.clone());
             }
+        }
+        for class in project.classes.values() {
+            let package = class
+                .package
+                .clone()
+                .unwrap_or_else(|| "(default)".to_string());
+            project
+                .package_modules
+                .entry(package)
+                .or_insert_with(|| class.module.clone());
         }
         for file in &files {
             for import in &file.imports {
@@ -248,10 +262,7 @@ impl Project {
     /// Returns a module for a package declared by the project.
     #[must_use]
     pub fn package_module(&self, package: &str) -> Option<&str> {
-        self.classes
-            .values()
-            .find(|class| class.package.as_deref().unwrap_or("(default)") == package)
-            .map(|class| class.module.as_str())
+        self.package_modules.get(package).map(String::as_str)
     }
 
     /// Returns a class fact by fully-qualified name.
