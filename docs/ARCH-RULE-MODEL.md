@@ -639,11 +639,34 @@ unversioned note; the shape is in §7):
   expression* — "the table name must come from a constant, not a string literal" and "the
   master-table name must be a constant declared in a `*MasterTableConst` class, or null".
   Neither is a signature question, so the vocabulary needs `allMethods = { match = ...,
-  must = ... }` (a quantified member constraint, not only a member selector) plus
-  `returnsConstant` / `returnsConstantOf = { from = [...], orNull = true }`. That requires
-  return-expression facts and a small amount of symbol resolution (a bare identifier must
-  be traced to a static final field or a static import), which is the first place the
-  architecture rules need something closer to §7.5 tier 2.
+  must = ... }` (a quantified member constraint, not only a member selector) plus one
+  value constraint, `returnsConstantOf = { from = [<class targets>], orNull = <bool> }`.
+  The plain form is the same keyword with `from = ["any"]`: there is no second constraint,
+  because "a constant" is "a constant of any class".
+
+  A constant reference is either `Owner.FIELD` or a bare identifier that resolves to a
+  static final field of the enclosing class, a supertype, or a static import; the field
+  itself must be `static final`. Tracing the bare form is the first place the architecture
+  rules need something closer to §7.5 tier 2, and it is worth it: a third of the real
+  enums write the constant unqualified.
+
+  `orNull` is a flag rather than a `"null"` entry in `from`, because the two questions are
+  different — which constants are acceptable, and whether the method may decline to answer
+  — and a config that mixes them cannot be validated for either.
+
+- **A `file` target type is needed for "this project has no Java sources".** A file is not
+  a declaration, so it is a new node kind rather than a selector on an existing one:
+  `{ type = "file", extension = "java" }` with `exist = false`. Only `extension`, `name`,
+  `path` and `in` (the module it sits in) are selectors, and only `exist` applies. It costs
+  one extra pass over the tree when a config asks for it, and it is the only way to state
+  a constraint about files the analyser does not otherwise read.
+
+- **No scaffold, no name derivation.** Two things were considered for the "no docs, empty
+  project" goal and dropped for now: a `scaffold` command that generates the skeleton (the
+  analyser validates, it does not create), and name derivation such as "every `FooService`
+  needs a `FooServiceImpl`" (`{self}Impl` templates, or a declarative `pairedWith`). Both
+  are the natural next step if trial-and-error feedback turns out to be too slow for an
+  agent, and both are bigger than the vocabulary change they look like.
 - **Transitive supertypes.** `BasePoModel` subclasses reach it through two intermediate
   classes, so `extends` needs a `transitive` flag; the project index already holds the
   closure for project classes.
@@ -664,9 +687,11 @@ keyword it broke.
 | `method` | methods and constructors |
 | `field` | fields and properties |
 
-The five form the containment chain of §2.1. Deliberately absent from the first
-release: `statement`, `expression` (no architecture rule needs them) and `parameter`
-(`allParams` covers it).
+The four declaration types form the containment chain of §2.1. Deliberately absent from
+the first release: `statement`, `expression` (no architecture rule needs them) and
+`parameter` (`allParams` covers it). `file` is proposed in §10.2 for constraints about
+files the analyser does not otherwise read — a file is not a declaration, so it carries
+`extension` / `name` / `path` / `in` and the `exist` constraint only.
 
 ### A.2 Selectors
 
