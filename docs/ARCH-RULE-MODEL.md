@@ -654,12 +654,27 @@ unversioned note; the shape is in §7):
   different — which constants are acceptable, and whether the method may decline to answer
   — and a config that mixes them cannot be validated for either.
 
-- **A `file` target type is needed for "this project has no Java sources".** A file is not
-  a declaration, so it is a new node kind rather than a selector on an existing one:
-  `{ type = "file", extension = "java" }` with `exist = false`. Only `extension`, `name`,
-  `path` and `in` (the module it sits in) are selectors, and only `exist` applies. It costs
-  one extra pass over the tree when a config asks for it, and it is the only way to state
-  a constraint about files the analyser does not otherwise read.
+- **"This project has no `.java` sources" is a project assertion, not a rule.** It was
+  first drafted as a `file` target type, which was over-modelling: a file is not a node in
+  the containment chain, has no edges, and needs exactly one answer (present or not).
+  Modelling it as a target would drag node kinds, matching, spans and deduplication in for
+  one boolean.
+
+  It also cannot be a rule in the ruleset, however simple the check looks: a rule class
+  that CodeNarc does not have makes CodeNarc itself fail to load the ruleset
+  (`ClassNotFoundException`, same failure mode as the unknown-property case), and a shared
+  ruleset is read by both tools.
+
+  So it belongs in a small project-level section of the architecture config, evaluated once
+  with the file list:
+
+  ```toml
+  [files]
+  forbiddenExtensions = ["java"]
+  because = "这个工程是纯 Groovy，不得引入 Java 源代码"
+  ```
+
+  One section, no node kind, and the same run that already walks the tree can answer it.
 
 - **No scaffold, no name derivation.** Two things were considered for the "no docs, empty
   project" goal and dropped for now: a `scaffold` command that generates the skeleton (the
@@ -689,9 +704,8 @@ keyword it broke.
 
 The four declaration types form the containment chain of §2.1. Deliberately absent from
 the first release: `statement`, `expression` (no architecture rule needs them) and
-`parameter` (`allParams` covers it). `file` is proposed in §10.2 for constraints about
-files the analyser does not otherwise read — a file is not a declaration, so it carries
-`extension` / `name` / `path` / `in` and the `exist` constraint only.
+`parameter` (`allParams` covers it). A `file` node kind was considered and rejected in §10.2:
+constraints about files the analyser does not read are project assertions, not rules.
 
 ### A.2 Selectors
 
