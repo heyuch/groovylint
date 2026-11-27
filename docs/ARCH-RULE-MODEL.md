@@ -499,6 +499,31 @@ Still open, and why they can wait:
    as sugar. Blocked behind decision 1 anyway, since slices are only useful with a
    cycle check.
 
+### 10.1 Raised by the first field run
+
+The prototype ran against a production monorepo (24,481 files, 217 modules); the
+mechanics are recorded in [`ARCH-IMPLEMENTATION.md`](ARCH-IMPLEMENTATION.md) §8. Four of
+the findings are design questions, not bugs:
+
+4. **`other:` as a dependency part.** "My own module may depend on its `domain`, no other
+   module may" is the load-bearing rule of any module lattice, and it needs a relation,
+   not a static target: `notDependOn = ["other:domain"]`. The prototype has `visible`
+   for the same idea, but its entries are *source* targets, and "the classes of my own
+   module" is not one. Decide: add `other:` to dependency refs (cheap, closes three
+   catalog rules), or keep `visible` and add a relational source form to it.
+5. **Does `x.**` include `x`?** In the prototype it does not, which silently reported
+   every class of the package a rule was written to protect. The common meaning is
+   "this package and everything below it", so the answer should be yes, with `x.*`
+   left as the single-segment form.
+6. **Meta-annotation matching.** `@GetMapping` and friends are `@RequestMapping` at one
+   remove; catalogs express "HTTP entry point" that way. Either add a
+   `metaAnnotatedWith` selector, or leave it to explicit annotation lists and say so in
+   the vocabulary.
+7. **Target-side `except`.** Exemptions in real catalogs are written against the
+   *forbidden target* ("these two enums are fine to reference"), while `except` exempts
+   sources. Decide whether `except` accepts both sides or whether `notDependOn` entries
+   carry their own exceptions.
+
 ## Appendix A: reference vocabulary
 
 The complete keyword surface. Everything not listed here does not exist, which is

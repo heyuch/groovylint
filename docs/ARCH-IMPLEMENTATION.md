@@ -224,7 +224,64 @@ single source span.
   skips facts; `Engine::lint_with_facts` runs both in one traversal. The
   architecture CLI uses the latter with an empty rule set.
 
-## 8. Tests
+## 8. Field run: a real project
+
+First run against a production monorepo: 24,481 Groovy files, 217 Gradle modules, one
+config of 24 rule blocks covering 16 of the 22 rule intents the project already encodes
+as 112 ArchUnit test methods.
+
+| Run | Findings | Files | Time |
+|---|---:|---:|---:|
+| whole repository | 2,951 | 885 | 3m55s |
+| the three module groups that have ArchUnit tests | 695 | 230 | 13.8s |
+| same repository with `check` (CodeNarc rules) | 972 | — | 4.6s |
+
+Five findings were verified by hand: four are real violations (`models` depending on
+another module's domain model, `application` calling `infrastructure` directly, domain
+code using `org.springframework.web` utilities, an enum missing `BaseEnum`), and one
+class of finding was ours, not theirs (§8.1 D2). So the engine finds what it promises;
+the defects below make the output hard to act on, and two of them inflate it.
+
+### 8.1 Defects, in the order they should be fixed
+
+Ordered by correctness first, completeness second, speed last: a wrong diagnostic
+teaches the team to ignore the tool, so nothing else matters until the first three are
+gone.
+
+| # | Symptom | Cause | Class |
+|---|---|---|---|
+| D1 | every class- and method-level finding points at line 1 | the fact spans for class/method declarations are not carried into the diagnostic; only dependency findings (which use the reference span) have a real position | correctness |
+| D2 | `annotatedWith = ["com.acme.ApiSecurity"]` never matches, so every annotated method is reported | `has_annotations` (`eval.rs`) compares against the **simple** name only, with no suffix match; an FQN silently matches nothing | correctness |
+| D3 | 935 of 2,951 findings (32%) are exact duplicates: same rule, line and message | edges are collected once per reference occurrence and never deduplicated before evaluation | correctness |
+| D4 | `name = "com.acme.**.service.impl.**"` does not match the package `…service.impl` itself, so its own classes are reported | `**` compiles to `.*`, which needs at least one character after the dot | correctness (silent) |
+| D5 | 3m55s for 24.7k files against 4.6s for `check` | `evaluate_dependencies` walks every edge per rule, and `target_nodes()` **clones** a `BTreeSet` of every matching FQN on each call | performance |
+
+D1 detail: 110 of 110, 80 of 80, 29 of 29, 7 of 7, 3 of 3 and 1 of 1 findings across six
+class/method rules reported `line = 1`.
+
+D4 detail: a package target is a predicate over package names, and the tree walk does not
+visit the package that a class *declares* separately from its sub-packages — so a
+trailing `.**` both excludes the package itself and reads as if it included it. Whatever
+the fix, the pattern language must say which one it means, because "the package and
+everything below it" is the common case.
+
+### 8.2 Gaps found in the DSL, not the engine
+
+These are absences in the model, not bugs in it. Each has a concrete rule from the
+catalog that cannot be written today.
+
+| # | Missing | The rule that needs it | Smallest addition |
+|---|---|---|---|
+| G1 | "another module's X" as a dependency part | "my own module may depend on its `domain`, no other module may" — the load-bearing rule of the whole lattice | `other:` prefix on `notDependOn` / `dependOnlyOn`, meaning "a node of this target that lives in a *different* module" |
+| G2 | meta-annotation matching | HTTP entry points are found with `areMetaAnnotatedWith(RequestMapping)`, which covers `@GetMapping`, `@PostMapping`, … | `metaAnnotatedWith` selector, or an `annotationOn` indirection through the annotation's own declaration (needs the annotation class in the project index) |
+| G3 | transitive supertypes | API classes extend `AbstractBaseAPI` through intermediate bases | `extends` currently compares written names; `assignableTo` needs the project's supertype closure, which the index already has for project classes |
+| G4 | target-side exemption | a whitelist names two enum types that HTTP contracts may reference; `except` exempts *sources*, so writing targets there does nothing | allow `except` to name the forbidden target, or let `notDependOn` entries carry exceptions |
+
+G1 is the one that decides how much of the catalog is expressible: without it the three
+cross-module rules can only be approximated, and the approximation either over-reports
+(the whole layer as forbidden) or under-reports (own module included).
+
+## 9. Tests
 
 ```bash
 cargo test -p groovylint-arch
@@ -242,11 +299,24 @@ The synthetic fixtures cover:
 - module children and counts;
 - CLI text/JSON reporting.
 
-## 9. Next steps
+## 10. Next steps
 
-1. Add a `FactPlan` and fuse fact collection into the existing AST traversal.
-2. Add Java source facts or explicitly gate architecture rules to Groovy.
-3. Add baseline and `arch validate` / `arch doctor`.
-4. Add package-level cycle checks and slice support.
-5. Add Gradle module/settings integration and a Gradle `arch` task.
-6. Benchmark a 10k-class project and optimize resolution/index memory.
+In the order the field run implies — correctness, then completeness, then speed:
+
+1. **Make the diagnostics land.** D1 (class/method spans), D2 (annotation names),
+   D3 (duplicate edges). Without these three the tool produces a list nobody can act
+   on, and every later feature is judged by that list.
+2. **Make the pattern language honest.** D4, and the `x.**` question it raises: state
+   whether `**` includes the node itself, implement it that way, and let
+   `arch validate` reject a target that matches nothing.
+3. **Add the one missing relation.** G1 (`other:`), which unblocks the three
+   cross-module rules of the catalog.
+4. **Close the small gaps.** G4 (`except` on targets), G2 (meta-annotation), G3
+   (supertype closure) — each is a few lines once the model above is settled.
+5. **Then make it fast.** D5: hoist the target node sets out of the edge loop and stop
+   cloning them per edge. Expected effect is orders of magnitude, and it is the last
+   thing to do because a fast wrong answer is not progress.
+6. Add Java source facts or explicitly gate architecture rules to Groovy.
+7. Add baseline and `arch validate` / `arch doctor`.
+8. Add package-level cycle checks and slice support.
+9. Add Gradle module/settings integration and a Gradle `arch` task.
