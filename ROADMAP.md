@@ -251,7 +251,7 @@ prototype, `FactPlan`, fused fact collection in the existing AST traversal, and
 `groovylint arch` exist; see
 [`docs/ARCH-IMPLEMENTATION.md`](docs/ARCH-IMPLEMENTATION.md). Java sources,
 baseline, slices, and the FactPlan optimization remain pending. The rule model (target type × selector × constraint, named
-targets, relations, quantifiers) is in
+targets, module visibility, quantifiers) is in
 [`docs/ARCH-RULE-MODEL.md`](docs/ARCH-RULE-MODEL.md); rule families, source-vs-bytecode
 and phasing are in [`docs/ARCHITECTURE-RULES.md`](docs/ARCHITECTURE-RULES.md). Both are
 derived from a real project's ArchUnit catalog.

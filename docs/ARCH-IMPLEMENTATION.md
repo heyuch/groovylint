@@ -174,7 +174,7 @@ Implemented:
 |---|---|
 | `dependOnlyOn` | every resolved edge from the target must match an allowed target |
 | `notDependOn` | every matching edge is a violation |
-| `visible` | target-side package visibility; sources outside the allowed targets are violations |
+| `visible` | target-side **package** visibility; sources outside the allowed targets are violations. [`ARCH-RULE-MODEL.md`](ARCH-RULE-MODEL.md) §4 replaces this with a module-only `visibility`, not implemented yet |
 | `annotatedWith` / `notAnnotatedWith` | class/method annotation checks |
 | `annotationArgument` | raw annotation argument contains the configured name/value |
 | `extend` / `implement` | class supertype/interface checks |
@@ -189,7 +189,8 @@ Implemented:
 | `acyclic` | module dependency cycles |
 
 The `self:` / `any:` / `other:` dependency prefixes are supported. `none` is
-accepted only by `visible`.
+accepted only by `visible`. The model review (`ARCH-RULE-MODEL.md` §4.1) proposes
+dropping all three in favour of module `visibility`; the code has not moved yet.
 
 ## 6. Diagnostics
 

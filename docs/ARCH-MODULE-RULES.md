@@ -1,6 +1,6 @@
 # Module structure & dependency rules: design v2
 
-Status: **superseded** by [`ARCH-RULE-MODEL.md`](ARCH-RULE-MODEL.md) (v3).
+Status: **superseded** by [`ARCH-RULE-MODEL.md`](ARCH-RULE-MODEL.md) (v4).
 
 Kept because v2 is where the modelling problems were found and measured: the node /
 kind / edge model, the pattern grammar, the ambiguity and validation rules, and the

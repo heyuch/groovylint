@@ -57,7 +57,7 @@ module names nor the layer names of a project are known to the tool.
 
 ## 3. Rule model
 
-**Superseded in detail** by [`ARCH-RULE-MODEL.md`](ARCH-RULE-MODEL.md) (v3), which
+**Superseded in detail** by [`ARCH-RULE-MODEL.md`](ARCH-RULE-MODEL.md) (v4), which
 separates the target type, its selector, and the constraint vocabulary of that type,
 instead of the module-shaped matrix sketched below. What follows is kept because it
 explains how the five families were derived from the catalog.
